@@ -521,12 +521,8 @@ async function renderTasks(wrapper) {
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
                       ${t.department_name ? `<span class="dept-tag" style="background:${t.department_color || '#2d3561'}">${t.department_name}</span>` : ''}
                     </div>
-                    ${t.assignee_names ? `
-                    <div class="task-assignees-group" style="display:flex;">
-                        ${t.assignee_names.split('||').map(n => `<div class="task-assignee" title="${n}" style="margin-right:-8px; border:2px solid #fff;">${initials(n)}</div>`).join('')}
-                    </div>` : ''}
                   </div>
-                  ${c.next && (canManage || (t.assigned_to_list && t.assigned_to_list.split(',').includes(String(state.user.id)))) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
+                  ${c.next && (canManage || (myDepartments.includes(t.department_name))) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
                 </div>
               `).join('')}
           </div>
@@ -535,6 +531,7 @@ async function renderTasks(wrapper) {
     }
 
     const myGroup = users.find(u => u.id == state.user.id)?.user_group;
+    const myDepartments = users.find(u => u.id == state.user.id)?.departments || '';
     const canManage = state.user.role === 'admin' || myGroup === 'soporte_oficina';
 
     wrapper.innerHTML = `
@@ -592,14 +589,14 @@ async function renderTasks(wrapper) {
             ${t.description ? `<div style="margin-bottom:20px"><label class="form-label">Descripción</label><p style="font-size:14px;color:var(--gray-700);line-height:1.6">${t.description}</p></div>` : ''}
             <div class="grid-2" style="margin-bottom:20px">
               <div><label class="form-label">Departamento</label><p style="font-size:14px">${t.department_name || '—'}</p></div>
-              <div><label class="form-label">Asignados</label><p style="font-size:14px">${t.assignee_names ? t.assignee_names.split('||').join(', ') : 'Sin asignar'}</p></div>
+              <div><label class="form-label">Sector</label><p style="font-size:14px">Tarea de Equipo</p></div>
               <div><label class="form-label">Creado por</label><p style="font-size:14px">${t.creator_name}</p></div>
               <div><label class="form-label">Fecha límite</label><p style="font-size:14px;${isOverdue(t.due_date) && t.status !== 'done' ? 'color:var(--danger-500)' : ''}">${formatDate(t.due_date)}</p></div>
             </div>
-            ${(canManage || (t.assigned_to_list && t.assigned_to_list.split(',').includes(String(state.user.id)))) ? `
+            ${(canManage || (myDepartments.includes(t.department_name))) ? `
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
               ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
-            </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos para cambiar el estatus de esta tarea.</div>`}
+            </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}" target="_blank" style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
             ${act.length > 0 ? `<div><label class="form-label">Historial</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar" style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div><div class="activity-text" style="font-size:13px"><strong>${a.user_name}</strong> ${a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
           </div>
@@ -650,12 +647,8 @@ async function renderTasks(wrapper) {
               <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="ct-pri"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div>
             </div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Asignar a</label>
-                <div class="checkbox-group" id="ct-assignees-container" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid var(--gray-300); padding:10px; border-radius:4px; background:#fff;">
-                  ${window._users.map(u => `<label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ct-assign" value="${u.id}"> ${u.name}</label>`).join('')}
-                </div>
-              </div>
               <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input" id="ct-due" type="datetime-local"></div>
+              <div></div>
             </div>
             <div class="form-group"><label class="form-label">Archivos</label>
               <div class="dropzone" onclick="document.getElementById('ct-files').click()"><div class="dropzone-icon">📂</div><div class="dropzone-text">Haz clic para seleccionar</div><div class="dropzone-hint">PDF, Word, Excel, imágenes (máx. 10MB)</div></div>
@@ -680,8 +673,6 @@ async function renderTasks(wrapper) {
           fd.append('description', document.getElementById('ct-desc').value);
           fd.append('department_id', document.getElementById('ct-dept').value);
           fd.append('priority', document.getElementById('ct-pri').value);
-          const assignedUsers = Array.from(document.querySelectorAll('input[name="ct-assign"]:checked')).map(cb => cb.value);
-          fd.append('assigned_users', JSON.stringify(assignedUsers));
           fd.append('due_date', document.getElementById('ct-due').value);
           const files = document.getElementById('ct-files').files;
           for (let i = 0; i < files.length; i++) fd.append('files[]', files[i]);
