@@ -263,73 +263,54 @@ function closeUserMenu() {
 // Login Page
 // ==========================================
 function renderLogin(container) {
-  let isRegister = false;
-
-  function render() {
-    container.innerHTML = `
-      <div class="login-page">
-        <div class="login-left">
-          <div class="login-brand"><div class="login-brand-icon">IC</div><h1>ICCP</h1></div>
-          <p class="login-tagline">Sistema de Gestión de Tareas Departamental. Organiza, asigna y da seguimiento a cada proyecto.</p>
-          <div class="login-features">
-            <div class="login-feature"><div class="login-feature-icon">📋</div><span>Tableros Kanban por departamento</span></div>
-            <div class="login-feature"><div class="login-feature-icon">📅</div><span>Integración con Google Calendar</span></div>
-            <div class="login-feature"><div class="login-feature-icon">📊</div><span>Panel de métricas en tiempo real</span></div>
-            <div class="login-feature"><div class="login-feature-icon">👥</div><span>Gestión de equipos y roles</span></div>
-          </div>
-        </div>
-        <div class="login-right">
-          <div class="login-form-wrapper">
-            <div class="login-form-header">
-              <h2>${isRegister ? 'Crear Cuenta' : 'Bienvenido'}</h2>
-              <p>${isRegister ? 'Completa los datos para registrarte' : 'Ingresa tus credenciales para continuar'}</p>
-            </div>
-            <div id="login-error"></div>
-            <form id="login-form">
-              ${isRegister ? '<div class="form-group"><label class="form-label">Nombre completo</label><input class="form-input" id="reg-name" placeholder="Tu nombre" required></div>' : ''}
-              <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="login-email" type="email" placeholder="correo@ejemplo.com" required></div>
-              <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input" id="login-pass" type="password" placeholder="••••••••" required minlength="6"></div>
-              <button type="submit" class="btn btn-primary login-submit" id="login-btn">${isRegister ? 'Registrarse' : 'Iniciar Sesión'}</button>
-            </form>
-            <div class="login-footer">
-              ${isRegister
-        ? '<p>¿Ya tienes cuenta? <a id="toggle-auth">Inicia sesión</a></p>'
-        : '<p>¿No tienes cuenta? <a id="toggle-auth">Regístrate</a></p>'}
-            </div>
-          </div>
+  container.innerHTML = `
+    <div class="login-page">
+      <div class="login-left">
+        <div class="login-brand"><div class="login-brand-icon">IC</div><h1>ICCP</h1></div>
+        <p class="login-tagline">Sistema de Gestión de Tareas Departamental. Organiza, asigna y da seguimiento a cada proyecto.</p>
+        <div class="login-features">
+          <div class="login-feature"><div class="login-feature-icon">📋</div><span>Tableros Kanban por departamento</span></div>
+          <div class="login-feature"><div class="login-feature-icon">📅</div><span>Integración con Google Calendar</span></div>
+          <div class="login-feature"><div class="login-feature-icon">📊</div><span>Panel de métricas en tiempo real</span></div>
+          <div class="login-feature"><div class="login-feature-icon">👥</div><span>Gestión de equipos y roles</span></div>
         </div>
       </div>
-    `;
+      <div class="login-right">
+        <div class="login-form-wrapper">
+          <div class="login-form-header">
+            <h2>Bienvenido</h2>
+            <p>Ingresa tus credenciales para continuar</p>
+          </div>
+          <div id="login-error"></div>
+          <form id="login-form">
+            <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="login-email" type="email" placeholder="correo@ejemplo.com" required></div>
+            <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input" id="login-pass" type="password" placeholder="••••••••" required minlength="6"></div>
+            <button type="submit" class="btn btn-primary login-submit" id="login-btn">Iniciar Sesión</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  `;
 
-    document.getElementById('toggle-auth').addEventListener('click', () => { isRegister = !isRegister; render(); });
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Cargando...';
 
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById('login-btn');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Cargando...';
+    try {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-pass').value;
 
-      try {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-pass').value;
-
-        if (isRegister) {
-          const name = document.getElementById('reg-name').value;
-          const data = await api('auth.php?action=register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
-          setAuth(data.token, data.user);
-        } else {
-          const data = await api('auth.php?action=login', { method: 'POST', body: JSON.stringify({ email, password }) });
-          setAuth(data.token, data.user);
-        }
-        navigate('dashboard');
-      } catch (err) {
-        document.getElementById('login-error').innerHTML = `<div class="error-box">${err.message}</div>`;
-        btn.disabled = false;
-        btn.textContent = isRegister ? 'Registrarse' : 'Iniciar Sesión';
-      }
-    });
-  }
-  render();
+      const data = await api('auth.php?action=login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      setAuth(data.token, data.user);
+      navigate('dashboard');
+    } catch (err) {
+      document.getElementById('login-error').innerHTML = `<div class="error-box">${err.message}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Iniciar Sesión';
+    }
+  });
 }
 
 // ==========================================
@@ -770,7 +751,13 @@ async function renderUsers(wrapper) {
     const isAdmin = state.user?.role === 'admin';
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Usuarios</h2><div style="font-size:14px;color:var(--gray-500)">${users.length} usuario${users.length !== 1 ? 's' : ''}</div></div>
+      <div class="page-header">
+        <h2>Usuarios</h2>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="font-size:14px;color:var(--gray-500)">${users.length} usuario${users.length !== 1 ? 's' : ''}</div>
+          ${isAdmin ? `<button class="btn btn-primary" onclick="openCreateUser()">＋ Nuevo Usuario</button>` : ''}
+        </div>
+      </div>
       <div class="card"><div class="card-body" style="padding:0;overflow:auto">
         <table class="data-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Departamentos</th><th>Registro</th><th>Acciones</th></tr></thead>
         <tbody>${users.map(u => `<tr>
@@ -796,6 +783,44 @@ async function renderUsers(wrapper) {
         toast('Usuario eliminado exitosamente');
         renderUsers(document.createElement('div')).then(() => { navigate('users'); });
       } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.openCreateUser = function () {
+      showModal(`
+        <div class="modal-header"><h2>Crear Nuevo Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form id="create-user-form">
+          <div class="modal-body">
+            <div class="form-group"><label class="form-label">Nombre Completo *</label><input class="form-input" id="cu-name" required></div>
+            <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
+            <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
+            <div class="form-group"><label class="form-label">Rol inicial</label>
+              <select class="form-select" id="cu-role">
+                <option value="member" selected>Miembro normal</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Usuario</button></div>
+        </form>
+      `);
+
+      document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api('users.php?action=create', {
+            method: 'POST', body: JSON.stringify({
+              name: document.getElementById('cu-name').value,
+              email: document.getElementById('cu-email').value,
+              password: document.getElementById('cu-pass').value,
+              role: document.getElementById('cu-role').value
+            })
+          });
+          toast('Usuario creado exitosamente');
+          closeModal();
+          navigate('dashboard'); // trigger reload quickly
+          setTimeout(() => navigate('users'), 100);
+        } catch (err) { toast(err.message, 'error'); }
+      });
     };
 
     window.editUser = function (id, name, email) {

@@ -20,6 +20,9 @@ switch ($action) {
     case 'role':
         changeRole($id, $auth);
         break;
+    case 'create':
+        createUser($auth);
+        break;
     case 'delete':
         deleteUser($id, $auth);
         break;
@@ -42,6 +45,39 @@ function deleteUser($id, $auth)
         jsonResponse(['error' => 'Usuario no encontrado.'], 404);
 
     jsonResponse(['message' => 'Usuario eliminado correctamente.']);
+}
+
+function createUser($auth)
+{
+    global $pdo;
+    if (getMethod() !== 'POST')
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+    requireAdmin($auth);
+
+    $data = getJsonBody();
+    $name = trim($data['name'] ?? '');
+    $email = trim($data['email'] ?? '');
+    $password = $data['password'] ?? '';
+    $role = $data['role'] ?? 'member';
+
+    if (!$name || !$email || !$password) {
+        jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
+    }
+    if (strlen($password) < 6) {
+        jsonResponse(['error' => 'La contraseña debe tener al menos 6 caracteres.'], 400);
+    }
+
+    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+    $stmt->execute([$email]);
+    if ($stmt->fetch()) {
+        jsonResponse(['error' => 'El correo electrónico ya está registrado.'], 409);
+    }
+
+    $hashed = password_hash($password, PASSWORD_BCRYPT);
+    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $hashed, $role]);
+
+    jsonResponse(['message' => 'Usuario creado exitosamente.'], 201);
 }
 
 function listUsers()

@@ -9,9 +9,7 @@ switch ($action) {
     case 'login':
         handleLogin();
         break;
-    case 'register':
-        handleRegister();
-        break;
+
     case 'me':
         handleMe();
         break;
@@ -59,46 +57,6 @@ function handleLogin()
     ]);
 }
 
-function handleRegister()
-{
-    global $pdo, $JWT_SECRET;
-    if (getMethod() !== 'POST')
-        jsonResponse(['error' => 'Método no permitido.'], 405);
-
-    $data = getJsonBody();
-    $name = trim($data['name'] ?? '');
-    $email = trim($data['email'] ?? '');
-    $password = $data['password'] ?? '';
-
-    if (!$name || !$email || !$password) {
-        jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
-    }
-    if (strlen($password) < 6) {
-        jsonResponse(['error' => 'La contraseña debe tener al menos 6 caracteres.'], 400);
-    }
-
-    $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-    $stmt->execute([$email]);
-    if ($stmt->fetch()) {
-        jsonResponse(['error' => 'El correo electrónico ya está registrado.'], 409);
-    }
-
-    $hashed = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
-    $stmt->execute([$name, $email, $hashed, 'member']);
-    $userId = $pdo->lastInsertId();
-
-    $token = createJWT([
-        'id' => (int) $userId,
-        'email' => $email,
-        'role' => 'member'
-    ], $JWT_SECRET);
-
-    jsonResponse([
-        'token' => $token,
-        'user' => ['id' => (int) $userId, 'name' => $name, 'email' => $email, 'role' => 'member']
-    ], 201);
-}
 
 function handleMe()
 {
