@@ -4,6 +4,21 @@
  */
 require_once __DIR__ . '/config.php';
 
+// Auto-create google_tokens table if it doesn't exist
+try {
+    $pdo->query("SELECT 1 FROM google_tokens LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS google_tokens (
+        user_id INT PRIMARY KEY,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+
 $code = $_GET['code'] ?? null;
 $userId = $_GET['state'] ?? null;
 $error = $_GET['error'] ?? null;
