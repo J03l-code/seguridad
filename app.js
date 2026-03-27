@@ -541,7 +541,7 @@ async function renderTasks(wrapper) {
 
     // Global functions for tasks
     window._tasks = tasks;
-    window._depts = depts;
+    window._depts = [];
     window._users = users;
 
     window.filterTasks = function () {
