@@ -31,7 +31,7 @@ $GOOGLE_REDIRECT_URI = $_ENV['GOOGLE_REDIRECT_URI'] ?? getenv('GOOGLE_REDIRECT_U
 $UPLOAD_DIR = __DIR__ . '/uploads/';
 $MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-$FRONTEND_URL = getenv('FRONTEND_URL') ?: 'http://localhost/ICCP';
+$FRONTEND_URL = getenv('FRONTEND_URL') ?: 'https://seguridad.jiyanedesign.com';
 
 // DB Connection
 try {
