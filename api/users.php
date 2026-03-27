@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
 setCorsHeaders();
@@ -56,9 +58,6 @@ function getOrgChart()
     $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, departments FROM users ORDER BY user_group, name');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
-}
-
-    jsonResponse(['message' => 'Usuario eliminado correctamente.']);
 }
 
 function createUser($auth)
