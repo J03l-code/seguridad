@@ -5,9 +5,9 @@
 
 $DB_HOST = getenv('DB_HOST') ?: 'localhost';
 $DB_PORT = getenv('DB_PORT') ?: '3306';
-$DB_NAME = getenv('DB_NAME') ?: 'u434851126_seguridad';
-$DB_USER = getenv('DB_USER') ?: 'u434851126_adminseguridad';
-$DB_PASS = getenv('DB_PASS') ?: 'Seguridad@2026';
+$DB_NAME = getenv('DB_NAME') ?: 'iccp_db';
+$DB_USER = getenv('DB_USER') ?: 'root';
+$DB_PASS = getenv('DB_PASS') ?: '';
 
 $JWT_SECRET = getenv('JWT_SECRET') ?: 'iccp_secret_key_change_in_production';
 $JWT_EXPIRES = 60 * 60 * 24 * 7; // 7 days
