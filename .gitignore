@@ -16,6 +16,8 @@ Thumbs.db
 # Entornos virtuales (si alguna vez usaste/usarás Python o Node)
 node_modules/
 .env
+.env.local
+*.env.local
 
 # Archivos de caché y logs
 *.log

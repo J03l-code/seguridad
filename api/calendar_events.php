@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/google_calendar_helper.php';
 setCorsHeaders();
 
 $auth = authenticate();
@@ -98,7 +99,8 @@ function createEvent($auth)
             $msgTitle = mb_substr($msgTitle, 0, 30) . '...';
 
         $friendlyTarget = implode(', ', array_map(function ($g) {
-            return str_replace('_', ' ', $g); }, $groupsArray));
+            return str_replace('_', ' ', $g);
+        }, $groupsArray));
         $msg = "{$creatorName} agendó '{$msgTitle}' para {$friendlyTarget}";
 
         if ($targetGroupStr === 'todos') {
@@ -124,6 +126,19 @@ function createEvent($auth)
         }
 
         $pdo->commit();
+
+        // Push to Google Calendar for all linked users in target groups
+        try {
+            if ($targetGroupStr === 'todos') {
+                $allGroups = ['emergencias', 'actividades', 'otros_eventos', 'soporte_oficina', 'superintendencia'];
+                pushEventToGroup($pdo, $allGroups, $title, $description, $eventDate);
+            } else {
+                pushEventToGroup($pdo, $groupsArray, $title, $description, $eventDate);
+            }
+        } catch (Exception $gcErr) {
+            // Don't fail the main request if Google Calendar push fails
+        }
+
         jsonResponse(['message' => 'Evento creado y notificado exitosamente.'], 201);
     } catch (Exception $e) {
         $pdo->rollBack();

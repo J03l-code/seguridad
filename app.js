@@ -1018,6 +1018,13 @@ async function renderCalendar(wrapper) {
     const isAdmin = state.user?.role === 'admin';
     const userGroup = state.user?.user_group || 'otros_eventos';
 
+    // Check Google Calendar link status
+    let googleLinked = false;
+    try {
+      const gStatus = await api('google_auth.php?action=status');
+      googleLinked = gStatus.linked;
+    } catch (e) { }
+
     // State for calendar dates
     if (!window.calDate) window.calDate = new Date();
     const currYear = window.calDate.getFullYear();
@@ -1086,7 +1093,12 @@ async function renderCalendar(wrapper) {
     wrapper.innerHTML = `
       <div class="page-header">
         <h2>Calendario de Eventos</h2>
-        <div><button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn ${googleLinked ? 'btn-outline' : 'btn-secondary'}" id="google-link-btn" onclick="${googleLinked ? 'unlinkGoogleCalendar()' : 'linkGoogleCalendar()'}" style="font-size:13px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px">${googleLinked ? '✅' : '🔗'}</span> ${googleLinked ? 'Google Vinculado' : 'Vincular Google Calendar'}
+          </button>
+          <button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button>
+        </div>
       </div>
       
       <div class="card" style="margin-bottom: 24px;">
@@ -1125,6 +1137,22 @@ async function renderCalendar(wrapper) {
     window.calNextMonth = () => { window.calDate.setMonth(window.calDate.getMonth() + 1); renderCalendar(wrapper); };
 
     window._calEventsObj = events;
+
+    window.linkGoogleCalendar = async function () {
+      try {
+        const data = await api('google_auth.php?action=link');
+        if (data.url) window.location.href = data.url;
+      } catch (err) { toast('Error al vincular Google Calendar: ' + err.message, 'error'); }
+    };
+
+    window.unlinkGoogleCalendar = async function () {
+      if (!confirm('¿Deseas desvincular tu Google Calendar?')) return;
+      try {
+        await api('google_auth.php?action=unlink', { method: 'POST' });
+        toast('Google Calendar desvinculado');
+        navigate('calendar');
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
     window.showEventDetails = function (id) {
       const e = window._calEventsObj.find(x => x.id === id);
