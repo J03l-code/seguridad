@@ -2,7 +2,6 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
 setCorsHeaders();
-
 $auth = authenticate();
 $action = getParam('action', 'list');
 $id = getParam('id');
@@ -118,8 +117,8 @@ function createTask($auth)
         jsonResponse(['error' => 'No tienes permisos para crear o asignar tareas.'], 403);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, department_id, created_by, assigned_to, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, NULL, ?)");
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, department_id, created_by, due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,

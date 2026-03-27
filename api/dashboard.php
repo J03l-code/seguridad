@@ -22,15 +22,21 @@ switch ($action) {
 
 function getMetrics()
 {
-    global $pdo;
+    global $pdo, $auth;
+    $isAdmin = ($auth['role'] === 'admin');
 
-    $status = $pdo->query("SELECT status, COUNT(*) as count FROM tasks GROUP BY status")->fetchAll();
-    $priority = $pdo->query("SELECT priority, COUNT(*) as count FROM tasks GROUP BY priority")->fetchAll();
+    $deptFilter = "";
+    if (!$isAdmin) {
+        $deptFilter = " AND department_id IN (SELECT department_id FROM department_members WHERE user_id = " . (int) $auth['id'] . ") ";
+    }
+
+    $status = $pdo->query("SELECT status, COUNT(*) as count FROM tasks WHERE 1=1 $deptFilter GROUP BY status")->fetchAll();
+    $priority = $pdo->query("SELECT priority, COUNT(*) as count FROM tasks WHERE 1=1 $deptFilter GROUP BY priority")->fetchAll();
     $userCount = $pdo->query("SELECT COUNT(*) as count FROM users")->fetchColumn();
     $deptCount = $pdo->query("SELECT COUNT(*) as count FROM departments")->fetchColumn();
-    $weekDone = $pdo->query("SELECT COUNT(*) FROM tasks WHERE status = 'done' AND updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
-    $weekNew = $pdo->query("SELECT COUNT(*) FROM tasks WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
-    $overdue = $pdo->query("SELECT COUNT(*) FROM tasks WHERE due_date < NOW() AND status != 'done'")->fetchColumn();
+    $weekDone = $pdo->query("SELECT COUNT(*) FROM tasks WHERE status = 'done' AND updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) $deptFilter")->fetchColumn();
+    $weekNew = $pdo->query("SELECT COUNT(*) FROM tasks WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) $deptFilter")->fetchColumn();
+    $overdue = $pdo->query("SELECT COUNT(*) FROM tasks WHERE due_date < NOW() AND status != 'done' $deptFilter")->fetchColumn();
 
     $sb = ['todo' => 0, 'in_progress' => 0, 'done' => 0];
     foreach ($status as $r)
@@ -83,10 +89,18 @@ function getDepartmentMetrics($id)
 
 function getActivity()
 {
-    global $pdo;
+    global $pdo, $auth;
+    $isAdmin = ($auth['role'] === 'admin');
+
     $limit = (int) (getParam('limit', 20));
+    $activityFilter = "";
+    if (!$isAdmin) {
+        $activityFilter = " WHERE al.task_id IS NULL OR al.task_id IN (SELECT id FROM tasks WHERE department_id IN (SELECT department_id FROM department_members WHERE user_id = " . (int) $auth['id'] . ")) ";
+    }
+
     $stmt = $pdo->prepare("SELECT al.*, u.name as user_name, u.avatar as user_avatar, t.title as task_title
         FROM activity_log al LEFT JOIN users u ON al.user_id = u.id LEFT JOIN tasks t ON al.task_id = t.id
+        $activityFilter
         ORDER BY al.created_at DESC LIMIT ?");
     $stmt->execute([$limit]);
     jsonResponse(['activity' => $stmt->fetchAll()]);
