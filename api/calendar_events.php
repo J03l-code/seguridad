@@ -47,13 +47,20 @@ function createEvent($auth)
     global $pdo;
     if (getMethod() !== 'POST')
         jsonResponse(['error' => 'Método no permitido.'], 405);
-    requireAdmin($auth);
 
     $data = getJsonBody();
     $title = trim($data['title'] ?? '');
     $description = trim($data['description'] ?? '');
     $eventDate = $data['event_date'] ?? '';
-    $targetGroup = $data['target_group'] ?? 'todos';
+
+    if ($auth['role'] !== 'admin') {
+        $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+        $uStmt->execute([$auth['id']]);
+        $user = $uStmt->fetch();
+        $targetGroup = $user ? $user['user_group'] : 'otros_eventos';
+    } else {
+        $targetGroup = $data['target_group'] ?? 'todos';
+    }
 
     if (!$title || !$eventDate) {
         jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
@@ -70,17 +77,24 @@ function deleteEvent($auth)
     global $pdo;
     if (getMethod() !== 'DELETE')
         jsonResponse(['error' => 'Método no permitido.'], 405);
-    requireAdmin($auth);
 
     $id = (int) getParam('id', 0);
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
+    $stmt = $pdo->prepare('SELECT created_by FROM calendar_events WHERE id = ?');
+    $stmt->execute([$id]);
+    $ev = $stmt->fetch();
+
+    if (!$ev)
+        jsonResponse(['error' => 'Evento no encontrado.'], 404);
+
+    if ($auth['role'] !== 'admin' && $ev['created_by'] != $auth['id']) {
+        jsonResponse(['error' => 'No tienes permiso para eliminar este evento.'], 403);
+    }
+
     $stmt = $pdo->prepare('DELETE FROM calendar_events WHERE id = ?');
     $stmt->execute([$id]);
-
-    if ($stmt->rowCount() === 0)
-        jsonResponse(['error' => 'Evento no encontrado.'], 404);
 
     jsonResponse(['message' => 'Evento eliminado.']);
 }

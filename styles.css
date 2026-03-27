@@ -882,6 +882,132 @@ textarea.form-input {
     font-size: 12px
 }
 
+/* Calendar Grid */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--gray-200);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.calendar-header-day {
+    background: #fff;
+    padding: 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.calendar-day {
+    background: #fff;
+    min-height: 120px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calendar-day-empty {
+    background: var(--gray-50);
+    min-height: 120px;
+}
+
+.calendar-day-num {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+    margin-bottom: 4px;
+}
+
+.calendar-day.today .calendar-day-num {
+    color: var(--primary-600);
+    font-weight: 700;
+    background: var(--primary-100);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+}
+
+.calendar-event-chip {
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--primary-500);
+    transition: transform var(--transition-fast);
+}
+
+.calendar-event-chip:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-sm);
+}
+
+.calendar-event-chip.target-emergencias {
+    background: var(--danger-500);
+}
+
+.calendar-event-chip.target-actividades {
+    background: var(--success-500);
+}
+
+.calendar-event-chip.target-otros_eventos {
+    background: var(--warning-600);
+}
+
+.calendar-event-chip.target-soporte_oficina {
+    background: var(--info-500);
+}
+
+.calendar-event-chip.target-superintendencia {
+    background: var(--primary-800);
+}
+
+.calendar-event-chip.target-todos {
+    background: var(--gray-700);
+}
+
+.calendar-top-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.calendar-nav-btn {
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--gray-700);
+    font-weight: 600;
+}
+
+.calendar-nav-btn:hover {
+    background: var(--gray-100);
+}
+
+.calendar-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-800);
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;

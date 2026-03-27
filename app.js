@@ -892,15 +892,58 @@ async function renderCalendar(wrapper) {
     const data = await api('calendar_events.php?action=list');
     const events = data.events;
     const isAdmin = state.user?.role === 'admin';
+    const userGroup = state.user?.user_group || 'otros_eventos';
 
-    wrapper.innerHTML = `
-      <div class="page-header">
-        <h2>Calendario de Eventos y Actividades</h2>
-        ${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button></div>' : ''}
-      </div>
-      <div class="card"><div class="card-body">
-        ${events.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin eventos programados</h3><p>No hay actividades próximas para tu grupo.</p></div>' :
-        '<div class="activity-list">' + events.map(e => `
+    // State for calendar dates
+    if (!window.calDate) window.calDate = new Date();
+    const currYear = window.calDate.getFullYear();
+    const currMonth = window.calDate.getMonth();
+
+    const firstDayIndex = new Date(currYear, currMonth, 1).getDay(); // 0 is Sunday
+    const monthDays = new Date(currYear, currMonth + 1, 0).getDate();
+
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+    // Group events by day (YYYY-MM-DD)
+    const eventsByDate = {};
+    events.forEach(e => {
+      const dateStr = e.event_date.split(' ')[0];
+      if (!eventsByDate[dateStr]) eventsByDate[dateStr] = [];
+      eventsByDate[dateStr].push(e);
+    });
+
+    const isToday = (d) => {
+      const today = new Date();
+      return today.getFullYear() === currYear && today.getMonth() === currMonth && today.getDate() === d;
+    };
+
+    let cellsHTML = '';
+    for (let i = 0; i < firstDayIndex; i++) {
+      cellsHTML += '<div class="calendar-day-empty"></div>';
+    }
+    for (let d = 1; d <= monthDays; d++) {
+      const dateStr = `${currYear}-${String(currMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayEvents = eventsByDate[dateStr] || [];
+
+      const eventsHTML = dayEvents.map(e => `
+            <div class="calendar-event-chip target-${e.target_group}" onclick="showEventDetails(${e.id})" title="${e.title}">
+                ${e.event_date.split(' ')[1].slice(0, 5)} - ${e.title}
+            </div>
+        `).join('');
+
+      cellsHTML += `
+            <div class="calendar-day ${isToday(d) ? 'today' : ''}">
+                <div style="display:flex;justify-content:flex-end"><span class="calendar-day-num">${d}</span></div>
+                ${eventsHTML}
+            </div>
+        `;
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const upcomingEvents = events.filter(e => e.event_date >= todayStr).sort((a, b) => a.event_date.localeCompare(b.event_date)).slice(0, 10);
+
+    const upcomingHTML = upcomingEvents.length === 0 ? '<p style="color:var(--gray-500)">No hay eventos próximos para tu grupo.</p>' :
+      '<div class="activity-list">' + upcomingEvents.map(e => `
           <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <div>
               <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px;">
@@ -910,14 +953,73 @@ async function renderCalendar(wrapper) {
               <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
             </div>
-            ${isAdmin ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);font-size:18px" onclick="deleteEvent(${e.id})" title="Eliminar evento">🗑</button>` : ''}
           </div>
-        `).join('') + '</div>'}
-      </div></div>
+        `).join('') + '</div>';
+
+    wrapper.innerHTML = `
+      <div class="page-header">
+        <h2>Calendario de Eventos</h2>
+        <div><button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button></div>
+      </div>
+      
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-body" style="padding: 24px;">
+            <div class="calendar-top-controls">
+                <button class="calendar-nav-btn" onclick="calPrevMonth()">← Anterior</button>
+                <div class="calendar-title">${monthNames[currMonth]} ${currYear}</div>
+                <button class="calendar-nav-btn" onclick="calNextMonth()">Siguiente →</button>
+            </div>
+            
+            <div class="calendar-grid">
+                <div class="calendar-header-day">Dom</div>
+                <div class="calendar-header-day">Lun</div>
+                <div class="calendar-header-day">Mar</div>
+                <div class="calendar-header-day">Mié</div>
+                <div class="calendar-header-day">Jue</div>
+                <div class="calendar-header-day">Vie</div>
+                <div class="calendar-header-day">Sáb</div>
+                ${cellsHTML}
+            </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Próximos Eventos</h3></div>
+        <div class="card-body">
+            ${upcomingHTML}
+        </div>
+      </div>
     `;
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+
+    window.calPrevMonth = () => { window.calDate.setMonth(window.calDate.getMonth() - 1); renderCalendar(wrapper); };
+    window.calNextMonth = () => { window.calDate.setMonth(window.calDate.getMonth() + 1); renderCalendar(wrapper); };
+
+    window._calEventsObj = events;
+
+    window.showEventDetails = function (id) {
+      const e = window._calEventsObj.find(x => x.id === id);
+      if (!e) return;
+      const canDelete = isAdmin || e.created_by == state.user.id;
+
+      showModal(`
+            <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+            <div class="modal-body">
+                <div style="margin-bottom:16px">
+                    <span class="badge badge-primary">📅 ${e.event_date}</span>
+                    <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group.replace('_', ' ')}</span>
+                </div>
+                <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
+                <p style="color:var(--gray-700); line-height:1.5">${e.description || 'Sin descripción detallada.'}</p>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:space-between">
+                ${canDelete ? `<button class="btn btn-outline" style="color:var(--danger-500); border-color:var(--danger-300)" onclick="deleteEvent(${e.id})">🗑 Eliminar Evento</button>` : '<div></div>'}
+                <button type="button" class="btn btn-primary" onclick="closeModal()">Cerrar</button>
+            </div>
+        `);
+    };
 
     window.openCreateEvent = function () {
       showModal(`
@@ -928,6 +1030,7 @@ async function renderCalendar(wrapper) {
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ce-desc"></textarea></div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ce-date" required></div>
+              ${isAdmin ? `
               <div class="form-group"><label class="form-label">Dirigido a (Grupo) *</label>
                 <select class="form-select" id="ce-group">
                   <option value="todos">Para Todos (General)</option>
@@ -937,7 +1040,11 @@ async function renderCalendar(wrapper) {
                   <option value="soporte_oficina">Soporte de oficina</option>
                   <option value="superintendencia">Superintendencia</option>
                 </select>
+              </div>` : `
+              <div class="form-group"><label class="form-label">Dirigido a (Grupo) *</label>
+                <input class="form-input" id="ce-group" value="${userGroup}" disabled style="background:var(--gray-100); text-transform:capitalize">
               </div>
+              `}
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Evento</button></div>
@@ -962,10 +1069,11 @@ async function renderCalendar(wrapper) {
     };
 
     window.deleteEvent = async function (id) {
-      if (!confirm('¿Eliminar evento?')) return;
+      if (!confirm('¿Estás seguro de eliminar este evento?')) return;
       try {
         await api(`calendar_events.php?action=delete&id=${id}`, { method: 'DELETE' });
         toast('Evento eliminado');
+        closeModal();
         renderCalendar(document.createElement('div')).then(() => { navigate('calendar'); });
       } catch (err) { toast(err.message, 'error'); }
     }
