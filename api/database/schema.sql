@@ -2,8 +2,6 @@
 -- ICCP - Sistema de Gestión de Tareas
 -- MySQL Database Schema
 -- =========================================
-CREATE DATABASE IF NOT EXISTS iccp_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE iccp_db;
 -- Users
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
