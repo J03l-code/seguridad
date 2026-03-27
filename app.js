@@ -337,14 +337,8 @@ function renderLogin(container) {
   container.innerHTML = `
     <div class="login-page">
       <div class="login-left">
-        <div class="login-brand"><div class="login-brand-icon">IC</div><h1>ICCP</h1></div>
-        <p class="login-tagline">Sistema de Gestión de Tareas Departamental. Organiza, asigna y da seguimiento a cada proyecto.</p>
-        <div class="login-features">
-          <div class="login-feature"><div class="login-feature-icon">📋</div><span>Tableros Kanban por departamento</span></div>
-          <div class="login-feature"><div class="login-feature-icon">📅</div><span>Integración con Google Calendar</span></div>
-          <div class="login-feature"><div class="login-feature-icon">📊</div><span>Panel de métricas en tiempo real</span></div>
-          <div class="login-feature"><div class="login-feature-icon">👥</div><span>Gestión de equipos y roles</span></div>
-        </div>
+        <div class="login-brand"><div class="login-brand-icon">IC</div><h1>Panel de Gestión</h1></div>
+        <p class="login-tagline">Departamento De Seguridad HC3</p>
       </div>
       <div class="login-right">
         <div class="login-form-wrapper">
@@ -1239,11 +1233,11 @@ async function renderCalendar(wrapper) {
 // ==========================================
 async function renderSettings(wrapper, params) {
   try {
-    const calRes = await api('calendar.php?action=status');
-    const connected = calRes.connected;
+    const calRes = await api('google_auth.php?action=status');
+    const connected = calRes.linked;
 
-    if (params.calendar === 'connected') toast('Google Calendar conectado');
-    if (params.calendar === 'error') toast('Error al conectar', 'error');
+    if (params.google === 'success') toast('✅ Google Calendar conectado exitosamente');
+    if (params.google === 'error') toast('❌ Error al conectar Google Calendar', 'error');
 
     wrapper.innerHTML = `
       <div class="page-header"><h2>Configuración</h2></div>
@@ -1267,11 +1261,11 @@ async function renderSettings(wrapper, params) {
     document.getElementById('page-content').appendChild(wrapper);
 
     window.connectCal = async function () {
-      try { const d = await api('calendar.php?action=auth-url'); window.location.href = d.authUrl; } catch (err) { toast(err.message, 'error'); }
+      try { const d = await api('google_auth.php?action=link'); if (d.url) window.location.href = d.url; } catch (err) { toast(err.message, 'error'); }
     };
     window.disconnectCal = async function () {
-      if (!confirm('¿Desconectar?')) return;
-      try { await api('calendar.php?action=disconnect', { method: 'POST' }); toast('Desconectado'); navigate('settings'); } catch (err) { toast(err.message, 'error'); }
+      if (!confirm('¿Desconectar Google Calendar?')) return;
+      try { await api('google_auth.php?action=unlink', { method: 'POST' }); toast('Google Calendar desconectado'); navigate('settings'); } catch (err) { toast(err.message, 'error'); }
     };
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
