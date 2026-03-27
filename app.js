@@ -525,10 +525,10 @@ async function renderTasks(wrapper) {
     }
 
     const myGroup = users.find(u => u.id == state.user.id)?.user_group;
-    const canManage = state.user.role === 'admin' || myGroup === 'soporte_oficina';
+    const canManage = true; // All users can manage tasks
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Gestión de Tareas</h2><div>${canManage ? `<button class="btn btn-primary" onclick="openCreateTask()">＋ Nueva Tarea</button>` : ''}</div></div>
+      <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary" onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
       <div class="filters-bar">
         <select class="form-select" id="filter-dept" onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select>
         <select class="form-select" id="filter-priority" onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>

@@ -116,12 +116,6 @@ function createTask($auth)
     if (!$title || !$targetGroup)
         jsonResponse(['error' => 'Título y departamento son obligatorios.'], 400);
 
-    $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
-    $uStmt->execute([$auth['id']]);
-    $uGroup = $uStmt->fetchColumn() ?? '';
-    if ($auth['role'] !== 'admin' && $uGroup !== 'soporte_oficina') {
-        jsonResponse(['error' => 'No tienes permisos para crear tareas.'], 403);
-    }
 
     $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, created_by, due_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)");
