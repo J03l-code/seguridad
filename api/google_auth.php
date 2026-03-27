@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/google_calendar_helper.php';
 setCorsHeaders();
 
 $auth = authenticate();
@@ -33,6 +34,9 @@ switch ($action) {
         break;
     case 'unlink':
         unlinkGoogle($auth);
+        break;
+    case 'test-push':
+        testPush($auth);
         break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
@@ -77,4 +81,21 @@ function unlinkGoogle($auth)
 
     $pdo->prepare('DELETE FROM google_tokens WHERE user_id = ?')->execute([$auth['id']]);
     jsonResponse(['message' => 'Google Calendar desvinculado.']);
+}
+
+function testPush($auth)
+{
+    global $pdo;
+    $accessToken = getValidAccessToken($pdo, $auth['id']);
+    if (!$accessToken) {
+        jsonResponse(['error' => 'No tienes Google Calendar vinculado.'], 400);
+    }
+    $result = createGoogleCalendarEvent(
+        $accessToken,
+        '✅ Prueba ICCP - Google Calendar',
+        'Este evento fue creado automáticamente desde el sistema ICCP para verificar la integración.',
+        date('Y-m-d H:i:s', time() + 300), // 5 minutes from now
+        date('Y-m-d H:i:s', time() + 3900)  // +1 hour
+    );
+    jsonResponse($result);
 }

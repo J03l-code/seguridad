@@ -4,6 +4,22 @@
  * No Composer or external libraries needed!
  */
 
+function ensureGoogleTokensTable($pdo)
+{
+    try {
+        $pdo->query("SELECT 1 FROM google_tokens LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS google_tokens (
+            user_id INT PRIMARY KEY,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT NOT NULL,
+            expires_at DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+}
+
 function refreshGoogleToken($pdo, $userId, $refreshToken)
 {
     global $GOOGLE_CLIENT_ID, $GOOGLE_CLIENT_SECRET;
@@ -34,6 +50,7 @@ function refreshGoogleToken($pdo, $userId, $refreshToken)
 
 function getValidAccessToken($pdo, $userId)
 {
+    ensureGoogleTokensTable($pdo);
     $stmt = $pdo->prepare('SELECT access_token, refresh_token, expires_at FROM google_tokens WHERE user_id = ?');
     $stmt->execute([$userId]);
     $token = $stmt->fetch();
@@ -41,8 +58,8 @@ function getValidAccessToken($pdo, $userId)
     if (!$token)
         return null;
 
-    // If token is expired, refresh it
-    if (strtotime($token['expires_at']) <= time()) {
+    // Refresh if expired or near expiry (60s buffer)
+    if (strtotime($token['expires_at']) <= time() + 60) {
         return refreshGoogleToken($pdo, $userId, $token['refresh_token']);
     }
 
@@ -51,26 +68,22 @@ function getValidAccessToken($pdo, $userId)
 
 function createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime = null)
 {
-    if (!$endDateTime) {
-        $endDateTime = date('c', strtotime($startDateTime) + 3600); // +1 hour
-    }
+    $startTs = strtotime($startDateTime);
+    if (!$startTs)
+        $startTs = time();
+
+    $endTs = $endDateTime ? strtotime($endDateTime) : $startTs + 3600;
+    if (!$endTs)
+        $endTs = $startTs + 3600;
 
     $event = [
         'summary' => $title,
         'description' => $description ?? '',
-        'start' => [
-            'dateTime' => date('c', strtotime($startDateTime)),
-            'timeZone' => 'America/Mexico_City'
-        ],
-        'end' => [
-            'dateTime' => date('c', strtotime($endDateTime)),
-            'timeZone' => 'America/Mexico_City'
-        ],
+        'start' => ['dateTime' => date('c', $startTs), 'timeZone' => 'America/Mexico_City'],
+        'end' => ['dateTime' => date('c', $endTs), 'timeZone' => 'America/Mexico_City'],
         'reminders' => [
             'useDefault' => false,
-            'overrides' => [
-                ['method' => 'popup', 'minutes' => 30]
-            ]
+            'overrides' => [['method' => 'popup', 'minutes' => 30]]
         ]
     ];
 
@@ -91,31 +104,41 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
     $result = json_decode($response, true);
     return [
         'success' => ($httpCode >= 200 && $httpCode < 300),
+        'http_code' => $httpCode,
         'google_event_id' => $result['id'] ?? null,
-        'html_link' => $result['htmlLink'] ?? null
+        'html_link' => $result['htmlLink'] ?? null,
+        'error' => $result['error']['message'] ?? null
     ];
 }
 
 /**
- * Push an event to every linked Google Calendar user in a specific user_group
+ * Push an event to every linked Google Calendar user in specific groups.
+ * If groups contains 'todos', sends to ALL users with a linked token.
  */
 function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateTime, $endDateTime = null)
 {
+    ensureGoogleTokensTable($pdo);
+
     $groups = is_array($targetGroups) ? $targetGroups : explode(',', $targetGroups);
-    $placeholders = implode(',', array_fill(0, count($groups), '?'));
+    $groups = array_map('trim', $groups);
 
-    $stmt = $pdo->prepare("SELECT u.id FROM users u 
-        INNER JOIN google_tokens gt ON u.id = gt.user_id 
-        WHERE u.user_group IN ($placeholders)");
-    $stmt->execute($groups);
+    if (in_array('todos', $groups)) {
+        // Send to every user who has linked their Google Calendar
+        $stmt = $pdo->query("SELECT user_id FROM google_tokens");
+    } else {
+        $placeholders = implode(',', array_fill(0, count($groups), '?'));
+        $stmt = $pdo->prepare("SELECT gt.user_id FROM google_tokens gt
+            INNER JOIN users u ON u.id = gt.user_id
+            WHERE u.user_group IN ($placeholders)");
+        $stmt->execute($groups);
+    }
+
     $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
     $results = [];
     foreach ($userIds as $userId) {
         $accessToken = getValidAccessToken($pdo, $userId);
         if ($accessToken) {
-            $result = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime);
-            $results[$userId] = $result;
+            $results[$userId] = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime);
         }
     }
     return $results;
