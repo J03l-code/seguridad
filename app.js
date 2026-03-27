@@ -1046,11 +1046,14 @@ async function renderCalendar(wrapper) {
       const dateStr = `${currYear}-${String(currMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayEvents = eventsByDate[dateStr] || [];
 
-      const eventsHTML = dayEvents.map(e => `
-            <div class="calendar-event-chip target-${e.target_group}" onclick="showEventDetails(${e.id})" title="${e.title}">
+      const eventsHTML = dayEvents.map(e => {
+        const primaryGroup = e.target_group ? e.target_group.split(',')[0] : 'todos';
+        return `
+            <div class="calendar-event-chip target-${primaryGroup}" onclick="showEventDetails(${e.id})" title="${e.title}">
                 ${e.event_date.split(' ')[1].slice(0, 5)} - ${e.title}
             </div>
-        `).join('');
+            `;
+      }).join('');
 
       cellsHTML += `
             <div class="calendar-day ${isToday(d) ? 'today' : ''}">
@@ -1067,9 +1070,9 @@ async function renderCalendar(wrapper) {
       '<div class="activity-list">' + upcomingEvents.map(e => `
           <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <div>
-              <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px;">
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
                 <span class="badge badge-primary">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
-                <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group.replace('_', ' ')}</span>
+                <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
               </div>
               <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
@@ -1128,9 +1131,9 @@ async function renderCalendar(wrapper) {
       showModal(`
             <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
             <div class="modal-body">
-                <div style="margin-bottom:16px">
+                <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
                     <span class="badge badge-primary">📅 ${e.event_date}</span>
-                    <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group.replace('_', ' ')}</span>
+                    <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
                 </div>
                 <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
                 <p style="color:var(--gray-700); line-height:1.5">${e.description || 'Sin descripción detallada.'}</p>
@@ -1151,21 +1154,16 @@ async function renderCalendar(wrapper) {
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ce-desc"></textarea></div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ce-date" required></div>
-              ${isAdmin ? `
-              <div class="form-group"><label class="form-label">Dirigido a (Grupo) *</label>
-                <select class="form-select" id="ce-group">
-                  <option value="todos">Para Todos (General)</option>
-                  <option value="emergencias">Emergencias</option>
-                  <option value="actividades">Actividades</option>
-                  <option value="otros_eventos">Otros eventos</option>
-                  <option value="soporte_oficina">Soporte de oficina</option>
-                  <option value="superintendencia">Superintendencia</option>
-                </select>
-              </div>` : `
-              <div class="form-group"><label class="form-label">Dirigido a (Grupo) *</label>
-                <input class="form-input" id="ce-group" value="${userGroup}" disabled style="background:var(--gray-100); text-transform:capitalize">
+              <div class="form-group"><label class="form-label">Dirigidos a (Grupos) *</label>
+                <div class="checkbox-group" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid var(--gray-300); padding:10px; border-radius:4px; background:#fff;">
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="todos"> Para Todos (General)</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="emergencias"> Emergencias</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="actividades"> Actividades</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="otros_eventos"> Otros eventos</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="soporte_oficina"> Soporte de oficina</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="superintendencia"> Superintendencia</label>
+                </div>
               </div>
-              `}
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Evento</button></div>
@@ -1179,7 +1177,7 @@ async function renderCalendar(wrapper) {
               title: document.getElementById('ce-title').value,
               description: document.getElementById('ce-desc').value,
               event_date: document.getElementById('ce-date').value,
-              target_group: document.getElementById('ce-group').value
+              target_group: Array.from(document.querySelectorAll('input[name="ce-group"]:checked')).map(cb => cb.value)
             })
           });
           toast('Evento creado');

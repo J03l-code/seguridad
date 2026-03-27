@@ -42,7 +42,7 @@ function listEvents($auth)
             SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
             FROM calendar_events e 
             JOIN users u ON e.created_by = u.id 
-            WHERE e.target_group = ? OR e.target_group = "todos" OR u.user_group = ? OR e.created_by = ? 
+            WHERE FIND_IN_SET(?, e.target_group) > 0 OR e.target_group = "todos" OR u.user_group = ? OR e.created_by = ? 
             ORDER BY event_date ASC
         ');
         $stmt->execute([$group, $group, $auth['id']]);
@@ -62,8 +62,20 @@ function createEvent($auth)
     $description = trim($data['description'] ?? '');
     $eventDate = $data['event_date'] ?? '';
 
-    // Todos pueden elegir a qué grupo dirigir el evento
-    $targetGroup = trim($data['target_group'] ?? 'todos');
+    $targetGroupsRaw = $data['target_group'] ?? 'todos';
+
+    if (is_array($targetGroupsRaw)) {
+        if (in_array('todos', $targetGroupsRaw)) {
+            $targetGroupStr = 'todos';
+            $groupsArray = ['todos'];
+        } else {
+            $targetGroupStr = implode(',', $targetGroupsRaw);
+            $groupsArray = $targetGroupsRaw;
+        }
+    } else {
+        $targetGroupStr = trim($targetGroupsRaw);
+        $groupsArray = [$targetGroupStr];
+    }
 
     if (!$title || !$eventDate) {
         jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
@@ -72,7 +84,7 @@ function createEvent($auth)
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by) VALUES (?, ?, ?, ?, ?)');
-        $stmt->execute([$title, $description, $eventDate, $targetGroup, $auth['id']]);
+        $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id']]);
 
         // Obtener datos del creador para la notificación
         $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
@@ -84,18 +96,31 @@ function createEvent($auth)
         $msgTitle = $title;
         if (strlen($msgTitle) > 30)
             $msgTitle = mb_substr($msgTitle, 0, 30) . '...';
-        $msg = "{$creatorName} agendó '{$msgTitle}' para " . str_replace('_', ' ', $targetGroup);
 
-        if ($targetGroup === 'todos') {
+        $friendlyTarget = implode(', ', array_map(function ($g) {
+            return str_replace('_', ' ', $g); }, $groupsArray));
+        $msg = "{$creatorName} agendó '{$msgTitle}' para {$friendlyTarget}";
+
+        if ($targetGroupStr === 'todos') {
             $notifStmt = $pdo->prepare('INSERT INTO notifications (user_id, message) SELECT id, ? FROM users WHERE id != ?');
             $notifStmt->execute([$msg, $auth['id']]);
         } else {
-            $notifStmt = $pdo->prepare('
+            $groupsArray[] = $creatorGroup;
+            $groupsArray = array_unique($groupsArray);
+            $placeholders = implode(',', array_fill(0, count($groupsArray), '?'));
+
+            $notifStmt = $pdo->prepare("
                 INSERT INTO notifications (user_id, message) 
                 SELECT id, ? FROM users 
-                WHERE (user_group = ? OR user_group = ?) AND id != ?
-            ');
-            $notifStmt->execute([$msg, $targetGroup, $creatorGroup, $auth['id']]);
+                WHERE user_group IN ($placeholders) AND id != ?
+            ");
+
+            $params = [$msg];
+            foreach ($groupsArray as $g)
+                $params[] = $g;
+            $params[] = $auth['id'];
+
+            $notifStmt->execute($params);
         }
 
         $pdo->commit();
