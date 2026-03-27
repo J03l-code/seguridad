@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'member') DEFAULT 'member',
+    user_group VARCHAR(50) DEFAULT 'otros_eventos',
     avatar VARCHAR(255) DEFAULT NULL,
     google_access_token TEXT DEFAULT NULL,
     google_refresh_token TEXT DEFAULT NULL,
@@ -71,6 +72,17 @@ CREATE TABLE IF NOT EXISTS task_attachments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
     FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE = InnoDB;
+-- Calendar Events
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description TEXT DEFAULT NULL,
+    event_date DATETIME NOT NULL,
+    target_group VARCHAR(50) DEFAULT 'todos',
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 -- Activity Log
 CREATE TABLE IF NOT EXISTS activity_log (

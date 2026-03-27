@@ -58,7 +58,10 @@ function createUser($auth)
     $name = trim($data['name'] ?? '');
     $email = trim($data['email'] ?? '');
     $password = $data['password'] ?? '';
-    $role = $data['role'] ?? 'member';
+    $group = $data['user_group'] ?? 'otros_eventos';
+
+    // Si el grupo es superintendencia, el rol debe ser admin. Caso contrario, member.
+    $role = ($group === 'superintendencia') ? 'admin' : ($data['role'] ?? 'member');
 
     if (!$name || !$email || !$password) {
         jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
@@ -74,8 +77,8 @@ function createUser($auth)
     }
 
     $hashed = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)');
-    $stmt->execute([$name, $email, $hashed, $role]);
+    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role, user_group) VALUES (?, ?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $hashed, $role, $group]);
 
     jsonResponse(['message' => 'Usuario creado exitosamente.'], 201);
 }
@@ -84,7 +87,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.avatar, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.user_group, u.avatar, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -143,6 +146,16 @@ function updateUser($id, $auth)
             jsonResponse(['error' => 'Contraseña: mínimo 6 caracteres.'], 400);
         $fields[] = 'password = ?';
         $values[] = password_hash($data['password'], PASSWORD_BCRYPT);
+    }
+    if (!empty($data['user_group'])) {
+        $fields[] = 'user_group = ?';
+        $values[] = $data['user_group'];
+
+        // Regla de negocio: si lo cambias a superintendencia, se vuelve admin
+        if ($data['user_group'] === 'superintendencia') {
+            $fields[] = 'role = ?';
+            $values[] = 'admin';
+        }
     }
 
     if (empty($fields))

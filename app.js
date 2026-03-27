@@ -144,7 +144,7 @@ function router() {
   });
 
   // Update title
-  const titles = { dashboard: 'Dashboard', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', settings: 'Configuración' };
+  const titles = { dashboard: 'Dashboard', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', calendar: 'Calendario', settings: 'Configuración' };
   const titleEl = document.getElementById('page-title');
   if (titleEl) titleEl.textContent = titles[page] || 'ICCP';
 
@@ -161,6 +161,7 @@ function router() {
     case 'tasks': renderTasks(wrapper, params); break;
     case 'departments': renderDepartments(wrapper); break;
     case 'users': renderUsers(wrapper); break;
+    case 'calendar': renderCalendar(wrapper); break;
     case 'settings': renderSettings(wrapper, params); break;
     default: wrapper.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>Página no encontrada</h3></div>';
       content.innerHTML = '';
@@ -177,6 +178,7 @@ function renderLayout(container) {
     { page: 'tasks', icon: '✅', label: 'Tareas' },
     { page: 'departments', icon: '🏢', label: 'Departamentos' },
     { page: 'users', icon: '👥', label: 'Usuarios' },
+    { page: 'calendar', icon: '📅', label: 'Calendario' },
     { page: 'settings', icon: '⚙️', label: 'Configuración' }
   ];
 
@@ -759,10 +761,13 @@ async function renderUsers(wrapper) {
         </div>
       </div>
       <div class="card"><div class="card-body" style="padding:0;overflow:auto">
-        <table class="data-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Departamentos</th><th>Registro</th><th>Acciones</th></tr></thead>
+        <table class="data-table"><thead><tr><th>Usuario</th><th>Grupo / Rol</th><th>Departamentos</th><th>Registro</th><th>Acciones</th></tr></thead>
         <tbody>${users.map(u => `<tr>
           <td><div class="user-cell"><div class="topbar-avatar" style="width:36px;height:36px;font-size:13px">${initials(u.name)}</div><div><div style="font-weight:600;color:var(--primary-800)">${u.name}</div><div style="font-size:12px;color:var(--gray-500)">${u.email}</div></div></div></td>
-          <td><span class="badge badge-${u.role}">${u.role}</span></td>
+          <td>
+            <div style="margin-bottom:4px"><span class="badge badge-${u.role}">${u.role}</span></div>
+            <div style="font-size:12px;color:var(--gray-600);text-transform:capitalize">${(u.user_group || 'Otros eventos').replace('_', ' ')}</div>
+          </td>
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
           <td><div style="display:flex;gap:6px">
@@ -793,6 +798,15 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Nombre Completo *</label><input class="form-input" id="cu-name" required></div>
             <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
             <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
+            <div class="form-group"><label class="form-label">Grupo del Usuario</label>
+              <select class="form-select" id="cu-group">
+                <option value="emergencias">Emergencias</option>
+                <option value="actividades">Actividades</option>
+                <option value="otros_eventos" selected>Otros eventos</option>
+                <option value="soporte_oficina">Soporte de oficina</option>
+                <option value="superintendencia">Superintendencia (Es Admin)</option>
+              </select>
+            </div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
               <select class="form-select" id="cu-role">
                 <option value="member" selected>Miembro normal</option>
@@ -831,6 +845,16 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="eu-name" value="${name}" required></div>
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
             <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
+            <div class="form-group"><label class="form-label">Cambiar Grupo</label>
+              <select class="form-select" id="eu-group">
+                <option value="">(No cambiar)</option>
+                <option value="emergencias">Emergencias</option>
+                <option value="actividades">Actividades</option>
+                <option value="otros_eventos">Otros eventos</option>
+                <option value="soporte_oficina">Soporte de oficina</option>
+                <option value="superintendencia">Superintendencia (Automático Admin)</option>
+              </select>
+            </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
         </form>
@@ -840,7 +864,9 @@ async function renderUsers(wrapper) {
         try {
           const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
           const pass = document.getElementById('eu-pass').value;
+          const grp = document.getElementById('eu-group').value;
           if (pass) body.password = pass;
+          if (grp) body.user_group = grp;
           await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
           toast('Actualizado'); closeModal(); navigate('users');
         } catch (err) { toast(err.message, 'error'); }
@@ -851,6 +877,98 @@ async function renderUsers(wrapper) {
       try { await api(`users.php?action=role&id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }); toast(`Rol: ${role}`); navigate('users'); }
       catch (err) { toast(err.message, 'error'); }
     };
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
+}
+
+// ==========================================
+// Calendar
+// ==========================================
+async function renderCalendar(wrapper) {
+  try {
+    const data = await api('calendar_events.php?action=list');
+    const events = data.events;
+    const isAdmin = state.user?.role === 'admin';
+
+    wrapper.innerHTML = `
+      <div class="page-header">
+        <h2>Calendario de Eventos y Actividades</h2>
+        ${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button></div>' : ''}
+      </div>
+      <div class="card"><div class="card-body">
+        ${events.length === 0 ? '<div class="empty-state"><div class="empty-state-icon">📅</div><h3>Sin eventos programados</h3><p>No hay actividades próximas para tu grupo.</p></div>' :
+        '<div class="activity-list">' + events.map(e => `
+          <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px;">
+                <span class="badge badge-primary">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
+                <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group.replace('_', ' ')}</span>
+              </div>
+              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title}</h3>
+              <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
+            </div>
+            ${isAdmin ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);font-size:18px" onclick="deleteEvent(${e.id})" title="Eliminar evento">🗑</button>` : ''}
+          </div>
+        `).join('') + '</div>'}
+      </div></div>
+    `;
+
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+
+    window.openCreateEvent = function () {
+      showModal(`
+        <div class="modal-header"><h2>Nuevo Evento del Calendario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form id="create-event-form">
+          <div class="modal-body">
+            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input" id="ce-title" required></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ce-desc"></textarea></div>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ce-date" required></div>
+              <div class="form-group"><label class="form-label">Dirigido a (Grupo) *</label>
+                <select class="form-select" id="ce-group">
+                  <option value="todos">Para Todos (General)</option>
+                  <option value="emergencias">Emergencias</option>
+                  <option value="actividades">Actividades</option>
+                  <option value="otros_eventos">Otros eventos</option>
+                  <option value="soporte_oficina">Soporte de oficina</option>
+                  <option value="superintendencia">Superintendencia</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Evento</button></div>
+        </form>
+      `);
+      document.getElementById('create-event-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api('calendar_events.php?action=create', {
+            method: 'POST', body: JSON.stringify({
+              title: document.getElementById('ce-title').value,
+              description: document.getElementById('ce-desc').value,
+              event_date: document.getElementById('ce-date').value,
+              target_group: document.getElementById('ce-group').value
+            })
+          });
+          toast('Evento creado');
+          closeModal();
+          renderCalendar(document.createElement('div')).then(() => { navigate('calendar'); });
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    };
+
+    window.deleteEvent = async function (id) {
+      if (!confirm('¿Eliminar evento?')) return;
+      try {
+        await api(`calendar_events.php?action=delete&id=${id}`, { method: 'DELETE' });
+        toast('Evento eliminado');
+        renderCalendar(document.createElement('div')).then(() => { navigate('calendar'); });
+      } catch (err) { toast(err.message, 'error'); }
+    }
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
     document.getElementById('page-content').innerHTML = '';
