@@ -24,19 +24,28 @@ function listEvents($auth)
 {
     global $pdo;
 
-    // Si es admin o superintendencia, ve todos. Si no, ve los de su grupo o los marcados como "todos"
     if ($auth['role'] === 'admin') {
-        $stmt = $pdo->prepare('SELECT id, title, description, event_date, target_group, created_by, created_at FROM calendar_events ORDER BY event_date ASC');
+        $stmt = $pdo->prepare('
+            SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
+            FROM calendar_events e 
+            JOIN users u ON e.created_by = u.id 
+            ORDER BY event_date ASC
+        ');
         $stmt->execute();
     } else {
-        // Necesitamos saber el grupo del usuario
         $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
         $uStmt->execute([$auth['id']]);
         $user = $uStmt->fetch();
         $group = $user ? $user['user_group'] : '';
 
-        $stmt = $pdo->prepare('SELECT id, title, description, event_date, target_group, created_by, created_at FROM calendar_events WHERE target_group = ? OR target_group = "todos" ORDER BY event_date ASC');
-        $stmt->execute([$group]);
+        $stmt = $pdo->prepare('
+            SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
+            FROM calendar_events e 
+            JOIN users u ON e.created_by = u.id 
+            WHERE e.target_group = ? OR e.target_group = "todos" OR u.user_group = ? OR e.created_by = ? 
+            ORDER BY event_date ASC
+        ');
+        $stmt->execute([$group, $group, $auth['id']]);
     }
 
     jsonResponse(['events' => $stmt->fetchAll()]);
@@ -53,23 +62,48 @@ function createEvent($auth)
     $description = trim($data['description'] ?? '');
     $eventDate = $data['event_date'] ?? '';
 
-    if ($auth['role'] !== 'admin') {
-        $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
-        $uStmt->execute([$auth['id']]);
-        $user = $uStmt->fetch();
-        $targetGroup = $user ? $user['user_group'] : 'otros_eventos';
-    } else {
-        $targetGroup = $data['target_group'] ?? 'todos';
-    }
+    // Todos pueden elegir a qué grupo dirigir el evento
+    $targetGroup = trim($data['target_group'] ?? 'todos');
 
     if (!$title || !$eventDate) {
         jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
     }
 
-    $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by) VALUES (?, ?, ?, ?, ?)');
-    $stmt->execute([$title, $description, $eventDate, $targetGroup, $auth['id']]);
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by) VALUES (?, ?, ?, ?, ?)');
+        $stmt->execute([$title, $description, $eventDate, $targetGroup, $auth['id']]);
 
-    jsonResponse(['message' => 'Evento creado exitosamente.'], 201);
+        // Obtener datos del creador para la notificación
+        $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
+        $uStmt->execute([$auth['id']]);
+        $creatorUser = $uStmt->fetch();
+        $creatorName = $creatorUser['name'] ?? 'Alguien';
+        $creatorGroup = $creatorUser['user_group'] ?? '';
+
+        $msgTitle = $title;
+        if (strlen($msgTitle) > 30)
+            $msgTitle = mb_substr($msgTitle, 0, 30) . '...';
+        $msg = "{$creatorName} agendó '{$msgTitle}' para " . str_replace('_', ' ', $targetGroup);
+
+        if ($targetGroup === 'todos') {
+            $notifStmt = $pdo->prepare('INSERT INTO notifications (user_id, message) SELECT id, ? FROM users WHERE id != ?');
+            $notifStmt->execute([$msg, $auth['id']]);
+        } else {
+            $notifStmt = $pdo->prepare('
+                INSERT INTO notifications (user_id, message) 
+                SELECT id, ? FROM users 
+                WHERE (user_group = ? OR user_group = ?) AND id != ?
+            ');
+            $notifStmt->execute([$msg, $targetGroup, $creatorGroup, $auth['id']]);
+        }
+
+        $pdo->commit();
+        jsonResponse(['message' => 'Evento creado y notificado exitosamente.'], 201);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        jsonResponse(['error' => 'Error al guardar el evento y notificaciones.', 'details' => $e->getMessage()], 500);
+    }
 }
 
 function deleteEvent($auth)

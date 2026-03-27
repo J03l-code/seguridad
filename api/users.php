@@ -26,6 +26,9 @@ switch ($action) {
     case 'delete':
         deleteUser($id, $auth);
         break;
+    case 'org_chart':
+        getOrgChart();
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -43,6 +46,17 @@ function deleteUser($id, $auth)
     $stmt->execute([$id]);
     if ($stmt->rowCount() === 0)
         jsonResponse(['error' => 'Usuario no encontrado.'], 404);
+
+    jsonResponse(['message' => 'Usuario eliminado.']);
+}
+
+function getOrgChart()
+{
+    global $pdo;
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, departments FROM users ORDER BY user_group, name');
+    $stmt->execute();
+    jsonResponse(['users' => $stmt->fetchAll()]);
+}
 
     jsonResponse(['message' => 'Usuario eliminado correctamente.']);
 }

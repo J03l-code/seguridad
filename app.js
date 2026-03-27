@@ -136,6 +136,10 @@ function router() {
   if (!document.getElementById('sidebar')) {
     app.innerHTML = '';
     renderLayout(app);
+    if (state.token) {
+      if (window.fetchNotifications) window.fetchNotifications();
+      if (!window.notifInterval) window.notifInterval = setInterval(() => { if (window.fetchNotifications) window.fetchNotifications(); }, 30000);
+    }
   }
 
   // Update active nav
@@ -207,6 +211,19 @@ function renderLayout(container) {
           <h1 class="topbar-title" id="page-title">Dashboard</h1>
         </div>
         <div class="topbar-right">
+          <div class="notifications-container" style="position:relative; margin-right: 12px; cursor: pointer;" onclick="toggleNotifications()">
+            <span style="font-size: 22px;">🔔</span>
+            <span id="notif-badge" class="badge" style="background:var(--danger-500); color:white; position:absolute; top:-4px; right:-6px; font-size:10px; padding:2px 5px; display:none;">0</span>
+            <div id="notif-dropdown" class="user-dropdown" style="display:none; width: 300px; right: -10px; padding: 0;">
+                <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-200); font-weight: 600; font-size: 14px; background: var(--gray-50); display:flex; justify-content:space-between">
+                    Notificaciones
+                    <span style="font-size: 12px; color: var(--primary-600); cursor: pointer;" onclick="event.stopPropagation();markNotifsRead()">Marcar leídas</span>
+                </div>
+                <div id="notif-list" style="max-height: 300px; overflow-y: auto;">
+                    <div style="padding: 16px; text-align: center; color: var(--gray-500); font-size: 13px;">Sin notificaciones nuevas</div>
+                </div>
+            </div>
+          </div>
           <div class="topbar-user" onclick="toggleUserMenu()">
             <div class="topbar-avatar">${initials(state.user?.name)}</div>
             <div class="topbar-user-info">
@@ -229,7 +246,59 @@ function renderLayout(container) {
   `;
 
   document.getElementById('sidebar-overlay').addEventListener('click', closeMobile);
-  document.addEventListener('click', (e) => { if (!e.target.closest('.topbar-user')) closeUserMenu(); });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.topbar-user')) closeUserMenu();
+    if (!e.target.closest('.notifications-container')) {
+      const nd = document.getElementById('notif-dropdown');
+      if (nd) nd.style.display = 'none';
+    }
+  });
+
+  // Global window functions for notifications
+  window.fetchNotifications = async function () {
+    try {
+      const data = await api('notifications.php?action=list');
+      const count = parseInt(data.unread);
+      const badge = document.getElementById('notif-badge');
+      if (badge) {
+        badge.style.display = count > 0 ? 'inline-block' : 'none';
+        badge.textContent = count > 99 ? '99+' : count;
+      }
+
+      let html = '';
+      if (data.notifications && data.notifications.length > 0) {
+        html = data.notifications.map(n => `
+                <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100); ${n.is_read ? 'opacity: 0.6;' : 'background: rgba(66, 153, 225, 0.05);'}">
+                    <div style="font-size: 13px; color: var(--gray-800); line-height: 1.4;">${n.message}</div>
+                    <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">${timeAgo(n.created_at)}</div>
+                </div>
+            `).join('');
+      } else {
+        html = '<div style="padding: 16px; text-align: center; color: var(--gray-500); font-size: 13px;">Sin notificaciones</div>';
+      }
+      const notifList = document.getElementById('notif-list');
+      if (notifList) notifList.innerHTML = html;
+    } catch (err) { console.error(err); }
+  };
+
+  window.toggleNotifications = function () {
+    const drop = document.getElementById('notif-dropdown');
+    if (!drop) return;
+    const isVisible = drop.style.display === 'block';
+    if (!isVisible) {
+      document.getElementById('user-dropdown').style.display = 'none';
+      drop.style.display = 'block';
+    } else {
+      drop.style.display = 'none';
+    }
+  };
+
+  window.markNotifsRead = async function () {
+    try {
+      await api('notifications.php?action=mark_read', { method: 'POST' });
+      window.fetchNotifications();
+    } catch (err) { toast('Error', 'error'); }
+  };
 }
 
 function toggleSidebar() {
@@ -627,13 +696,65 @@ const DEPT_COLORS = ['#2d3561', '#38b2ac', '#e53e3e', '#ecc94b', '#4299e1', '#9f
 
 async function renderDepartments(wrapper) {
   try {
-    const [dRes, uRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list')]);
+    const [dRes, uRes, orgRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list'), api('users.php?action=org_chart')]);
     const depts = dRes.departments;
     const users = uRes.users;
+    const orgUsers = orgRes.users;
     const isAdmin = state.user?.role === 'admin';
 
+    const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
+    orgUsers.forEach(u => {
+      const g = u.user_group || 'otros_eventos';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(u);
+    });
+
+    const renderOrgNode = (gName, key, grpUsers) => `
+        <div class="org-node target-${key}">
+            <h3>${gName}</h3>
+            <div class="org-members">
+                ${grpUsers.map(u => `
+                    <div class="org-member">
+                        <div class="avatar">${initials(u.name)}</div>
+                        <div class="info">
+                            <span class="name">${u.name}</span>
+                            <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'}</span>
+                        </div>
+                    </div>
+                `).join('') || '<div class="org-member empty">Sin miembros</div>'}
+            </div>
+        </div>
+    `;
+
+    const orgChartHTML = `
+      <div class="card" style="margin-bottom: 30px; background:var(--gray-50)">
+        <div class="card-header" style="background:#fff"><h3>Organigrama del Personal (Por Grupos)</h3></div>
+        <div class="card-body">
+            <div class="org-chart-container">
+                <div class="org-level">
+                    ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
+                </div>
+                <div class="org-lines"></div>
+                <div class="org-level-2-wrapper">
+                    <div class="org-horizontal-line"></div>
+                    <div class="org-level-2">
+                        ${renderOrgNode('Emergencias', 'emergencias', groups.emergencias)}
+                        ${renderOrgNode('Actividades', 'actividades', groups.actividades)}
+                        ${renderOrgNode('Soporte de Oficina', 'soporte_oficina', groups.soporte_oficina)}
+                        ${renderOrgNode('Otros Eventos', 'otros_eventos', groups.otros_eventos)}
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    `;
+
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Departamentos</h2>${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateDept()">＋ Nuevo Departamento</button></div>' : ''}</div>
+      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateDept()">＋ Nuevo Dpto. (Tareas)</button></div>' : ''}</div>
+      
+      ${orgChartHTML}
+
+      <div style="margin-bottom:16px"><h3>Departamentos de Tareas (Kanban)</h3></div>
       ${depts.length === 0 ? '<div class="card"><div class="empty-state"><div class="empty-state-icon">🏢</div><h3>Sin departamentos</h3><p>Crea tu primer departamento.</p></div></div>' :
         '<div class="dept-grid">' + depts.map(d => {
           const comp = d.task_count > 0 ? Math.round((d.completed_count / d.task_count) * 100) : 0;
