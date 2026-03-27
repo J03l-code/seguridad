@@ -9,80 +9,80 @@ const API = 'api'; // relative path to PHP API
 // State
 // ==========================================
 const state = {
-    user: JSON.parse(localStorage.getItem('iccp_user') || 'null'),
-    token: localStorage.getItem('iccp_token') || null,
-    sidebarCollapsed: false,
-    mobileOpen: false
+  user: JSON.parse(localStorage.getItem('iccp_user') || 'null'),
+  token: localStorage.getItem('iccp_token') || null,
+  sidebarCollapsed: false,
+  mobileOpen: false
 };
 
 // ==========================================
 // API Helper
 // ==========================================
 async function api(endpoint, options = {}) {
-    const headers = { ...options.headers };
-    if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
-    if (!(options.body instanceof FormData)) {
-        headers['Content-Type'] = 'application/json';
-    }
+  const headers = { ...options.headers };
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
-    const res = await fetch(`${API}/${endpoint}`, { ...options, headers });
-    const data = await res.json();
-    if (res.status === 401) { logout(); return; }
-    if (!res.ok) throw new Error(data.error || 'Error del servidor');
-    return data;
+  const res = await fetch(`${API}/${endpoint}`, { ...options, headers });
+  const data = await res.json();
+  if (res.status === 401 && !endpoint.includes('action=login')) { logout(); return; }
+  if (!res.ok) throw new Error(data.error || 'Error del servidor');
+  return data;
 }
 
 // ==========================================
 // Toast
 // ==========================================
 function toast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠';
-    const el = document.createElement('div');
-    el.className = `toast toast-${type}`;
-    el.innerHTML = `<span style="font-size:18px">${icon}</span><span class="toast-message">${message}</span>
+  const container = document.getElementById('toast-container');
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠';
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span style="font-size:18px">${icon}</span><span class="toast-message">${message}</span>
     <button onclick="this.parentElement.remove()" style="color:var(--gray-500);font-size:16px">✕</button>`;
-    container.appendChild(el);
-    setTimeout(() => el.remove(), 4000);
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
 }
 
 // ==========================================
 // Auth
 // ==========================================
 function setAuth(token, user) {
-    state.token = token;
-    state.user = user;
-    localStorage.setItem('iccp_token', token);
-    localStorage.setItem('iccp_user', JSON.stringify(user));
+  state.token = token;
+  state.user = user;
+  localStorage.setItem('iccp_token', token);
+  localStorage.setItem('iccp_user', JSON.stringify(user));
 }
 
 function logout() {
-    state.token = null;
-    state.user = null;
-    localStorage.removeItem('iccp_token');
-    localStorage.removeItem('iccp_user');
-    navigate('login');
+  state.token = null;
+  state.user = null;
+  localStorage.removeItem('iccp_token');
+  localStorage.removeItem('iccp_user');
+  navigate('login');
 }
 
 function initials(name) {
-    if (!name) return '??';
-    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  if (!name) return '??';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
 function formatDate(d) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function timeAgo(d) {
-    if (!d) return '';
-    const diff = Date.now() - new Date(d).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Ahora';
-    if (mins < 60) return `Hace ${mins}m`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `Hace ${hrs}h`;
-    return `Hace ${Math.floor(hrs / 24)}d`;
+  if (!d) return '';
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Ahora';
+  if (mins < 60) return `Hace ${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Hace ${hrs}h`;
+  return `Hace ${Math.floor(hrs / 24)}d`;
 }
 
 function isOverdue(d) { return d && new Date(d) < new Date(); }
@@ -95,92 +95,92 @@ const activityIcon = { task_created: '📋', status_changed: '🔄', assigned: '
 // Router
 // ==========================================
 function navigate(page) {
-    window.location.hash = '#' + page;
+  window.location.hash = '#' + page;
 }
 
 function getRoute() {
-    const hash = window.location.hash.slice(1) || '';
-    const [page, ...rest] = hash.split('?');
-    const params = {};
-    if (rest.length) {
-        rest.join('?').split('&').forEach(p => {
-            const [k, v] = p.split('=');
-            params[k] = decodeURIComponent(v || '');
-        });
-    }
-    return { page: page || 'dashboard', params };
+  const hash = window.location.hash.slice(1) || '';
+  const [page, ...rest] = hash.split('?');
+  const params = {};
+  if (rest.length) {
+    rest.join('?').split('&').forEach(p => {
+      const [k, v] = p.split('=');
+      params[k] = decodeURIComponent(v || '');
+    });
+  }
+  return { page: page || 'dashboard', params };
 }
 
 function router() {
-    const { page, params } = getRoute();
+  const { page, params } = getRoute();
 
-    // Auth guard
-    if (!state.token && page !== 'login') {
-        navigate('login');
-        return;
-    }
-    if (state.token && page === 'login') {
-        navigate('dashboard');
-        return;
-    }
+  // Auth guard
+  if (!state.token && page !== 'login') {
+    navigate('login');
+    return;
+  }
+  if (state.token && page === 'login') {
+    navigate('dashboard');
+    return;
+  }
 
-    const app = document.getElementById('app');
+  const app = document.getElementById('app');
 
-    if (page === 'login') {
-        app.innerHTML = '';
-        renderLogin(app);
-        return;
-    }
+  if (page === 'login') {
+    app.innerHTML = '';
+    renderLogin(app);
+    return;
+  }
 
-    // Render layout if not already present
-    if (!document.getElementById('sidebar')) {
-        app.innerHTML = '';
-        renderLayout(app);
-    }
+  // Render layout if not already present
+  if (!document.getElementById('sidebar')) {
+    app.innerHTML = '';
+    renderLayout(app);
+  }
 
-    // Update active nav
-    document.querySelectorAll('.sidebar-link').forEach(el => {
-        el.classList.toggle('active', el.dataset.page === page);
-    });
+  // Update active nav
+  document.querySelectorAll('.sidebar-link').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
 
-    // Update title
-    const titles = { dashboard: 'Dashboard', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', settings: 'Configuración' };
-    const titleEl = document.getElementById('page-title');
-    if (titleEl) titleEl.textContent = titles[page] || 'ICCP';
+  // Update title
+  const titles = { dashboard: 'Dashboard', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', settings: 'Configuración' };
+  const titleEl = document.getElementById('page-title');
+  if (titleEl) titleEl.textContent = titles[page] || 'ICCP';
 
-    // Render page content
-    const content = document.getElementById('page-content');
-    if (!content) return;
-    content.innerHTML = '<div class="page-loading"><span class="spinner spinner-lg"></span></div>';
+  // Render page content
+  const content = document.getElementById('page-content');
+  if (!content) return;
+  content.innerHTML = '<div class="page-loading"><span class="spinner spinner-lg"></span></div>';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'page-transition';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'page-transition';
 
-    switch (page) {
-        case 'dashboard': renderDashboard(wrapper); break;
-        case 'tasks': renderTasks(wrapper, params); break;
-        case 'departments': renderDepartments(wrapper); break;
-        case 'users': renderUsers(wrapper); break;
-        case 'settings': renderSettings(wrapper, params); break;
-        default: wrapper.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>Página no encontrada</h3></div>';
-            content.innerHTML = '';
-            content.appendChild(wrapper);
-    }
+  switch (page) {
+    case 'dashboard': renderDashboard(wrapper); break;
+    case 'tasks': renderTasks(wrapper, params); break;
+    case 'departments': renderDepartments(wrapper); break;
+    case 'users': renderUsers(wrapper); break;
+    case 'settings': renderSettings(wrapper, params); break;
+    default: wrapper.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>Página no encontrada</h3></div>';
+      content.innerHTML = '';
+      content.appendChild(wrapper);
+  }
 }
 
 // ==========================================
 // Layout
 // ==========================================
 function renderLayout(container) {
-    const navItems = [
-        { page: 'dashboard', icon: '📊', label: 'Dashboard' },
-        { page: 'tasks', icon: '✅', label: 'Tareas' },
-        { page: 'departments', icon: '🏢', label: 'Departamentos' },
-        { page: 'users', icon: '👥', label: 'Usuarios' },
-        { page: 'settings', icon: '⚙️', label: 'Configuración' }
-    ];
+  const navItems = [
+    { page: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { page: 'tasks', icon: '✅', label: 'Tareas' },
+    { page: 'departments', icon: '🏢', label: 'Departamentos' },
+    { page: 'users', icon: '👥', label: 'Usuarios' },
+    { page: 'settings', icon: '⚙️', label: 'Configuración' }
+  ];
 
-    container.innerHTML = `
+  container.innerHTML = `
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
@@ -226,47 +226,47 @@ function renderLayout(container) {
     </div>
   `;
 
-    document.getElementById('sidebar-overlay').addEventListener('click', closeMobile);
-    document.addEventListener('click', (e) => { if (!e.target.closest('.topbar-user')) closeUserMenu(); });
+  document.getElementById('sidebar-overlay').addEventListener('click', closeMobile);
+  document.addEventListener('click', (e) => { if (!e.target.closest('.topbar-user')) closeUserMenu(); });
 }
 
 function toggleSidebar() {
-    state.sidebarCollapsed = !state.sidebarCollapsed;
-    // For simplicity, just toggle mobile
+  state.sidebarCollapsed = !state.sidebarCollapsed;
+  // For simplicity, just toggle mobile
 }
 
 function toggleMobile() {
-    state.mobileOpen = !state.mobileOpen;
-    document.getElementById('sidebar').classList.toggle('mobile-open', state.mobileOpen);
-    document.getElementById('sidebar-overlay').classList.toggle('visible', state.mobileOpen);
+  state.mobileOpen = !state.mobileOpen;
+  document.getElementById('sidebar').classList.toggle('mobile-open', state.mobileOpen);
+  document.getElementById('sidebar-overlay').classList.toggle('visible', state.mobileOpen);
 }
 
 function closeMobile() {
-    state.mobileOpen = false;
-    const sb = document.getElementById('sidebar');
-    const ov = document.getElementById('sidebar-overlay');
-    if (sb) sb.classList.remove('mobile-open');
-    if (ov) ov.classList.remove('visible');
+  state.mobileOpen = false;
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  if (sb) sb.classList.remove('mobile-open');
+  if (ov) ov.classList.remove('visible');
 }
 
 function toggleUserMenu() {
-    const dd = document.getElementById('user-dropdown');
-    if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  const dd = document.getElementById('user-dropdown');
+  if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
 
 function closeUserMenu() {
-    const dd = document.getElementById('user-dropdown');
-    if (dd) dd.style.display = 'none';
+  const dd = document.getElementById('user-dropdown');
+  if (dd) dd.style.display = 'none';
 }
 
 // ==========================================
 // Login Page
 // ==========================================
 function renderLogin(container) {
-    let isRegister = false;
+  let isRegister = false;
 
-    function render() {
-        container.innerHTML = `
+  function render() {
+    container.innerHTML = `
       <div class="login-page">
         <div class="login-left">
           <div class="login-brand"><div class="login-brand-icon">IC</div><h1>ICCP</h1></div>
@@ -293,80 +293,80 @@ function renderLogin(container) {
             </form>
             <div class="login-footer">
               ${isRegister
-                ? '<p>¿Ya tienes cuenta? <a id="toggle-auth">Inicia sesión</a></p>'
-                : '<p>¿No tienes cuenta? <a id="toggle-auth">Regístrate</a></p>'}
+        ? '<p>¿Ya tienes cuenta? <a id="toggle-auth">Inicia sesión</a></p>'
+        : '<p>¿No tienes cuenta? <a id="toggle-auth">Regístrate</a></p>'}
             </div>
           </div>
         </div>
       </div>
     `;
 
-        document.getElementById('toggle-auth').addEventListener('click', () => { isRegister = !isRegister; render(); });
+    document.getElementById('toggle-auth').addEventListener('click', () => { isRegister = !isRegister; render(); });
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('login-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Cargando...';
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Cargando...';
 
-            try {
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-pass').value;
+      try {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-pass').value;
 
-                if (isRegister) {
-                    const name = document.getElementById('reg-name').value;
-                    const data = await api('auth.php?action=register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
-                    setAuth(data.token, data.user);
-                } else {
-                    const data = await api('auth.php?action=login', { method: 'POST', body: JSON.stringify({ email, password }) });
-                    setAuth(data.token, data.user);
-                }
-                navigate('dashboard');
-            } catch (err) {
-                document.getElementById('login-error').innerHTML = `<div class="error-box">${err.message}</div>`;
-                btn.disabled = false;
-                btn.textContent = isRegister ? 'Registrarse' : 'Iniciar Sesión';
-            }
-        });
-    }
-    render();
+        if (isRegister) {
+          const name = document.getElementById('reg-name').value;
+          const data = await api('auth.php?action=register', { method: 'POST', body: JSON.stringify({ name, email, password }) });
+          setAuth(data.token, data.user);
+        } else {
+          const data = await api('auth.php?action=login', { method: 'POST', body: JSON.stringify({ email, password }) });
+          setAuth(data.token, data.user);
+        }
+        navigate('dashboard');
+      } catch (err) {
+        document.getElementById('login-error').innerHTML = `<div class="error-box">${err.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = isRegister ? 'Registrarse' : 'Iniciar Sesión';
+      }
+    });
+  }
+  render();
 }
 
 // ==========================================
 // Dashboard
 // ==========================================
 async function renderDashboard(wrapper) {
-    try {
-        const [mRes, aRes] = await Promise.all([
-            api('dashboard.php?action=metrics'),
-            api('dashboard.php?action=activity&limit=15')
-        ]);
-        const m = mRes.metrics;
-        const activity = aRes.activity;
-        const s = m.statusBreakdown;
-        const p = m.priorityBreakdown;
-        const total = m.totalTasks || 1;
-        const rate = m.totalTasks > 0 ? Math.round((s.done / m.totalTasks) * 100) : 0;
-        const maxP = Math.max(p.low, p.medium, p.high, p.urgent, 1);
+  try {
+    const [mRes, aRes] = await Promise.all([
+      api('dashboard.php?action=metrics'),
+      api('dashboard.php?action=activity&limit=15')
+    ]);
+    const m = mRes.metrics;
+    const activity = aRes.activity;
+    const s = m.statusBreakdown;
+    const p = m.priorityBreakdown;
+    const total = m.totalTasks || 1;
+    const rate = m.totalTasks > 0 ? Math.round((s.done / m.totalTasks) * 100) : 0;
+    const maxP = Math.max(p.low, p.medium, p.high, p.urgent, 1);
 
-        // Donut segments
-        const donutData = [
-            { val: s.todo, color: '#a0aec0', label: 'Por hacer' },
-            { val: s.in_progress, color: '#4299e1', label: 'En progreso' },
-            { val: s.done, color: '#38b2ac', label: 'Completadas' }
-        ];
-        let cumPct = 0;
-        const circles = donutData.map(d => {
-            const pct = m.totalTasks > 0 ? (d.val / m.totalTasks) * 100 : 0;
-            const da = `${pct * 2.83} ${283 - pct * 2.83}`;
-            const doff = -cumPct * 2.83;
-            cumPct += pct;
-            return `<circle cx="50" cy="50" r="45" fill="none" stroke="${d.color}" stroke-width="8"
+    // Donut segments
+    const donutData = [
+      { val: s.todo, color: '#a0aec0', label: 'Por hacer' },
+      { val: s.in_progress, color: '#4299e1', label: 'En progreso' },
+      { val: s.done, color: '#38b2ac', label: 'Completadas' }
+    ];
+    let cumPct = 0;
+    const circles = donutData.map(d => {
+      const pct = m.totalTasks > 0 ? (d.val / m.totalTasks) * 100 : 0;
+      const da = `${pct * 2.83} ${283 - pct * 2.83}`;
+      const doff = -cumPct * 2.83;
+      cumPct += pct;
+      return `<circle cx="50" cy="50" r="45" fill="none" stroke="${d.color}" stroke-width="8"
         stroke-dasharray="${da}" stroke-dashoffset="${doff}" stroke-linecap="round"
         transform="rotate(-90 50 50)" style="transition:stroke-dasharray .8s ease"/>`;
-        }).join('');
+    }).join('');
 
-        wrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-icon blue">📋</div><div class="metric-info"><h4>Total Tareas</h4><div class="metric-value">${m.totalTasks}</div><span class="metric-sub positive">↑ ${m.weeklyCreated} esta semana</span></div></div>
         <div class="metric-card"><div class="metric-icon green">✅</div><div class="metric-info"><h4>Completadas</h4><div class="metric-value">${s.done}</div><span class="metric-sub positive">${rate}% tasa de éxito</span></div></div>
@@ -390,7 +390,7 @@ async function renderDashboard(wrapper) {
         <div class="card"><div class="card-header"><h3>Tareas por Prioridad</h3></div>
           <div class="chart-container"><div class="bar-chart">
             ${[{ k: 'low', l: 'Baja', c: 'primary', v: p.low }, { k: 'medium', l: 'Media', c: 'success', v: p.medium }, { k: 'high', l: 'Alta', c: 'warning', v: p.high }, { k: 'urgent', l: 'Urgente', c: 'danger', v: p.urgent }]
-                .map(i => `<div class="bar-item"><div class="bar-value">${i.v}</div><div class="bar ${i.c}" style="height:${(i.v / maxP) * 100}%"></div><div class="bar-label">${i.l}</div></div>`).join('')}
+        .map(i => `<div class="bar-item"><div class="bar-value">${i.v}</div><div class="bar ${i.c}" style="height:${(i.v / maxP) * 100}%"></div><div class="bar-label">${i.l}</div></div>`).join('')}
           </div></div>
         </div>
       </div>
@@ -398,7 +398,7 @@ async function renderDashboard(wrapper) {
         <div class="card"><div class="card-header"><h3>Actividad Reciente</h3></div>
           <div class="card-body" style="max-height:400px;overflow-y:auto">
             ${activity.length === 0 ? '<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📭</div><h3>Sin actividad aún</h3></div>' :
-                '<div class="activity-list">' + activity.map(a => `
+        '<div class="activity-list">' + activity.map(a => `
                 <div class="activity-item">
                   <div class="activity-avatar">${initials(a.user_name)}</div>
                   <div><div class="activity-text"><strong>${a.user_name || ''}</strong> ${a.details || a.action}${a.task_title ? ` en <strong>${a.task_title}</strong>` : ''}</div>
@@ -409,46 +409,46 @@ async function renderDashboard(wrapper) {
         <div class="card"><div class="card-header"><h3>Resumen General</h3></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
             ${[{ i: '🏢', l: 'Departamentos activos', v: m.totalDepartments }, { i: '👥', l: 'Usuarios registrados', v: m.totalUsers }, { i: '📋', l: 'Tareas esta semana', v: m.weeklyCreated }, { i: '✅', l: 'Completadas esta semana', v: m.weeklyCompleted }]
-                .map(s => `<div class="stat-row"><div class="stat-row-icon"><span style="font-size:20px">${s.i}</span><span>${s.l}</span></div><span class="stat-row-value">${s.v}</span></div>`).join('')}
+        .map(s => `<div class="stat-row"><div class="stat-row-icon"><span style="font-size:20px">${s.i}</span><span>${s.l}</span></div><span class="stat-row-value">${s.v}</span></div>`).join('')}
           </div>
         </div>
       </div>
     `;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    } catch (err) {
-        wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    }
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
 }
 
 // ==========================================
 // Tasks (Kanban)
 // ==========================================
 async function renderTasks(wrapper) {
-    try {
-        const [tRes, dRes, uRes] = await Promise.all([
-            api('tasks.php?action=list'),
-            api('departments.php?action=list'),
-            api('users.php?action=list')
-        ]);
-        let tasks = tRes.tasks;
-        const depts = dRes.departments;
-        const users = uRes.users;
+  try {
+    const [tRes, dRes, uRes] = await Promise.all([
+      api('tasks.php?action=list'),
+      api('departments.php?action=list'),
+      api('users.php?action=list')
+    ]);
+    let tasks = tRes.tasks;
+    const depts = dRes.departments;
+    const users = uRes.users;
 
-        function buildBoard(filtered) {
-            const todo = filtered.filter(t => t.status === 'todo');
-            const inProg = filtered.filter(t => t.status === 'in_progress');
-            const done = filtered.filter(t => t.status === 'done');
+    function buildBoard(filtered) {
+      const todo = filtered.filter(t => t.status === 'todo');
+      const inProg = filtered.filter(t => t.status === 'in_progress');
+      const done = filtered.filter(t => t.status === 'done');
 
-            const cols = [
-                { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar' },
-                { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'done', btnLabel: '✓ Completar' },
-                { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null }
-            ];
+      const cols = [
+        { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar' },
+        { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'done', btnLabel: '✓ Completar' },
+        { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null }
+      ];
 
-            return `<div class="kanban-board">${cols.map(c => `
+      return `<div class="kanban-board">${cols.map(c => `
         <div class="kanban-column">
           <div class="kanban-header">
             <div class="kanban-title"><span class="kanban-dot ${c.key}"></span>${c.title}</div>
@@ -456,7 +456,7 @@ async function renderTasks(wrapper) {
           </div>
           <div class="kanban-body">
             ${c.tasks.length === 0 ? '<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">No hay tareas</div>' :
-                    c.tasks.map(t => `
+          c.tasks.map(t => `
                 <div class="task-card" onclick="openTaskDetail(${t.id})">
                   <div class="task-card-header">
                     <span class="task-card-title">${t.title}</span>
@@ -477,9 +477,9 @@ async function renderTasks(wrapper) {
           </div>
         </div>
       `).join('')}</div>`;
-        }
+    }
 
-        wrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary" onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
       <div class="filters-bar">
         <select class="form-select" id="filter-dept" onchange="filterTasks()"><option value="">Todos los departamentos</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select>
@@ -488,43 +488,43 @@ async function renderTasks(wrapper) {
       <div id="kanban-container">${buildBoard(tasks)}</div>
     `;
 
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
 
-        // Global functions for tasks
-        window._tasks = tasks;
-        window._depts = depts;
-        window._users = users;
+    // Global functions for tasks
+    window._tasks = tasks;
+    window._depts = depts;
+    window._users = users;
 
-        window.filterTasks = function () {
-            const dept = document.getElementById('filter-dept').value;
-            const pri = document.getElementById('filter-priority').value;
-            let filtered = window._tasks;
-            if (dept) filtered = filtered.filter(t => t.department_id == dept);
-            if (pri) filtered = filtered.filter(t => t.priority === pri);
-            document.getElementById('kanban-container').innerHTML = buildBoard(filtered);
-        };
+    window.filterTasks = function () {
+      const dept = document.getElementById('filter-dept').value;
+      const pri = document.getElementById('filter-priority').value;
+      let filtered = window._tasks;
+      if (dept) filtered = filtered.filter(t => t.department_id == dept);
+      if (pri) filtered = filtered.filter(t => t.priority === pri);
+      document.getElementById('kanban-container').innerHTML = buildBoard(filtered);
+    };
 
-        window.changeTaskStatus = async function (id, status) {
-            try {
-                await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-                toast('Estado actualizado');
-                renderTasks(document.createElement('div')).then(() => { });
-                // Quick refresh
-                const t = window._tasks.find(t => t.id == id);
-                if (t) t.status = status;
-                window.filterTasks();
-            } catch (err) { toast(err.message, 'error'); }
-        };
+    window.changeTaskStatus = async function (id, status) {
+      try {
+        await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        toast('Estado actualizado');
+        renderTasks(document.createElement('div')).then(() => { });
+        // Quick refresh
+        const t = window._tasks.find(t => t.id == id);
+        if (t) t.status = status;
+        window.filterTasks();
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.openTaskDetail = async function (id) {
-            try {
-                const data = await api(`tasks.php?action=get&id=${id}`);
-                const t = data.task;
-                const att = data.attachments || [];
-                const act = data.activity || [];
+    window.openTaskDetail = async function (id) {
+      try {
+        const data = await api(`tasks.php?action=get&id=${id}`);
+        const t = data.task;
+        const att = data.attachments || [];
+        const act = data.activity || [];
 
-                showModal(`
+        showModal(`
           <div class="modal-header"><h2>${t.title}</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
           <div class="modal-body">
             <div style="display:flex;gap:8px;margin-bottom:20px">
@@ -550,37 +550,37 @@ async function renderTasks(wrapper) {
             <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
-            } catch (err) { toast(err.message, 'error'); }
-        };
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.changeTaskStatusModal = async function (id, status) {
-            try {
-                await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-                toast('Estado actualizado');
-                closeModal();
-                navigate('tasks');
-            } catch (err) { toast(err.message, 'error'); }
-        };
+    window.changeTaskStatusModal = async function (id, status) {
+      try {
+        await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        toast('Estado actualizado');
+        closeModal();
+        navigate('tasks');
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.deleteTask = async function (id) {
-            if (!confirm('¿Eliminar esta tarea?')) return;
-            try {
-                await api(`tasks.php?action=delete&id=${id}`, { method: 'DELETE' });
-                toast('Tarea eliminada');
-                closeModal();
-                navigate('tasks');
-            } catch (err) { toast(err.message, 'error'); }
-        };
+    window.deleteTask = async function (id) {
+      if (!confirm('¿Eliminar esta tarea?')) return;
+      try {
+        await api(`tasks.php?action=delete&id=${id}`, { method: 'DELETE' });
+        toast('Tarea eliminada');
+        closeModal();
+        navigate('tasks');
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.syncCalendar = async function (id) {
-            try {
-                await api(`calendar.php?action=sync&id=${id}`, { method: 'POST' });
-                toast('Sincronizada con Google Calendar');
-            } catch (err) { toast(err.message, 'error'); }
-        };
+    window.syncCalendar = async function (id) {
+      try {
+        await api(`calendar.php?action=sync&id=${id}`, { method: 'POST' });
+        toast('Sincronizada con Google Calendar');
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.openCreateTask = function () {
-            showModal(`
+    window.openCreateTask = function () {
+      showModal(`
         <div class="modal-header"><h2>Nueva Tarea</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="create-task-form">
           <div class="modal-body">
@@ -604,37 +604,37 @@ async function renderTasks(wrapper) {
         </form>
       `, 'modal-lg');
 
-            document.getElementById('ct-files').addEventListener('change', function () {
-                const list = document.getElementById('ct-file-list');
-                list.innerHTML = Array.from(this.files).map((f, i) => `<div class="file-item"><div class="file-info"><span>📄</span><span>${f.name}</span></div></div>`).join('');
-            });
+      document.getElementById('ct-files').addEventListener('change', function () {
+        const list = document.getElementById('ct-file-list');
+        list.innerHTML = Array.from(this.files).map((f, i) => `<div class="file-item"><div class="file-info"><span>📄</span><span>${f.name}</span></div></div>`).join('');
+      });
 
-            document.getElementById('create-task-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const fd = new FormData();
-                    fd.append('title', document.getElementById('ct-title').value);
-                    fd.append('description', document.getElementById('ct-desc').value);
-                    fd.append('department_id', document.getElementById('ct-dept').value);
-                    fd.append('priority', document.getElementById('ct-pri').value);
-                    fd.append('assigned_to', document.getElementById('ct-assign').value);
-                    fd.append('due_date', document.getElementById('ct-due').value);
-                    const files = document.getElementById('ct-files').files;
-                    for (let i = 0; i < files.length; i++) fd.append('files[]', files[i]);
+      document.getElementById('create-task-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const fd = new FormData();
+          fd.append('title', document.getElementById('ct-title').value);
+          fd.append('description', document.getElementById('ct-desc').value);
+          fd.append('department_id', document.getElementById('ct-dept').value);
+          fd.append('priority', document.getElementById('ct-pri').value);
+          fd.append('assigned_to', document.getElementById('ct-assign').value);
+          fd.append('due_date', document.getElementById('ct-due').value);
+          const files = document.getElementById('ct-files').files;
+          for (let i = 0; i < files.length; i++) fd.append('files[]', files[i]);
 
-                    await api('tasks.php?action=create', { method: 'POST', body: fd });
-                    toast('Tarea creada');
-                    closeModal();
-                    navigate('tasks');
-                } catch (err) { toast(err.message, 'error'); }
-            });
-        };
+          await api('tasks.php?action=create', { method: 'POST', body: fd });
+          toast('Tarea creada');
+          closeModal();
+          navigate('tasks');
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    };
 
-    } catch (err) {
-        wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    }
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
 }
 
 // ==========================================
@@ -643,18 +643,18 @@ async function renderTasks(wrapper) {
 const DEPT_COLORS = ['#2d3561', '#38b2ac', '#e53e3e', '#ecc94b', '#4299e1', '#9f7aea', '#ed8936', '#48bb78'];
 
 async function renderDepartments(wrapper) {
-    try {
-        const [dRes, uRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list')]);
-        const depts = dRes.departments;
-        const users = uRes.users;
-        const isAdmin = state.user?.role === 'admin';
+  try {
+    const [dRes, uRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list')]);
+    const depts = dRes.departments;
+    const users = uRes.users;
+    const isAdmin = state.user?.role === 'admin';
 
-        wrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="page-header"><h2>Departamentos</h2>${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateDept()">＋ Nuevo Departamento</button></div>' : ''}</div>
       ${depts.length === 0 ? '<div class="card"><div class="empty-state"><div class="empty-state-icon">🏢</div><h3>Sin departamentos</h3><p>Crea tu primer departamento.</p></div></div>' :
-                '<div class="dept-grid">' + depts.map(d => {
-                    const comp = d.task_count > 0 ? Math.round((d.completed_count / d.task_count) * 100) : 0;
-                    return `<div class="dept-card" onclick="openDeptDetail(${d.id})">
+        '<div class="dept-grid">' + depts.map(d => {
+          const comp = d.task_count > 0 ? Math.round((d.completed_count / d.task_count) * 100) : 0;
+          return `<div class="dept-card" onclick="openDeptDetail(${d.id})">
             <div class="dept-card-accent" style="background:${d.color}"></div>
             <div class="dept-card-body">
               <h3 class="dept-card-name">${d.name}</h3>
@@ -668,17 +668,17 @@ async function renderDepartments(wrapper) {
               </div>
             </div>
           </div>`;
-                }).join('') + '</div>'}
+        }).join('') + '</div>'}
     `;
 
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
 
-        window._allUsers = users;
+    window._allUsers = users;
 
-        window.openCreateDept = function () {
-            let selectedColor = '#2d3561';
-            showModal(`
+    window.openCreateDept = function () {
+      let selectedColor = '#2d3561';
+      showModal(`
         <div class="modal-header"><h2>Nuevo Departamento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="create-dept-form">
           <div class="modal-body">
@@ -690,39 +690,39 @@ async function renderDepartments(wrapper) {
         </form>
       `);
 
-            document.querySelectorAll('.color-swatch').forEach(el => {
-                el.addEventListener('click', () => {
-                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-                    el.classList.add('selected');
-                    selectedColor = el.dataset.color;
-                });
-            });
+      document.querySelectorAll('.color-swatch').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+          el.classList.add('selected');
+          selectedColor = el.dataset.color;
+        });
+      });
 
-            document.getElementById('create-dept-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    await api('departments.php?action=create', {
-                        method: 'POST', body: JSON.stringify({
-                            name: document.getElementById('cd-name').value,
-                            description: document.getElementById('cd-desc').value,
-                            color: selectedColor
-                        })
-                    });
-                    toast('Departamento creado');
-                    closeModal();
-                    navigate('departments');
-                } catch (err) { toast(err.message, 'error'); }
-            });
-        };
+      document.getElementById('create-dept-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api('departments.php?action=create', {
+            method: 'POST', body: JSON.stringify({
+              name: document.getElementById('cd-name').value,
+              description: document.getElementById('cd-desc').value,
+              color: selectedColor
+            })
+          });
+          toast('Departamento creado');
+          closeModal();
+          navigate('departments');
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    };
 
-        window.openDeptDetail = async function (id) {
-            try {
-                const data = await api(`departments.php?action=get&id=${id}`);
-                const d = data.department;
-                const members = data.members;
-                const nonMembers = (window._allUsers || []).filter(u => !members.find(m => m.id == u.id));
+    window.openDeptDetail = async function (id) {
+      try {
+        const data = await api(`departments.php?action=get&id=${id}`);
+        const d = data.department;
+        const members = data.members;
+        const nonMembers = (window._allUsers || []).filter(u => !members.find(m => m.id == u.id));
 
-                showModal(`
+        showModal(`
           <div class="modal-header"><div style="display:flex;align-items:center;gap:12px"><div style="width:16px;height:16px;border-radius:4px;background:${d.color}"></div><h2>${d.name}</h2></div><button class="modal-close" onclick="closeModal()">✕</button></div>
           <div class="modal-body">
             ${d.description ? `<p style="font-size:14px;color:var(--gray-600);margin-bottom:20px">${d.description}</p>` : ''}
@@ -740,36 +740,36 @@ async function renderDepartments(wrapper) {
             <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
-            } catch (err) { toast(err.message, 'error'); }
-        };
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
-        window.addDeptMember = async function (deptId, userId) {
-            try { await api(`departments.php?action=add_member&id=${deptId}`, { method: 'POST', body: JSON.stringify({ userId }) }); toast('Miembro agregado'); closeModal(); openDeptDetail(deptId); } catch (err) { toast(err.message, 'error'); }
-        };
-        window.removeDeptMember = async function (deptId, userId) {
-            try { await api(`departments.php?action=remove_member&id=${deptId}&user_id=${userId}`, { method: 'DELETE' }); toast('Miembro eliminado'); closeModal(); openDeptDetail(deptId); } catch (err) { toast(err.message, 'error'); }
-        };
-        window.deleteDept = async function (id) {
-            if (!confirm('¿Eliminar departamento y todas sus tareas?')) return;
-            try { await api(`departments.php?action=delete&id=${id}`, { method: 'DELETE' }); toast('Eliminado'); closeModal(); navigate('departments'); } catch (err) { toast(err.message, 'error'); }
-        };
-    } catch (err) {
-        wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    }
+    window.addDeptMember = async function (deptId, userId) {
+      try { await api(`departments.php?action=add_member&id=${deptId}`, { method: 'POST', body: JSON.stringify({ userId }) }); toast('Miembro agregado'); closeModal(); openDeptDetail(deptId); } catch (err) { toast(err.message, 'error'); }
+    };
+    window.removeDeptMember = async function (deptId, userId) {
+      try { await api(`departments.php?action=remove_member&id=${deptId}&user_id=${userId}`, { method: 'DELETE' }); toast('Miembro eliminado'); closeModal(); openDeptDetail(deptId); } catch (err) { toast(err.message, 'error'); }
+    };
+    window.deleteDept = async function (id) {
+      if (!confirm('¿Eliminar departamento y todas sus tareas?')) return;
+      try { await api(`departments.php?action=delete&id=${id}`, { method: 'DELETE' }); toast('Eliminado'); closeModal(); navigate('departments'); } catch (err) { toast(err.message, 'error'); }
+    };
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
 }
 
 // ==========================================
 // Users
 // ==========================================
 async function renderUsers(wrapper) {
-    try {
-        const data = await api('users.php?action=list');
-        const users = data.users;
-        const isAdmin = state.user?.role === 'admin';
+  try {
+    const data = await api('users.php?action=list');
+    const users = data.users;
+    const isAdmin = state.user?.role === 'admin';
 
-        wrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="page-header"><h2>Usuarios</h2><div style="font-size:14px;color:var(--gray-500)">${users.length} usuario${users.length !== 1 ? 's' : ''}</div></div>
       <div class="card"><div class="card-body" style="padding:0;overflow:auto">
         <table class="data-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Departamentos</th><th>Registro</th><th>Acciones</th></tr></thead>
@@ -786,11 +786,11 @@ async function renderUsers(wrapper) {
       </div></div>
     `;
 
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
 
-        window.editUser = function (id, name, email) {
-            showModal(`
+    window.editUser = function (id, name, email) {
+      showModal(`
         <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="edit-user-form">
           <div class="modal-body">
@@ -801,41 +801,41 @@ async function renderUsers(wrapper) {
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
         </form>
       `);
-            document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                try {
-                    const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
-                    const pass = document.getElementById('eu-pass').value;
-                    if (pass) body.password = pass;
-                    await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
-                    toast('Actualizado'); closeModal(); navigate('users');
-                } catch (err) { toast(err.message, 'error'); }
-            });
-        };
+      document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
+          const pass = document.getElementById('eu-pass').value;
+          if (pass) body.password = pass;
+          await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
+          toast('Actualizado'); closeModal(); navigate('users');
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    };
 
-        window.toggleRole = async function (id, role) {
-            try { await api(`users.php?action=role&id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }); toast(`Rol: ${role}`); navigate('users'); }
-            catch (err) { toast(err.message, 'error'); }
-        };
-    } catch (err) {
-        wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    }
+    window.toggleRole = async function (id, role) {
+      try { await api(`users.php?action=role&id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }); toast(`Rol: ${role}`); navigate('users'); }
+      catch (err) { toast(err.message, 'error'); }
+    };
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
 }
 
 // ==========================================
 // Settings
 // ==========================================
 async function renderSettings(wrapper, params) {
-    try {
-        const calRes = await api('calendar.php?action=status');
-        const connected = calRes.connected;
+  try {
+    const calRes = await api('calendar.php?action=status');
+    const connected = calRes.connected;
 
-        if (params.calendar === 'connected') toast('Google Calendar conectado');
-        if (params.calendar === 'error') toast('Error al conectar', 'error');
+    if (params.calendar === 'connected') toast('Google Calendar conectado');
+    if (params.calendar === 'error') toast('Error al conectar', 'error');
 
-        wrapper.innerHTML = `
+    wrapper.innerHTML = `
       <div class="page-header"><h2>Configuración</h2></div>
       <div class="settings-card card"><div class="card-header"><h3>👤 Perfil</h3></div><div class="card-body">
         <div style="display:flex;align-items:center;gap:16px">
@@ -853,43 +853,43 @@ async function renderSettings(wrapper, params) {
       </div></div>
     `;
 
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
 
-        window.connectCal = async function () {
-            try { const d = await api('calendar.php?action=auth-url'); window.location.href = d.authUrl; } catch (err) { toast(err.message, 'error'); }
-        };
-        window.disconnectCal = async function () {
-            if (!confirm('¿Desconectar?')) return;
-            try { await api('calendar.php?action=disconnect', { method: 'POST' }); toast('Desconectado'); navigate('settings'); } catch (err) { toast(err.message, 'error'); }
-        };
-    } catch (err) {
-        wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
-        document.getElementById('page-content').innerHTML = '';
-        document.getElementById('page-content').appendChild(wrapper);
-    }
+    window.connectCal = async function () {
+      try { const d = await api('calendar.php?action=auth-url'); window.location.href = d.authUrl; } catch (err) { toast(err.message, 'error'); }
+    };
+    window.disconnectCal = async function () {
+      if (!confirm('¿Desconectar?')) return;
+      try { await api('calendar.php?action=disconnect', { method: 'POST' }); toast('Desconectado'); navigate('settings'); } catch (err) { toast(err.message, 'error'); }
+    };
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
 }
 
 // ==========================================
 // Modal
 // ==========================================
 function showModal(content, extraClass = '') {
-    closeModal();
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.id = 'modal-overlay';
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
-    const modal = document.createElement('div');
-    modal.className = `modal ${extraClass}`;
-    modal.innerHTML = content;
-    modal.onclick = (e) => e.stopPropagation();
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+  const modal = document.createElement('div');
+  modal.className = `modal ${extraClass}`;
+  modal.innerHTML = content;
+  modal.onclick = (e) => e.stopPropagation();
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 
 function closeModal() {
-    const el = document.getElementById('modal-overlay');
-    if (el) el.remove();
+  const el = document.getElementById('modal-overlay');
+  if (el) el.remove();
 }
 
 // ==========================================
