@@ -33,12 +33,12 @@ switch ($action) {
 function listTasks()
 {
     global $pdo;
-    $sql = "SELECT t.*, u1.name as creator_name, u2.name as assignee_name, u2.avatar as assignee_avatar,
-                d.name as department_name, d.color as department_color,
-                (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count
+    $sql = "SELECT t.*, u1.name as creator_name, d.name as department_name, d.color as department_color,
+                (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count,
+                (SELECT GROUP_CONCAT(u.name SEPARATOR '||') FROM task_assignees ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id = t.id) as assignee_names,
+                (SELECT GROUP_CONCAT(ta.user_id SEPARATOR ',') FROM task_assignees ta WHERE ta.task_id = t.id) as assigned_to_list
             FROM tasks t
             LEFT JOIN users u1 ON t.created_by = u1.id
-            LEFT JOIN users u2 ON t.assigned_to = u2.id
             LEFT JOIN departments d ON t.department_id = d.id
             WHERE 1=1";
     $params = [];
@@ -52,7 +52,7 @@ function listTasks()
         $params[] = $status;
     }
     if ($assigned = getParam('assigned_to')) {
-        $sql .= ' AND t.assigned_to = ?';
+        $sql .= ' AND EXISTS(SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = ?)';
         $params[] = $assigned;
     }
     if ($priority = getParam('priority')) {
@@ -78,8 +78,10 @@ function getTask($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, u2.name as assignee_name, d.name as department_name, d.color as department_color
-        FROM tasks t LEFT JOIN users u1 ON t.created_by = u1.id LEFT JOIN users u2 ON t.assigned_to = u2.id
+    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, d.name as department_name, d.color as department_color,
+        (SELECT GROUP_CONCAT(u.name SEPARATOR '||') FROM task_assignees ta JOIN users u ON ta.user_id = u.id WHERE ta.task_id = t.id) as assignee_names,
+        (SELECT GROUP_CONCAT(ta.user_id SEPARATOR ',') FROM task_assignees ta WHERE ta.task_id = t.id) as assigned_to_list
+        FROM tasks t LEFT JOIN users u1 ON t.created_by = u1.id
         LEFT JOIN departments d ON t.department_id = d.id WHERE t.id = ?");
     $stmt->execute([$id]);
     $task = $stmt->fetch();
@@ -114,8 +116,15 @@ function createTask($auth)
     if (!$title || !$deptId)
         jsonResponse(['error' => 'Título y departamento son obligatorios.'], 400);
 
+    $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+    $uStmt->execute([$auth['id']]);
+    $uGroup = $uStmt->fetchColumn() ?? '';
+    if ($auth['role'] !== 'admin' && $uGroup !== 'soporte_oficina') {
+        jsonResponse(['error' => 'No tienes permisos para crear o asignar tareas.'], 403);
+    }
+
     $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, department_id, created_by, assigned_to, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        VALUES (?, ?, ?, ?, ?, ?, NULL, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,
@@ -123,10 +132,25 @@ function createTask($auth)
         $data['priority'] ?? 'medium',
         $deptId,
         $auth['id'],
-        $data['assigned_to'] ?: null,
         $data['due_date'] ?: null
     ]);
     $taskId = $pdo->lastInsertId();
+
+    $assignedUsers = [];
+    if (isset($data['assigned_users'])) {
+        $assignedUsers = is_string($data['assigned_users']) ? json_decode($data['assigned_users'], true) : $data['assigned_users'];
+    }
+
+    if (!empty($assignedUsers) && is_array($assignedUsers)) {
+        $assignStmt = $pdo->prepare("INSERT INTO task_assignees (task_id, user_id) VALUES (?, ?)");
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+        foreach ($assignedUsers as $uid) {
+            $assignStmt->execute([$taskId, $uid]);
+            if ($uid != $auth['id']) {
+                $notifStmt->execute([$uid, "{$auth['name']} te asignó la tarea '$title'"]);
+            }
+        }
+    }
 
     // Handle file uploads
     if (!empty($_FILES['files'])) {
@@ -169,29 +193,57 @@ function updateTask($id, $auth)
 
     $data = getJsonBody();
 
+    $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+    $uStmt->execute([$auth['id']]);
+    $uGroup = $uStmt->fetchColumn() ?? '';
+    $canManageTasks = ($auth['role'] === 'admin' || $uGroup === 'soporte_oficina');
+
+    $checkAssign = $pdo->prepare('SELECT 1 FROM task_assignees WHERE task_id = ? AND user_id = ?');
+    $checkAssign->execute([$id, $auth['id']]);
+    $isAssigned = $checkAssign->fetchColumn();
+
+    if (!$canManageTasks && !$isAssigned) {
+        jsonResponse(['error' => 'No tienes permisos sobre esta tarea.'], 403);
+    }
+
+    if (!$canManageTasks) {
+        $allowed = [];
+        if (isset($data['status']))
+            $allowed['status'] = $data['status'];
+        $data = $allowed;
+        if (empty($data))
+            jsonResponse(['error' => 'Solo puedes cambiar el estado de tu tarea asignada.'], 403);
+    }
+
     $pdo->prepare("UPDATE tasks SET title = COALESCE(?, title), description = COALESCE(?, description),
         status = COALESCE(?, status), priority = COALESCE(?, priority),
-        assigned_to = ?, due_date = ? WHERE id = ?")
+        due_date = COALESCE(?, due_date) WHERE id = ?")
         ->execute([
             $data['title'] ?? null,
             $data['description'] ?? null,
             $data['status'] ?? null,
             $data['priority'] ?? null,
-            isset($data['assigned_to']) ? ($data['assigned_to'] ?: null) : $old['assigned_to'],
-            isset($data['due_date']) ? ($data['due_date'] ?: null) : $old['due_date'],
+            $data['due_date'] ?? null,
             $id
         ]);
+
+    if ($canManageTasks && isset($data['assigned_users']) && is_array($data['assigned_users'])) {
+        $pdo->prepare('DELETE FROM task_assignees WHERE task_id = ?')->execute([$id]);
+        $assignStmt = $pdo->prepare("INSERT INTO task_assignees (task_id, user_id) VALUES (?, ?)");
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+        foreach ($data['assigned_users'] as $uid) {
+            $assignStmt->execute([$id, $uid]);
+            if ($uid != $auth['id']) {
+                $notifStmt->execute([$uid, "Fuiste reasignado a la tarea '{$old['title']}'"]);
+            }
+        }
+        $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
+            ->execute([$id, $auth['id'], 'assigned', "Asignados modificados (" . count($data['assigned_users']) . " personas)"]);
+    }
 
     if (!empty($data['status']) && $data['status'] !== $old['status']) {
         $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
             ->execute([$id, $auth['id'], 'status_changed', "Estado: \"{$old['status']}\" → \"{$data['status']}\""]);
-    }
-    if (!empty($data['assigned_to']) && $data['assigned_to'] != $old['assigned_to']) {
-        $u = $pdo->prepare('SELECT name FROM users WHERE id = ?');
-        $u->execute([$data['assigned_to']]);
-        $nm = $u->fetchColumn() ?: 'Desconocido';
-        $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
-            ->execute([$id, $auth['id'], 'assigned', "Asignada a $nm"]);
     }
 
     jsonResponse(['message' => 'Tarea actualizada.']);
