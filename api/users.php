@@ -55,7 +55,7 @@ function deleteUser($id, $auth)
 function getOrgChart()
 {
     global $pdo;
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, departments FROM users ORDER BY user_group, name');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group FROM users ORDER BY user_group, name');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
