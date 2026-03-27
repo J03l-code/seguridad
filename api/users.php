@@ -20,8 +20,28 @@ switch ($action) {
     case 'role':
         changeRole($id, $auth);
         break;
+    case 'delete':
+        deleteUser($id, $auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
+}
+
+function deleteUser($id, $auth)
+{
+    global $pdo;
+    if (getMethod() !== 'DELETE')
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+    requireAdmin($auth);
+    if ($auth['id'] == $id)
+        jsonResponse(['error' => 'No puedes eliminarte a ti mismo.'], 400);
+
+    $stmt = $pdo->prepare('DELETE FROM users WHERE id = ?');
+    $stmt->execute([$id]);
+    if ($stmt->rowCount() === 0)
+        jsonResponse(['error' => 'Usuario no encontrado.'], 404);
+
+    jsonResponse(['message' => 'Usuario eliminado correctamente.']);
 }
 
 function listUsers()

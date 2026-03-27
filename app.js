@@ -781,6 +781,7 @@ async function renderUsers(wrapper) {
           <td><div style="display:flex;gap:6px">
             ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}')">✏️ Editar</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}" onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
+            ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);padding:0 8px" onclick="deleteSystemUser(${u.id})" title="Eliminar usuario">🗑</button>` : ''}
           </div></td>
         </tr>`).join('')}</tbody></table>
       </div></div>
@@ -788,6 +789,14 @@ async function renderUsers(wrapper) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+    window.deleteSystemUser = async function (id) {
+      if (!confirm('¿Estás seguro de que deseas eliminar permanentemente a este usuario? Esta acción no se puede deshacer.')) return;
+      try {
+        await api(`users.php?action=delete&id=${id}`, { method: 'DELETE' });
+        toast('Usuario eliminado exitosamente');
+        renderUsers(document.createElement('div')).then(() => { navigate('users'); });
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
     window.editUser = function (id, name, email) {
       showModal(`
