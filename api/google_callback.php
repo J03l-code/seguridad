@@ -10,7 +10,7 @@ $error = $_GET['error'] ?? null;
 
 if ($error || !$code || !$userId) {
     // Redirect to frontend with error
-    header('Location: ' . $FRONTEND_URL . '#/calendar?google=error');
+    header('Location: ' . $FRONTEND_URL . '?google=error#calendar');
     exit;
 }
 
@@ -37,7 +37,7 @@ curl_close($ch);
 $tokens = json_decode($response, true);
 
 if ($httpCode !== 200 || !isset($tokens['access_token'])) {
-    header('Location: ' . $FRONTEND_URL . '#/calendar?google=error');
+    header('Location: ' . $FRONTEND_URL . '?google=error#calendar');
     exit;
 }
 
@@ -53,8 +53,8 @@ try {
         ON DUPLICATE KEY UPDATE access_token = VALUES(access_token), refresh_token = IF(VALUES(refresh_token) != '', VALUES(refresh_token), refresh_token), expires_at = VALUES(expires_at)");
     $stmt->execute([$userId, $accessToken, $refreshToken, $expiresAt]);
 
-    header('Location: ' . $FRONTEND_URL . '#/calendar?google=success');
+    header('Location: ' . $FRONTEND_URL . '?google=success#calendar');
 } catch (Exception $e) {
-    header('Location: ' . $FRONTEND_URL . '#/calendar?google=error');
+    header('Location: ' . $FRONTEND_URL . '?google=error#calendar');
 }
 exit;
