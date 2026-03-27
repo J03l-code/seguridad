@@ -1,0 +1,29 @@
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+.spotlight-V100
+.Trashes
+
+# IDE / Editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Entornos virtuales (si alguna vez usaste/usarás Python o Node)
+node_modules/
+.env
+
+# Archivos de caché y logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.phpunit.result.cache
+
+# Directorios de subida o temporales del sistema
+api/uploads/*
+!api/uploads/.gitkeep

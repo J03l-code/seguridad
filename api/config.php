@@ -1,0 +1,45 @@
+<?php
+// =========================================
+// Database Configuration
+// =========================================
+
+$DB_HOST = getenv('DB_HOST') ?: 'localhost';
+$DB_PORT = getenv('DB_PORT') ?: '3306';
+$DB_NAME = getenv('DB_NAME') ?: 'iccp_db';
+$DB_USER = getenv('DB_USER') ?: 'root';
+$DB_PASS = getenv('DB_PASS') ?: '';
+
+$JWT_SECRET = getenv('JWT_SECRET') ?: 'iccp_secret_key_change_in_production';
+$JWT_EXPIRES = 60 * 60 * 24 * 7; // 7 days
+
+$GOOGLE_CLIENT_ID = getenv('GOOGLE_CLIENT_ID') ?: '';
+$GOOGLE_CLIENT_SECRET = getenv('GOOGLE_CLIENT_SECRET') ?: '';
+$GOOGLE_REDIRECT_URI = getenv('GOOGLE_REDIRECT_URI') ?: 'http://localhost/ICCP/api/calendar.php?action=callback';
+
+$UPLOAD_DIR = __DIR__ . '/uploads/';
+$MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+$FRONTEND_URL = getenv('FRONTEND_URL') ?: 'http://localhost/ICCP';
+
+// DB Connection
+try {
+    $pdo = new PDO(
+        "mysql:host=$DB_HOST;port=$DB_PORT;dbname=$DB_NAME;charset=utf8mb4",
+        $DB_USER,
+        $DB_PASS,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ]
+    );
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Error de conexión a la base de datos.']);
+    exit;
+}
+
+// Ensure uploads directory exists
+if (!is_dir($UPLOAD_DIR)) {
+    mkdir($UPLOAD_DIR, 0755, true);
+}

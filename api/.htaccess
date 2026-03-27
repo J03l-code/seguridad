@@ -1,0 +1,28 @@
+# Protect config files and database schema
+<FilesMatch "(config\.php|helpers\.php)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Protect database folder
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^database/ - [F,L]
+</IfModule>
+
+# Allow PHP scripts to be accessed
+<FilesMatch "^(auth|tasks|departments|users|dashboard|calendar)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</FilesMatch>
+
+# Allow uploads to be served
+<IfModule mod_rewrite.c>
+    RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+</IfModule>
