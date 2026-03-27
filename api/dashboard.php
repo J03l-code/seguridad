@@ -27,7 +27,14 @@ function getMetrics()
 
     $deptFilter = "";
     if (!$isAdmin) {
-        $deptFilter = " AND department_id IN (SELECT department_id FROM department_members WHERE user_id = " . (int) $auth['id'] . ") ";
+        $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+        $uStmt->execute([$auth['id']]);
+        $myGroup = $uStmt->fetchColumn();
+        if ($myGroup) {
+            $deptFilter = " AND target_group = " . $pdo->quote($myGroup) . " ";
+        } else {
+            $deptFilter = " AND 1=0 "; // no group = no data
+        }
     }
 
     $status = $pdo->query("SELECT status, COUNT(*) as count FROM tasks WHERE 1=1 $deptFilter GROUP BY status")->fetchAll();
@@ -95,7 +102,14 @@ function getActivity()
     $limit = (int) (getParam('limit', 20));
     $activityFilter = "";
     if (!$isAdmin) {
-        $activityFilter = " WHERE al.task_id IS NULL OR al.task_id IN (SELECT id FROM tasks WHERE department_id IN (SELECT department_id FROM department_members WHERE user_id = " . (int) $auth['id'] . ")) ";
+        $uStmt2 = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+        $uStmt2->execute([$auth['id']]);
+        $myGroup2 = $uStmt2->fetchColumn();
+        if ($myGroup2) {
+            $activityFilter = " WHERE al.task_id IS NULL OR al.task_id IN (SELECT id FROM tasks WHERE target_group = " . $pdo->quote($myGroup2) . ") ";
+        } else {
+            $activityFilter = " WHERE 1=0 ";
+        }
     }
 
     $stmt = $pdo->prepare("SELECT al.*, u.name as user_name, u.avatar as user_avatar, t.title as task_title

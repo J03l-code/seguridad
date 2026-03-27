@@ -6,6 +6,17 @@ $auth = authenticate();
 $action = getParam('action', 'list');
 $id = getParam('id');
 
+// Zero-downtime auto-migration for target_group
+try {
+    $pdo->query("SELECT target_group FROM tasks LIMIT 1");
+} catch (PDOException $e) {
+    try {
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN target_group VARCHAR(50) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE tasks MODIFY department_id INT NULL");
+    } catch (Exception $ex) {
+    }
+}
+
 switch ($action) {
     case 'list':
         listTasks();
@@ -32,28 +43,24 @@ switch ($action) {
 function listTasks()
 {
     global $pdo;
-    $sql = "SELECT t.*, u1.name as creator_name, d.name as department_name, d.color as department_color,
+    $sql = "SELECT t.*, u1.name as creator_name,
                 (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count
             FROM tasks t
             LEFT JOIN users u1 ON t.created_by = u1.id
-            LEFT JOIN departments d ON t.department_id = d.id
             WHERE 1=1";
     $params = [];
 
-    if ($dept = getParam('department_id')) {
-        $sql .= ' AND t.department_id = ?';
-        $params[] = $dept;
-    }
     if ($status = getParam('status')) {
         $sql .= ' AND t.status = ?';
         $params[] = $status;
     }
-    if ($assigned = getParam('assigned_to')) {
-        // Ignored or left for legacy support if needed
-    }
     if ($priority = getParam('priority')) {
         $sql .= ' AND t.priority = ?';
         $params[] = $priority;
+    }
+    if ($target_group = getParam('target_group')) {
+        $sql .= ' AND t.target_group = ?';
+        $params[] = $target_group;
     }
     if ($search = getParam('search')) {
         $sql .= ' AND (t.title LIKE ? OR t.description LIKE ?)';
@@ -74,9 +81,8 @@ function getTask($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, d.name as department_name, d.color as department_color
-        FROM tasks t LEFT JOIN users u1 ON t.created_by = u1.id
-        LEFT JOIN departments d ON t.department_id = d.id WHERE t.id = ?");
+    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name
+        FROM tasks t LEFT JOIN users u1 ON t.created_by = u1.id WHERE t.id = ?");
     $stmt->execute([$id]);
     $task = $stmt->fetch();
     if (!$task)
@@ -106,39 +112,47 @@ function createTask($auth)
     }
 
     $title = trim($data['title'] ?? '');
-    $deptId = $data['department_id'] ?? null;
-    if (!$title || !$deptId)
+    $targetGroup = $data['target_group'] ?? null;
+    if (!$title || !$targetGroup)
         jsonResponse(['error' => 'Título y departamento son obligatorios.'], 400);
 
     $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
     $uGroup = $uStmt->fetchColumn() ?? '';
     if ($auth['role'] !== 'admin' && $uGroup !== 'soporte_oficina') {
-        jsonResponse(['error' => 'No tienes permisos para crear o asignar tareas.'], 403);
+        jsonResponse(['error' => 'No tienes permisos para crear tareas.'], 403);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, department_id, created_by, due_date)
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, created_by, due_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,
         $data['status'] ?? 'todo',
         $data['priority'] ?? 'medium',
-        $deptId,
+        $targetGroup,
         $auth['id'],
         $data['due_date'] ?: null
     ]);
     $taskId = $pdo->lastInsertId();
 
-    $deptUsers = $pdo->prepare('SELECT user_id FROM department_members WHERE department_id = ?');
-    $deptUsers->execute([$deptId]);
+    $deptUsers = $pdo->prepare('SELECT id FROM users WHERE user_group = ?');
+    $deptUsers->execute([$targetGroup]);
     $usersInDept = $deptUsers->fetchAll(PDO::FETCH_COLUMN);
 
     if (!empty($usersInDept)) {
         $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+        $groupLabels = [
+            'emergencias' => 'Emergencias',
+            'actividades' => 'Actividades',
+            'otros_eventos' => 'Otros Eventos',
+            'soporte_oficina' => 'Soporte de Oficina',
+            'superintendencia' => 'Superintendencia'
+        ];
+        $label = $groupLabels[$targetGroup] ?? $targetGroup;
         foreach ($usersInDept as $uid) {
             if ($uid != $auth['id']) {
-                $notifStmt->execute([$uid, "{$auth['name']} asignó una nueva tarea al departamento: '$title'"]);
+                $notifStmt->execute([$uid, "{$auth['name']} asignó una nueva tarea al departamento de '$label'"]);
             }
         }
     }
@@ -187,23 +201,22 @@ function updateTask($id, $auth)
     $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
     $uGroup = $uStmt->fetchColumn() ?? '';
-    $canManageTasks = ($auth['role'] === 'admin' || $uGroup === 'soporte_oficina');
+    $canManageTasks = ($auth['role'] === 'admin'); // user requested: "tambien permite que todo usuario que tenga el permiso de admin pueda crear una tarea" - let's keep only admin as super bypass, or if they are in the exact target group
 
-    $checkDept = $pdo->prepare('SELECT 1 FROM department_members WHERE department_id = ? AND user_id = ?');
-    $checkDept->execute([$old['department_id'], $auth['id']]);
-    $isInDept = $checkDept->fetchColumn();
+    $isInDept = ($old['target_group'] === $uGroup);
 
     if (!$canManageTasks && !$isInDept) {
-        jsonResponse(['error' => 'No tienes permisos sobre esta tarea.'], 403);
+        jsonResponse(['error' => 'No tienes permisos sobre esta tarea del organigrama.'], 403);
     }
 
-    if (!$canManageTasks) {
+    if (!$canManageTasks && $isInDept) {
+        // Members of the department can only change status
         $allowed = [];
         if (isset($data['status']))
             $allowed['status'] = $data['status'];
         $data = $allowed;
         if (empty($data))
-            jsonResponse(['error' => 'Solo puedes cambiar el estado de la tarea departamental.'], 403);
+            jsonResponse(['error' => 'Solo puedes cambiar el estado de la tarea de tu departamento.'], 403);
     }
 
     $pdo->prepare("UPDATE tasks SET title = COALESCE(?, title), description = COALESCE(?, description),

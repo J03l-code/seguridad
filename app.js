@@ -486,8 +486,8 @@ async function renderTasks(wrapper) {
       api('users.php?action=list')
     ]);
     let tasks = tRes.tasks;
-    const depts = dRes.departments;
     const users = uRes.users;
+    const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia' };
 
     function buildBoard(filtered) {
       const todo = filtered.filter(t => t.status === 'todo');
@@ -519,10 +519,10 @@ async function renderTasks(wrapper) {
                     <div class="task-card-meta">
                       ${t.due_date ? `<span class="${isOverdue(t.due_date) && t.status !== 'done' ? 'task-due-overdue' : ''}">📅 ${formatDate(t.due_date)}</span>` : ''}
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
-                      ${t.department_name ? `<span class="dept-tag" style="background:${t.department_color || '#2d3561'}">${t.department_name}</span>` : ''}
+                      ${t.target_group ? `<span class="dept-tag" style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
                     </div>
                   </div>
-                  ${c.next && (canManage || (myDepartments.includes(t.department_name))) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
+                  ${c.next && (canManage || (t.target_group === myGroup)) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
                 </div>
               `).join('')}
           </div>
@@ -531,13 +531,12 @@ async function renderTasks(wrapper) {
     }
 
     const myGroup = users.find(u => u.id == state.user.id)?.user_group;
-    const myDepartments = users.find(u => u.id == state.user.id)?.departments || '';
     const canManage = state.user.role === 'admin' || myGroup === 'soporte_oficina';
 
     wrapper.innerHTML = `
       <div class="page-header"><h2>Gestión de Tareas</h2><div>${canManage ? `<button class="btn btn-primary" onclick="openCreateTask()">＋ Nueva Tarea</button>` : ''}</div></div>
       <div class="filters-bar">
-        <select class="form-select" id="filter-dept" onchange="filterTasks()"><option value="">Todos los departamentos</option>${depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select>
+        <select class="form-select" id="filter-dept" onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select>
         <select class="form-select" id="filter-priority" onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>
       </div>
       <div id="kanban-container">${buildBoard(tasks)}</div>
@@ -555,7 +554,7 @@ async function renderTasks(wrapper) {
       const dept = document.getElementById('filter-dept').value;
       const pri = document.getElementById('filter-priority').value;
       let filtered = window._tasks;
-      if (dept) filtered = filtered.filter(t => t.department_id == dept);
+      if (dept) filtered = filtered.filter(t => t.target_group === dept);
       if (pri) filtered = filtered.filter(t => t.priority === pri);
       document.getElementById('kanban-container').innerHTML = buildBoard(filtered);
     };
@@ -588,12 +587,12 @@ async function renderTasks(wrapper) {
             </div>
             ${t.description ? `<div style="margin-bottom:20px"><label class="form-label">Descripción</label><p style="font-size:14px;color:var(--gray-700);line-height:1.6">${t.description}</p></div>` : ''}
             <div class="grid-2" style="margin-bottom:20px">
-              <div><label class="form-label">Departamento</label><p style="font-size:14px">${t.department_name || '—'}</p></div>
+              <div><label class="form-label">Departamento</label><p style="font-size:14px">${t.target_group ? (groupLabels[t.target_group] || t.target_group) : '—'}</p></div>
               <div><label class="form-label">Sector</label><p style="font-size:14px">Tarea de Equipo</p></div>
               <div><label class="form-label">Creado por</label><p style="font-size:14px">${t.creator_name}</p></div>
               <div><label class="form-label">Fecha límite</label><p style="font-size:14px;${isOverdue(t.due_date) && t.status !== 'done' ? 'color:var(--danger-500)' : ''}">${formatDate(t.due_date)}</p></div>
             </div>
-            ${(canManage || (myDepartments.includes(t.department_name))) ? `
+            ${(canManage || (t.target_group === myGroup)) ? `
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
               ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
@@ -643,7 +642,7 @@ async function renderTasks(wrapper) {
             <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="ct-title" placeholder="Nombre de la tarea" required></div>
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ct-desc" placeholder="Describe la tarea..."></textarea></div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select" id="ct-dept" required><option value="">Seleccionar...</option>${window._depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}</select></div>
+              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select" id="ct-target_group" required><option value="">Seleccionar...</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select></div>
               <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="ct-pri"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div>
             </div>
             <div class="grid-2">
@@ -671,7 +670,7 @@ async function renderTasks(wrapper) {
           const fd = new FormData();
           fd.append('title', document.getElementById('ct-title').value);
           fd.append('description', document.getElementById('ct-desc').value);
-          fd.append('department_id', document.getElementById('ct-dept').value);
+          fd.append('target_group', document.getElementById('ct-target_group').value);
           fd.append('priority', document.getElementById('ct-pri').value);
           fd.append('due_date', document.getElementById('ct-due').value);
           const files = document.getElementById('ct-files').files;
