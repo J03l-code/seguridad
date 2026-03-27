@@ -947,7 +947,8 @@ async function renderUsers(wrapper) {
               name: document.getElementById('cu-name').value,
               email: document.getElementById('cu-email').value,
               password: document.getElementById('cu-pass').value,
-              role: document.getElementById('cu-role').value
+              role: document.getElementById('cu-role').value,
+              user_group: document.getElementById('cu-group').value
             })
           });
           toast('Usuario creado exitosamente');
