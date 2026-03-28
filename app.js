@@ -740,9 +740,11 @@ async function renderDepartments(wrapper) {
 
     const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
     orgUsers.forEach(u => {
-      const g = u.user_group || 'otros_eventos';
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(u);
+      const uGroups = (u.user_group || 'otros_eventos').split(',').map(g => g.trim());
+      uGroups.forEach(g => {
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(u);
+      });
     });
 
     const renderOrgNode = (gName, key, grpUsers) => `
