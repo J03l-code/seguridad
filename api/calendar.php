@@ -138,8 +138,8 @@ function syncTask()
     $event = [
         'summary' => '[ICCP] ' . $task['title'],
         'description' => $task['description'] ?: 'Tarea del sistema ICCP',
-        'start' => ['dateTime' => $dueDate, 'timeZone' => 'America/Bogota'],
-        'end' => ['dateTime' => $endDate, 'timeZone' => 'America/Bogota'],
+        'start' => ['dateTime' => $dueDate, 'timeZone' => 'America/Guayaquil'],
+        'end' => ['dateTime' => $endDate, 'timeZone' => 'America/Guayaquil'],
         'reminders' => ['useDefault' => false, 'overrides' => [['method' => 'popup', 'minutes' => 30]]]
     ];
 

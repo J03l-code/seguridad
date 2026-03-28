@@ -2,6 +2,7 @@
 // =========================================
 // Database Configuration
 // =========================================
+date_default_timezone_set('America/Guayaquil');
 
 $DB_HOST = getenv('DB_HOST') ?: 'localhost';
 $DB_PORT = getenv('DB_PORT') ?: '3306';

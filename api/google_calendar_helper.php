@@ -79,8 +79,8 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
     $event = [
         'summary' => $title,
         'description' => $description ?? '',
-        'start' => ['dateTime' => date('c', $startTs), 'timeZone' => 'America/Mexico_City'],
-        'end' => ['dateTime' => date('c', $endTs), 'timeZone' => 'America/Mexico_City'],
+        'start' => ['dateTime' => date('c', $startTs), 'timeZone' => 'America/Guayaquil'],
+        'end' => ['dateTime' => date('c', $endTs), 'timeZone' => 'America/Guayaquil'],
         'reminders' => [
             'useDefault' => false,
             'overrides' => [['method' => 'popup', 'minutes' => 30]]
