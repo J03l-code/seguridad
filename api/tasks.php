@@ -36,6 +36,9 @@ switch ($action) {
     case 'upload':
         uploadFiles($id, $auth);
         break;
+    case 'comment':
+        addComment($auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -91,7 +94,7 @@ function getTask($id)
     $att = $pdo->prepare("SELECT ta.*, u.name as uploader_name FROM task_attachments ta LEFT JOIN users u ON ta.uploaded_by = u.id WHERE ta.task_id = ? ORDER BY ta.created_at DESC");
     $att->execute([$id]);
 
-    $act = $pdo->prepare("SELECT al.*, u.name as user_name FROM activity_log al LEFT JOIN users u ON al.user_id = u.id WHERE al.task_id = ? ORDER BY al.created_at DESC LIMIT 20");
+    $act = $pdo->prepare("SELECT al.*, u.name as user_name FROM activity_log al LEFT JOIN users u ON al.user_id = u.id WHERE al.task_id = ? ORDER BY al.created_at DESC LIMIT 100");
     $act->execute([$id]);
 
     jsonResponse(['task' => $task, 'attachments' => $att->fetchAll(), 'activity' => $act->fetchAll()]);
@@ -130,9 +133,17 @@ function createTask($auth)
     ]);
     $taskId = $pdo->lastInsertId();
 
-    $deptUsers = $pdo->prepare('SELECT id FROM users WHERE user_group = ?');
-    $deptUsers->execute([$targetGroup]);
-    $usersInDept = $deptUsers->fetchAll(PDO::FETCH_COLUMN);
+    $deptUsers = $pdo->prepare('SELECT id, email, name, user_group FROM users');
+    $deptUsers->execute();
+    $allUsers = $deptUsers->fetchAll();
+
+    $usersInDept = [];
+    foreach ($allUsers as $u) {
+        $uGroups = explode(',', $u['user_group'] ?: 'otros_eventos');
+        if (in_array(trim($targetGroup), $uGroups)) {
+            $usersInDept[] = $u;
+        }
+    }
 
     if (!empty($usersInDept)) {
         $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
@@ -144,9 +155,20 @@ function createTask($auth)
             'superintendencia' => 'Superintendencia'
         ];
         $label = $groupLabels[$targetGroup] ?? $targetGroup;
-        foreach ($usersInDept as $uid) {
-            if ($uid != $auth['id']) {
-                $notifStmt->execute([$uid, "{$auth['name']} asignó una nueva tarea al departamento de '$label'"]);
+        $priority = $data['priority'] ?? 'medium';
+
+        foreach ($usersInDept as $u) {
+            if ($u['id'] != $auth['id']) {
+                $notifStmt->execute([$u['id'], "{$auth['name']} asignó una nueva tarea al departamento de '$label'"]);
+
+                // Feature 5: Urgent Email Notifications
+                if ($priority === 'urgent' && !empty($u['email'])) {
+                    $subject = "URGENTE: Nueva Tarea Asignada - ICCP";
+                    $desc = $data['description'] ?? 'Sin descripción';
+                    $message = "Hola {$u['name']},\n\nSe ha asignado una nueva tarea URGENTE al departamento de $label.\n\nTítulo: $title\nDescripción: $desc\n\nPor favor, ingresa al sistema ICCP para revisarla lo antes posible.\n\nAtentamente,\nSistema ICCP";
+                    $headers = "From: noreply@" . ($_SERVER['HTTP_HOST'] ?? 'iccp.local') . "\r\n";
+                    @mail($u['email'], $subject, $message, $headers);
+                }
             }
         }
     }
@@ -247,6 +269,31 @@ function deleteTask($id, $auth)
         jsonResponse(['error' => 'Tarea no encontrada.'], 404);
 
     jsonResponse(['message' => 'Tarea eliminada.']);
+}
+
+function addComment($auth)
+{
+    global $pdo;
+    if (getMethod() !== 'POST')
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+
+    $id = (int) getParam('id', 0);
+    $data = getJsonBody();
+    $comment = trim($data['comment'] ?? '');
+
+    if (!$id || !$comment)
+        jsonResponse(['error' => 'ID de tarea y comentario requeridos.'], 400);
+
+    // Verify task exists
+    $stmt = $pdo->prepare('SELECT id FROM tasks WHERE id = ?');
+    $stmt->execute([$id]);
+    if (!$stmt->fetch())
+        jsonResponse(['error' => 'Tarea no encontrada.'], 404);
+
+    $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
+        ->execute([$id, $auth['id'], 'commented', $comment]);
+
+    jsonResponse(['message' => 'Comentario añadido.']);
 }
 
 function uploadFiles($taskId, $auth)

@@ -74,6 +74,15 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function getSLAStatus(dateStr, status) {
+  if (!dateStr || status === 'done') return '';
+  const due = new Date(dateStr).getTime();
+  const now = new Date().getTime();
+  if (due < now) return 'overdue';
+  if (due - now <= 86400000) return 'warning'; // 24 hours
+  return '';
+}
+
 function timeAgo(d) {
   if (!d) return '';
   const diff = Date.now() - new Date(d).getTime();
@@ -413,6 +422,10 @@ async function renderDashboard(wrapper) {
     }).join('');
 
     wrapper.innerHTML = `
+      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <h2>Dashboard Gerencial</h2>
+        ${state.user?.role === 'admin' ? `<button class="btn btn-primary" onclick="exportTasksCSV()" style="display:flex;align-items:center;gap:6px">📥 Descargar Reporte (CSV)</button>` : ''}
+      </div>
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-icon blue">📋</div><div class="metric-info"><h4>Total Tareas</h4><div class="metric-value">${m.totalTasks}</div><span class="metric-sub positive">↑ ${m.weeklyCreated} esta semana</span></div></div>
         <div class="metric-card"><div class="metric-icon green">✅</div><div class="metric-info"><h4>Completadas</h4><div class="metric-value">${s.done}</div><span class="metric-sub positive">${rate}% tasa de éxito</span></div></div>
@@ -502,8 +515,10 @@ async function renderTasks(wrapper) {
           </div>
           <div class="kanban-body">
             ${c.tasks.length === 0 ? '<div style="padding:20px;text-align:center;color:var(--gray-500);font-size:13px">No hay tareas</div>' :
-          c.tasks.map(t => `
-                <div class="task-card" onclick="openTaskDetail(${t.id})">
+          c.tasks.map(t => {
+            const sla = getSLAStatus(t.due_date, t.status);
+            return `
+                <div class="task-card ${sla ? 'task-card-' + sla : ''}" onclick="openTaskDetail(${t.id})">
                   <div class="task-card-header">
                     <span class="task-card-title">${t.title}</span>
                     <span class="badge badge-${t.priority}">${priorityLabel[t.priority]}</span>
@@ -518,7 +533,8 @@ async function renderTasks(wrapper) {
                   </div>
                   ${c.next && (canManage || (t.target_group === myGroup)) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
                 </div>
-              `).join('')}
+              `;
+          }).join('')}
           </div>
         </div>
       `).join('')}</div>`;
@@ -591,7 +607,15 @@ async function renderTasks(wrapper) {
               ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}" target="_blank" style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
-            ${act.length > 0 ? `<div><label class="form-label">Historial</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar" style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div><div class="activity-text" style="font-size:13px"><strong>${a.user_name}</strong> ${a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
+            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar" style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text" style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800)">${a.details}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
+            
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-200)">
+              <label class="form-label">Añadir Comentario</label>
+              <div style="display:flex;gap:8px">
+                <textarea id="task-comment-input" class="form-input" placeholder="Escribe un comentario o actualización..." style="height:40px; min-height:40px; resize:vertical;"></textarea>
+                <button class="btn btn-primary" style="white-space:nowrap" onclick="addComment(${t.id})">Enviar</button>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-sm btn-outline" onclick="syncCalendar(${t.id})">📅 Sincronizar</button>
@@ -603,12 +627,28 @@ async function renderTasks(wrapper) {
     };
 
     window.changeTaskStatusModal = async function (id, status) {
+      document.getElementById('task-comment-input').disabled = true; // small hack to prevent UI glitches during loading
+      await changeTaskStatus(id, status);
+      openTaskDetail(id); // Reload modal
+    };
+
+    window.addComment = async function (id) {
+      const input = document.getElementById('task-comment-input');
+      const comment = input.value.trim();
+      if (!comment) return;
+      input.disabled = true;
       try {
-        await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
-        toast('Estado actualizado');
-        closeModal();
-        navigate('tasks');
-      } catch (err) { toast(err.message, 'error'); }
+        await api('tasks.php?action=comment&id=' + id, {
+          method: 'POST',
+          body: JSON.stringify({ comment })
+        });
+        toast('Comentario añadido');
+        openTaskDetail(id); // Reload modal
+        renderTasks(document.createElement('div')).then(() => { }); // Background refresh
+      } catch (err) {
+        toast(err.message, 'error');
+        input.disabled = false;
+      }
     };
 
     window.deleteTask = async function (id) {
@@ -1346,6 +1386,46 @@ function closeModal() {
   const el = document.getElementById('modal-overlay');
   if (el) el.remove();
 }
+
+// ==========================================
+// Integrations
+// ==========================================
+window.exportTasksCSV = async function () {
+  try {
+    const res = await api('tasks.php?action=list');
+    const tasks = res.tasks || [];
+    if (tasks.length === 0) return toast('No hay tareas para exportar', 'warning');
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // UTF-8 BOM
+    csvContent += "ID,Titulo,Descripcion,Estado,Prioridad,Departamento,Creador,Fecha Creacion,Fecha Limite\r\n";
+
+    tasks.forEach(t => {
+      const row = [
+        t.id,
+        `"${(t.title || '').replace(/"/g, '""')}"`,
+        `"${(t.description || '').replace(/"/g, '""')}"`,
+        statusLabel[t.status] || t.status,
+        priorityLabel[t.priority] || t.priority,
+        groupLabels[t.target_group] || t.target_group,
+        `"${(t.creator_name || '').replace(/"/g, '""')}"`,
+        t.created_at,
+        t.due_date
+      ];
+      csvContent += row.join(",") + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Reporte_ICCP_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast('Reporte descargado exitosamente');
+  } catch (err) {
+    toast('Error al exportar: ' + err.message, 'error');
+  }
+};
 
 // ==========================================
 // Init
