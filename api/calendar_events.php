@@ -144,10 +144,22 @@ function createEvent($auth)
 
         $pdo->commit();
 
+        // Map application's target groups to Google Color IDs:
+        // 11=Red(Emergencias), 7=Blue(Actividades), 5=Yellow(Otros), 3=Purple(Soporte), 10=Green(Super)
+        $colorMap = [
+            'emergencias' => 11,
+            'actividades' => 7,
+            'otros_eventos' => 5,
+            'soporte_oficina' => 3,
+            'superintendencia' => 10
+        ];
+        $primaryGroup = (is_array($groupsArray) && count($groupsArray) > 0) ? $groupsArray[0] : 'otros_eventos';
+        $googleColorId = $colorMap[$primaryGroup] ?? 5;
+
         // Push to Google Calendar and store returned event IDs per user
         try {
             $pushGroups = ($targetGroupStr === 'todos') ? ['todos'] : $groupsArray;
-            $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate);
+            $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate, null, $googleColorId);
 
             // Store google_event_ids as JSON: {"userId": "googleEventId"}
             $googleIds = [];

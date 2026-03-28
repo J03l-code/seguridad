@@ -66,7 +66,7 @@ function getValidAccessToken($pdo, $userId)
     return $token['access_token'];
 }
 
-function createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime = null)
+function createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime = null, $colorId = null)
 {
     $startTs = strtotime($startDateTime);
     if (!$startTs)
@@ -86,6 +86,9 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
             'overrides' => [['method' => 'popup', 'minutes' => 30]]
         ]
     ];
+    if ($colorId) {
+        $event['colorId'] = (string) $colorId;
+    }
 
     $ch = curl_init('https://www.googleapis.com/calendar/v3/calendars/primary/events');
     curl_setopt_array($ch, [
@@ -115,7 +118,7 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
  * Push an event to every linked Google Calendar user in specific groups.
  * If groups contains 'todos', sends to ALL users with a linked token.
  */
-function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateTime, $endDateTime = null)
+function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateTime, $endDateTime = null, $colorId = null)
 {
     ensureGoogleTokensTable($pdo);
 
@@ -144,7 +147,7 @@ function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateT
     foreach ($userIds as $userId) {
         $accessToken = getValidAccessToken($pdo, $userId);
         if ($accessToken) {
-            $results[$userId] = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime);
+            $results[$userId] = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime, $colorId);
         }
     }
     return $results;
