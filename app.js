@@ -1166,10 +1166,59 @@ async function renderCalendar(wrapper) {
                 <p style="color:var(--gray-700); line-height:1.5">${e.description || 'Sin descripción detallada.'}</p>
             </div>
             <div class="modal-footer" style="display:flex; justify-content:space-between">
-                ${canDelete ? `<button class="btn btn-outline" style="color:var(--danger-500); border-color:var(--danger-300)" onclick="deleteEvent(${e.id})">🗑 Eliminar Evento</button>` : '<div></div>'}
+                <div style="display:flex;gap:8px">
+                    ${canDelete ? `<button class="btn btn-outline" style="color:var(--danger-500); border-color:var(--danger-300)" onclick="deleteEvent(${e.id})">🗑 Eliminar</button>` : '<div></div>'}
+                    ${canDelete ? `<button class="btn btn-outline" onclick="openEditEvent(${e.id})">✏️ Editar</button>` : ''}
+                </div>
                 <button type="button" class="btn btn-primary" onclick="closeModal()">Cerrar</button>
             </div>
         `);
+    };
+
+    window.openEditEvent = function (id) {
+      const e = window._calEventsObj.find(x => x.id === id);
+      if (!e) return;
+      const isGrp = (g) => (e.target_group && e.target_group.split(',').includes(g)) || e.target_group === 'todos' ? 'checked' : '';
+
+      showModal(`
+        <div class="modal-header"><h2>Editar Evento del Calendario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <form id="edit-event-form">
+          <div class="modal-body">
+            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input" id="ee-title" value="${e.title.replace(/"/g, '&quot;')}" required></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ee-desc">${e.description || ''}</textarea></div>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ee-date" value="${e.event_date.replace(' ', 'T')}" required></div>
+              <div class="form-group"><label class="form-label">Dirigidos a (Grupos) *</label>
+                <div class="checkbox-group" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid var(--gray-300); padding:10px; border-radius:4px; background:#fff;">
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="todos" ${isGrp('todos')}> Para Todos (General)</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="emergencias" ${isGrp('emergencias')}> Emergencias</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="actividades" ${isGrp('actividades')}> Actividades</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="otros_eventos" ${isGrp('otros_eventos')}> Otros eventos</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="soporte_oficina" ${isGrp('soporte_oficina')}> Soporte de oficina</label>
+                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="superintendencia" ${isGrp('superintendencia')}> Superintendencia</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>
+        </form>
+      `);
+      document.getElementById('edit-event-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        try {
+          await api('calendar_events.php?action=update&id=' + e.id, {
+            method: 'PUT', body: JSON.stringify({
+              title: document.getElementById('ee-title').value,
+              description: document.getElementById('ee-desc').value,
+              event_date: document.getElementById('ee-date').value.replace('T', ' '),
+              target_group: Array.from(document.querySelectorAll('input[name="ee-group"]:checked')).map(cb => cb.value)
+            })
+          });
+          toast('Evento actualizado');
+          closeModal();
+          renderCalendar(wrapper);
+        } catch (err) { toast(err.message, 'error'); }
+      });
     };
 
     window.openCreateEvent = function () {

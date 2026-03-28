@@ -21,6 +21,9 @@ switch ($action) {
     case 'create':
         createEvent($auth);
         break;
+    case 'update':
+        updateEvent($auth);
+        break;
     case 'delete':
         deleteEvent($auth);
         break;
@@ -182,6 +185,99 @@ function createEvent($auth)
         $pdo->rollBack();
         jsonResponse(['error' => 'Error al guardar el evento y notificaciones.', 'details' => $e->getMessage()], 500);
     }
+}
+
+function updateEvent($auth)
+{
+    global $pdo;
+    if (getMethod() !== 'PUT')
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+
+    $id = (int) getParam('id', 0);
+    if (!$id)
+        jsonResponse(['error' => 'ID requerido.'], 400);
+
+    $stmt = $pdo->prepare('SELECT * FROM calendar_events WHERE id = ?');
+    $stmt->execute([$id]);
+    $ev = $stmt->fetch();
+
+    if (!$ev)
+        jsonResponse(['error' => 'Evento no encontrado.'], 404);
+    if ($auth['role'] !== 'admin' && $ev['created_by'] != $auth['id']) {
+        jsonResponse(['error' => 'No tienes permiso para editar este evento.'], 403);
+    }
+
+    $data = getJsonBody();
+    $title = trim($data['title'] ?? $ev['title']);
+    $description = trim($data['description'] ?? $ev['description']);
+    $eventDate = $data['event_date'] ?? $ev['event_date'];
+    $targetGroupsRaw = $data['target_group'] ?? $ev['target_group'];
+
+    if (is_array($targetGroupsRaw)) {
+        if (in_array('todos', $targetGroupsRaw)) {
+            $targetGroupStr = 'todos';
+            $groupsArray = ['todos'];
+        } else {
+            $targetGroupStr = implode(',', $targetGroupsRaw);
+            $groupsArray = $targetGroupsRaw;
+        }
+    } else {
+        $targetGroupStr = trim($targetGroupsRaw);
+        $groupsArray = explode(',', $targetGroupStr);
+    }
+
+    if (!$title || !$eventDate) {
+        jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
+    }
+
+    // Delete old instances from Google Calendar
+    $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
+    foreach ($gcIds as $userId => $googleEventId) {
+        $accessToken = getValidAccessToken($pdo, (int) $userId);
+        if ($accessToken && $googleEventId) {
+            $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
+            curl_setopt_array($ch, [
+                CURLOPT_CUSTOMREQUEST => 'DELETE',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken]
+            ]);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+    }
+
+    $stmt = $pdo->prepare('UPDATE calendar_events SET title=?, description=?, event_date=?, target_group=?, google_event_ids=NULL WHERE id=?');
+    $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $id]);
+
+    $colorMap = [
+        'emergencias' => 11,
+        'actividades' => 7,
+        'otros_eventos' => 5,
+        'soporte_oficina' => 3,
+        'superintendencia' => 10
+    ];
+    $primaryGroup = (is_array($groupsArray) && count($groupsArray) > 0) ? $groupsArray[0] : 'otros_eventos';
+    $googleColorId = $colorMap[$primaryGroup] ?? 5;
+
+    // Push new instances to Google Calendar
+    try {
+        $pushGroups = ($targetGroupStr === 'todos') ? ['todos'] : $groupsArray;
+        $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate, null, $googleColorId);
+
+        $googleIds = [];
+        foreach ($gcResults as $uid => $res) {
+            if (!empty($res['google_event_id'])) {
+                $googleIds[$uid] = $res['google_event_id'];
+            }
+        }
+        if (!empty($googleIds)) {
+            $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
+                ->execute([json_encode($googleIds), $id]);
+        }
+    } catch (Exception $gcErr) {
+    }
+
+    jsonResponse(['message' => 'Evento actualizado exitosamente.']);
 }
 
 function deleteEvent($auth)
