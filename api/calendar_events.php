@@ -7,6 +7,13 @@ setCorsHeaders();
 $auth = authenticate();
 $action = getParam('action', 'list');
 
+// Auto-migrate google_event_ids column
+try {
+    $pdo->query("SELECT google_event_ids FROM calendar_events LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE calendar_events ADD COLUMN google_event_ids TEXT DEFAULT NULL");
+}
+
 switch ($action) {
     case 'list':
         listEvents($auth);
@@ -107,19 +114,29 @@ function createEvent($auth)
             $notifStmt = $pdo->prepare('INSERT INTO notifications (user_id, message) SELECT id, ? FROM users WHERE id != ?');
             $notifStmt->execute([$msg, $auth['id']]);
         } else {
-            $groupsArray[] = $creatorGroup;
+            $cGroups = explode(',', $creatorGroup);
+            foreach ($cGroups as $cg) {
+                if (trim($cg))
+                    $groupsArray[] = trim($cg);
+            }
             $groupsArray = array_unique($groupsArray);
-            $placeholders = implode(',', array_fill(0, count($groupsArray), '?'));
+
+            $conditions = [];
+            foreach ($groupsArray as $g) {
+                $conditions[] = "FIND_IN_SET(?, user_group)";
+            }
+            $condSql = !empty($conditions) ? implode(' OR ', $conditions) : "1=0";
 
             $notifStmt = $pdo->prepare("
                 INSERT INTO notifications (user_id, message) 
                 SELECT id, ? FROM users 
-                WHERE user_group IN ($placeholders) AND id != ?
+                WHERE ($condSql) AND id != ?
             ");
 
             $params = [$msg];
-            foreach ($groupsArray as $g)
+            foreach ($groupsArray as $g) {
                 $params[] = $g;
+            }
             $params[] = $auth['id'];
 
             $notifStmt->execute($params);
@@ -127,16 +144,25 @@ function createEvent($auth)
 
         $pdo->commit();
 
-        // Push to Google Calendar for all linked users in target groups
+        // Push to Google Calendar and store returned event IDs per user
         try {
-            if ($targetGroupStr === 'todos') {
-                $allGroups = ['emergencias', 'actividades', 'otros_eventos', 'soporte_oficina', 'superintendencia'];
-                pushEventToGroup($pdo, $allGroups, $title, $description, $eventDate);
-            } else {
-                pushEventToGroup($pdo, $groupsArray, $title, $description, $eventDate);
+            $pushGroups = ($targetGroupStr === 'todos') ? ['todos'] : $groupsArray;
+            $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate);
+
+            // Store google_event_ids as JSON: {"userId": "googleEventId"}
+            $googleIds = [];
+            foreach ($gcResults as $uid => $res) {
+                if (!empty($res['google_event_id'])) {
+                    $googleIds[$uid] = $res['google_event_id'];
+                }
+            }
+            if (!empty($googleIds)) {
+                $eventId = $pdo->lastInsertId();
+                $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
+                    ->execute([json_encode($googleIds), $eventId]);
             }
         } catch (Exception $gcErr) {
-            // Don't fail the main request if Google Calendar push fails
+            // Don't fail if Google Calendar push fails
         }
 
         jsonResponse(['message' => 'Evento creado y notificado exitosamente.'], 201);
@@ -156,7 +182,7 @@ function deleteEvent($auth)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT created_by FROM calendar_events WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT * FROM calendar_events WHERE id = ?');
     $stmt->execute([$id]);
     $ev = $stmt->fetch();
 
@@ -165,6 +191,22 @@ function deleteEvent($auth)
 
     if ($auth['role'] !== 'admin' && $ev['created_by'] != $auth['id']) {
         jsonResponse(['error' => 'No tienes permiso para eliminar este evento.'], 403);
+    }
+
+    // Delete from Google Calendar for each linked user
+    $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
+    foreach ($gcIds as $userId => $googleEventId) {
+        $accessToken = getValidAccessToken($pdo, (int) $userId);
+        if ($accessToken && $googleEventId) {
+            $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
+            curl_setopt_array($ch, [
+                CURLOPT_CUSTOMREQUEST => 'DELETE',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken]
+            ]);
+            curl_exec($ch);
+            curl_close($ch);
+        }
     }
 
     $stmt = $pdo->prepare('DELETE FROM calendar_events WHERE id = ?');

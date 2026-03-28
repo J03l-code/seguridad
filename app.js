@@ -883,7 +883,7 @@ async function renderUsers(wrapper) {
           <td><div class="user-cell"><div class="topbar-avatar" style="width:36px;height:36px;font-size:13px">${initials(u.name)}</div><div><div style="font-weight:600;color:var(--primary-800)">${u.name}</div><div style="font-size:12px;color:var(--gray-500)">${u.email}</div></div></div></td>
           <td>
             <div style="margin-bottom:4px"><span class="badge badge-${u.role}">${u.role}</span></div>
-            <div style="font-size:12px;color:var(--gray-600);text-transform:capitalize">${(u.user_group || 'Otros eventos').replace('_', ' ')}</div>
+            <div style="font-size:12px;color:var(--gray-600);text-transform:capitalize">${(u.user_group || 'Otros eventos').replace(/_/g, ' ')}</div>
           </td>
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
@@ -915,13 +915,13 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Nombre Completo *</label><input class="form-input" id="cu-name" required></div>
             <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
             <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
-            <div class="form-group"><label class="form-label">Grupo del Usuario</label>
-              <select class="form-select" id="cu-group">
+            <div class="form-group"><label class="form-label">Departamento (Cmd/Ctrl + click para varios)</label>
+              <select class="form-select" id="cu-group" multiple size="5" style="height:auto">
                 <option value="emergencias">Emergencias</option>
                 <option value="actividades">Actividades</option>
-                <option value="otros_eventos" selected>Otros eventos</option>
+                <option value="otros_eventos">Otros eventos</option>
                 <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia (Es Admin)</option>
+                <option value="superintendencia">Superintendencia</option>
               </select>
             </div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
@@ -944,7 +944,7 @@ async function renderUsers(wrapper) {
               email: document.getElementById('cu-email').value,
               password: document.getElementById('cu-pass').value,
               role: document.getElementById('cu-role').value,
-              user_group: document.getElementById('cu-group').value
+              user_group: Array.from(document.getElementById('cu-group').selectedOptions).map(o => o.value).join(',')
             })
           });
           toast('Usuario creado exitosamente');
@@ -963,15 +963,15 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="eu-name" value="${name}" required></div>
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
             <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
-            <div class="form-group"><label class="form-label">Cambiar Grupo</label>
-              <select class="form-select" id="eu-group">
-                <option value="">(No cambiar)</option>
+            <div class="form-group"><label class="form-label">Cambiar Grupo (Cmd/Ctrl + click)</label>
+              <select class="form-select" id="eu-group" multiple size="5" style="height:auto">
                 <option value="emergencias">Emergencias</option>
                 <option value="actividades">Actividades</option>
                 <option value="otros_eventos">Otros eventos</option>
                 <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia (Automático Admin)</option>
+                <option value="superintendencia">Superintendencia</option>
               </select>
+              <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
@@ -982,9 +982,11 @@ async function renderUsers(wrapper) {
         try {
           const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
           const pass = document.getElementById('eu-pass').value;
-          const grp = document.getElementById('eu-group').value;
           if (pass) body.password = pass;
-          if (grp) body.user_group = grp;
+          const selGrp = document.getElementById('eu-group');
+          if (selGrp && selGrp.selectedOptions.length > 0) {
+            body.user_group = Array.from(selGrp.selectedOptions).map(o => o.value).join(',');
+          }
           await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
           toast('Actualizado'); closeModal(); navigate('users');
         } catch (err) { toast(err.message, 'error'); }

@@ -126,11 +126,17 @@ function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateT
         // Send to every user who has linked their Google Calendar
         $stmt = $pdo->query("SELECT user_id FROM google_tokens");
     } else {
-        $placeholders = implode(',', array_fill(0, count($groups), '?'));
+        $conditions = [];
+        $params = [];
+        foreach ($groups as $g) {
+            $conditions[] = "FIND_IN_SET(?, u.user_group)";
+            $params[] = $g;
+        }
+        $condSql = implode(' OR ', $conditions) ?: "1=0";
         $stmt = $pdo->prepare("SELECT gt.user_id FROM google_tokens gt
             INNER JOIN users u ON u.id = gt.user_id
-            WHERE u.user_group IN ($placeholders)");
-        $stmt->execute($groups);
+            WHERE $condSql");
+        $stmt->execute($params);
     }
 
     $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
