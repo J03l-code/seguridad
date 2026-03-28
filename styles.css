@@ -1005,6 +1005,39 @@ textarea.form-input {
     background: var(--gray-700);
 }
 
+.calendar-task-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    background: var(--primary-500);
+    cursor: pointer;
+}
+
+.calendar-task-dot.target-emergencias {
+    background: var(--danger-500);
+}
+
+.calendar-task-dot.target-actividades {
+    background: var(--success-500);
+}
+
+.calendar-task-dot.target-otros_eventos {
+    background: var(--warning-600);
+}
+
+.calendar-task-dot.target-soporte_oficina {
+    background: var(--info-500);
+}
+
+.calendar-task-dot.target-superintendencia {
+    background: var(--primary-800);
+}
+
+.calendar-task-dot.target-todos {
+    background: var(--gray-700);
+}
+
 .calendar-top-controls {
     display: flex;
     align-items: center;

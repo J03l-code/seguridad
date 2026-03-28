@@ -99,6 +99,7 @@ function isOverdue(d) { return d && new Date(d) < new Date(); }
 const priorityLabel = { low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
 const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', done: 'Completada' };
 const activityIcon = { task_created: '📋', status_changed: '🔄', assigned: '👤', file_uploaded: '📎', calendar_synced: '📅', department_created: '🏢' };
+const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia' };
 
 // ==========================================
 // Router
@@ -494,7 +495,6 @@ async function renderTasks(wrapper) {
     ]);
     let tasks = tRes.tasks;
     const users = uRes.users;
-    const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia' };
 
     function buildBoard(filtered) {
       const todo = filtered.filter(t => t.status === 'todo');
@@ -1049,8 +1049,12 @@ async function renderUsers(wrapper) {
 // ==========================================
 async function renderCalendar(wrapper) {
   try {
-    const data = await api('calendar_events.php?action=list');
-    const events = data.events;
+    const [eventsData, tasksData] = await Promise.all([
+      api('calendar_events.php?action=list'),
+      api('tasks.php?action=list')
+    ]);
+    const events = eventsData.events;
+    const allTasks = tasksData.tasks || [];
     const isAdmin = state.user?.role === 'admin';
     const userGroup = state.user?.user_group || 'otros_eventos';
 
@@ -1079,6 +1083,15 @@ async function renderCalendar(wrapper) {
       eventsByDate[dateStr].push(e);
     });
 
+    // Group tasks by due date
+    const tasksByDate = {};
+    allTasks.forEach(t => {
+      if (!t.due_date || t.status === 'done') return;
+      const dateStr = t.due_date.split(' ')[0];
+      if (!tasksByDate[dateStr]) tasksByDate[dateStr] = [];
+      tasksByDate[dateStr].push(t);
+    });
+
     const isToday = (d) => {
       const today = new Date();
       return today.getFullYear() === currYear && today.getMonth() === currMonth && today.getDate() === d;
@@ -1091,6 +1104,7 @@ async function renderCalendar(wrapper) {
     for (let d = 1; d <= monthDays; d++) {
       const dateStr = `${currYear}-${String(currMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayEvents = eventsByDate[dateStr] || [];
+      const dayTasks = tasksByDate[dateStr] || [];
 
       const eventsHTML = dayEvents.map(e => {
         const primaryGroup = e.target_group ? e.target_group.split(',')[0] : 'todos';
@@ -1101,30 +1115,60 @@ async function renderCalendar(wrapper) {
             `;
       }).join('');
 
+      const tasksHTML = dayTasks.map(t => {
+        const primaryGroup = t.target_group ? t.target_group.split(',')[0] : 'todos';
+        return `<div class="calendar-task-dot target-${primaryGroup}" title="Vence tarea: ${t.title}" onclick="openTaskDetail(${t.id}); event.stopPropagation();"></div>`;
+      }).join('');
+
       cellsHTML += `
             <div class="calendar-day ${isToday(d) ? 'today' : ''}">
-                <div style="display:flex;justify-content:flex-end"><span class="calendar-day-num">${d}</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;min-height:16px;margin-bottom:4px">
+                  <div style="display:flex;gap:3px;flex-wrap:wrap;max-width:70%">${tasksHTML}</div>
+                  <span class="calendar-day-num">${d}</span>
+                </div>
                 ${eventsHTML}
             </div>
         `;
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const upcomingEvents = events.filter(e => e.event_date >= todayStr).sort((a, b) => a.event_date.localeCompare(b.event_date)).slice(0, 10);
+    const upcomingEvents = events.filter(e => e.event_date >= todayStr).map(e => ({ ...e, isTask: false }));
+    const upcomingTasks = allTasks.filter(t => t.due_date && t.due_date >= todayStr && t.status !== 'done').map(t => ({ ...t, isTask: true }));
 
-    const upcomingHTML = upcomingEvents.length === 0 ? '<p style="color:var(--gray-500)">No hay eventos próximos para tu grupo.</p>' :
-      '<div class="activity-list">' + upcomingEvents.map(e => `
-          <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    const allUpcoming = [...upcomingEvents, ...upcomingTasks]
+      .sort((a, b) => {
+        const da = a.isTask ? a.due_date : a.event_date;
+        const db = b.isTask ? b.due_date : b.event_date;
+        return da.localeCompare(db);
+      }).slice(0, 10);
+
+    const upcomingHTML = allUpcoming.length === 0 ? '<p style="color:var(--gray-500)">No hay eventos ni tareas próximas.</p>' :
+      '<div class="activity-list">' + allUpcoming.map(i => {
+        if (i.isTask) {
+          return `<div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;" onclick="openTaskDetail(${i.id})">
             <div>
               <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
-                <span class="badge badge-primary">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
-                <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+                <span class="badge badge-outline">📝 Vence: ${i.due_date.split(' ')[0]}</span>
+                <span class="badge badge-${i.priority}">${priorityLabel[i.priority]}</span>
+                <span class="badge badge-warning" style="text-transform:uppercase">${groupLabels[i.target_group] || i.target_group}</span>
               </div>
-              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title}</h3>
-              <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
+              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title}</h3>
             </div>
-          </div>
-        `).join('') + '</div>';
+          </div>`;
+        } else {
+          return `<div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+                <span class="badge badge-primary">📅 ${i.event_date.split(' ')[0]} ${i.event_date.split(' ')[1].slice(0, 5)}</span>
+                <span class="badge badge-warning" style="text-transform:uppercase">${i.target_group ? i.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+              </div>
+              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title}</h3>
+              <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${i.description || 'Sin descripción'}</p>
+            </div>
+            ${(isAdmin || (userGroup.split(',').some(g => (i.target_group || '').includes(g)))) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" style="padding:6px" onclick="openEditEvent(${i.id})">✏️</button><button class="btn btn-sm btn-outline" style="padding:6px;color:var(--danger-600);border-color:var(--danger-200)" onclick="deleteEvent(${i.id})">🗑</button></div>` : ''}
+          </div>`;
+        }
+      }).join('') + '</div>';
 
     wrapper.innerHTML = `
       <div class="page-header">
