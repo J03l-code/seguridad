@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/google_calendar_helper.php';
 setCorsHeaders();
 $auth = authenticate();
 $action = getParam('action', 'list');
@@ -194,6 +195,47 @@ function createTask($auth)
 
     $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
         ->execute([$taskId, $auth['id'], 'task_created', "Tarea \"$title\" creada"]);
+
+    // Feature 1: Google Calendar Sync (Tasks -> Calendar)
+    if (!empty($data['due_date'])) {
+        try {
+            $primaryGroup = explode(',', $targetGroup)[0];
+            $groupColors = [
+                'emergencias' => '11', // Red
+                'actividades' => '9', // Blue
+                'otros_eventos' => '8', // Gray
+                'soporte_oficina' => '5', // Yellow
+                'superintendencia' => '10' // Green
+            ];
+            $colorId = $groupColors[trim($primaryGroup)] ?? '8';
+
+            $calTitle = "🚨 Vence: " . $title;
+            $pLabels = ['low' => 'Baja', 'medium' => 'Media', 'high' => 'Alta', 'urgent' => 'URGENTE'];
+            $pText = $pLabels[$data['priority'] ?? 'medium'] ?? 'Media';
+            $calDesc = "Prioridad: $pText\n\n" . ($data['description'] ?? '');
+
+            $dueTs = strtotime($data['due_date']);
+            $endTs = $dueTs + 3600; // 1-hour duration for the deadline alarm event
+
+            $pushRes = pushEventToGroup(
+                $pdo,
+                $targetGroup,
+                $calTitle,
+                $calDesc,
+                date('Y-m-d H:i:s', $dueTs),
+                date('Y-m-d H:i:s', $endTs),
+                $colorId
+            );
+
+            if (!empty($pushRes)) {
+                $gIds = json_encode($pushRes);
+                $pdo->prepare('UPDATE tasks SET google_event_ids = ? WHERE id = ?')
+                    ->execute([$gIds, $taskId]);
+            }
+        } catch (Exception $e) {
+            // Ignorar para no interrumpir creacion de tarea
+        }
+    }
 
     jsonResponse(['message' => 'Tarea creada.', 'task' => ['id' => (int) $taskId, 'title' => $title]], 201);
 }

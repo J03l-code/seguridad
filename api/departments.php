@@ -80,9 +80,10 @@ function createDepartment($auth)
 
     $desc = $data['description'] ?? null;
     $color = $data['color'] ?? '#2d3561';
+    $parent_id = !empty($data['parent_id']) ? (int) $data['parent_id'] : null;
 
-    $stmt = $pdo->prepare('INSERT INTO departments (name, description, color, created_by) VALUES (?, ?, ?, ?)');
-    $stmt->execute([$name, $desc, $color, $auth['id']]);
+    $stmt = $pdo->prepare('INSERT INTO departments (name, description, color, parent_id, created_by) VALUES (?, ?, ?, ?, ?)');
+    $stmt->execute([$name, $desc, $color, $parent_id, $auth['id']]);
     $deptId = $pdo->lastInsertId();
 
     $pdo->prepare('INSERT INTO department_members (department_id, user_id) VALUES (?, ?)')->execute([$deptId, $auth['id']]);
@@ -101,8 +102,15 @@ function updateDepartment($id, $auth)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
     $data = getJsonBody();
-    $stmt = $pdo->prepare('UPDATE departments SET name = COALESCE(?, name), description = COALESCE(?, description), color = COALESCE(?, color) WHERE id = ?');
-    $stmt->execute([$data['name'] ?? null, $data['description'] ?? null, $data['color'] ?? null, $id]);
+
+    if (array_key_exists('parent_id', $data)) {
+        $parent_id = $data['parent_id'] !== '' && $data['parent_id'] !== null ? (int) $data['parent_id'] : null;
+        $stmt = $pdo->prepare('UPDATE departments SET name = COALESCE(?, name), description = COALESCE(?, description), color = COALESCE(?, color), parent_id = ? WHERE id = ?');
+        $stmt->execute([$data['name'] ?? null, $data['description'] ?? null, $data['color'] ?? null, $parent_id, $id]);
+    } else {
+        $stmt = $pdo->prepare('UPDATE departments SET name = COALESCE(?, name), description = COALESCE(?, description), color = COALESCE(?, color) WHERE id = ?');
+        $stmt->execute([$data['name'] ?? null, $data['description'] ?? null, $data['color'] ?? null, $id]);
+    }
 
     jsonResponse(['message' => 'Departamento actualizado.']);
 }

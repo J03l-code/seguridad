@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'member') DEFAULT 'member',
-    user_group VARCHAR(50) DEFAULT 'otros_eventos',
+    hierarchy_level ENUM('superintendente', 'auxiliar') DEFAULT 'auxiliar',
+    user_group VARCHAR(255) DEFAULT 'otros_eventos',
     avatar VARCHAR(255) DEFAULT NULL,
     google_access_token TEXT DEFAULT NULL,
     google_refresh_token TEXT DEFAULT NULL,
@@ -23,10 +24,12 @@ CREATE TABLE IF NOT EXISTS departments (
     name VARCHAR(100) NOT NULL,
     description TEXT DEFAULT NULL,
     color VARCHAR(7) DEFAULT '#2d3561',
+    parent_id INT NULL DEFAULT NULL,
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES departments(id) ON DELETE CASCADE
 ) ENGINE = InnoDB;
 -- Department Members
 CREATE TABLE IF NOT EXISTS department_members (
@@ -50,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     assigned_to INT DEFAULT NULL,
     due_date DATETIME DEFAULT NULL,
     google_event_id VARCHAR(255) DEFAULT NULL,
+    google_event_ids TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,

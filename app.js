@@ -739,6 +739,8 @@ async function renderDepartments(wrapper) {
     const isAdmin = state.user?.role === 'admin';
 
     const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
+    depts.forEach(d => groups[d.id] = []);
+
     orgUsers.forEach(u => {
       const uGroups = (u.user_group || 'otros_eventos').split(',').map(g => g.trim());
       uGroups.forEach(g => {
@@ -747,27 +749,53 @@ async function renderDepartments(wrapper) {
       });
     });
 
-    const renderOrgNode = (gName, key, grpUsers) => `
+    const renderOrgNode = (gName, key, grpUsers) => {
+      const mappedUsers = grpUsers.map(u => {
+        const isJefe = u.hierarchy_level === 'superintendente';
+        return `
+          <div class="org-member" style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : ''}">
+              <div class="avatar" style="${isJefe ? 'background:var(--primary-600)' : ''}">${initials(u.name)}</div>
+              <div class="info">
+                  <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : ''}">
+                      ${isJefe ? '🌟 ' : ''}${u.name}
+                  </span>
+                  <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'}${isJefe ? ' (Jefe)' : ''}</span>
+              </div>
+          </div>
+        `;
+      }).join('') || '<div class="org-member empty">Sin miembros</div>';
+
+      return `
         <div class="org-node target-${key}">
             <h3>${gName}</h3>
-            <div class="org-members">
-                ${grpUsers.map(u => `
-                    <div class="org-member">
-                        <div class="avatar">${initials(u.name)}</div>
-                        <div class="info">
-                            <span class="name">${u.name}</span>
-                            <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'}</span>
-                        </div>
-                    </div>
-                `).join('') || '<div class="org-member empty">Sin miembros</div>'}
-            </div>
+            <div class="org-members">${mappedUsers}</div>
         </div>
-    `;
+      `;
+    };
+
+    const renderTree = (deptId, deptName) => {
+      const children = depts.filter(d => d.parent_id == deptId);
+      const html = renderOrgNode(deptName, deptId, groups[deptId] || []);
+      if (children.length === 0) return html;
+
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          ${html}
+          <div class="org-lines"></div>
+          <div class="org-level-2-wrapper" style="margin-top:-20px; width:100%">
+             <div class="org-horizontal-line" style="width: 80%; left: 10%"></div>
+             <div class="org-level-2" style="gap:20px; align-items:flex-start">
+                 ${children.map(c => renderTree(c.id, c.name)).join('')}
+             </div>
+          </div>
+        </div>
+      `;
+    };
 
     const orgChartHTML = `
-      <div class="card" style="margin-bottom: 30px; background:var(--gray-50)">
-        <div class="card-header" style="background:#fff"><h3>Organigrama del Personal (Por Grupos)</h3></div>
-        <div class="card-body">
+      <div class="card" style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
+        <div class="card-header" style="background:#fff"><h3>Organigrama del Personal (Por Dependencias)</h3></div>
+        <div class="card-body" style="min-width: 800px">
             <div class="org-chart-container">
                 <div class="org-level">
                     ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
@@ -775,11 +803,12 @@ async function renderDepartments(wrapper) {
                 <div class="org-lines"></div>
                 <div class="org-level-2-wrapper">
                     <div class="org-horizontal-line"></div>
-                    <div class="org-level-2">
+                    <div class="org-level-2" style="align-items:flex-start">
                         ${renderOrgNode('Emergencias', 'emergencias', groups.emergencias)}
                         ${renderOrgNode('Actividades', 'actividades', groups.actividades)}
                         ${renderOrgNode('Soporte de Oficina', 'soporte_oficina', groups.soporte_oficina)}
                         ${renderOrgNode('Otros Eventos', 'otros_eventos', groups.otros_eventos)}
+                        ${depts.filter(d => !d.parent_id).map(d => renderTree(d.id, d.name)).join('')}
                     </div>
                 </div>
             </div>
@@ -908,6 +937,8 @@ async function renderDepartments(wrapper) {
 async function renderUsers(wrapper) {
   try {
     const data = await api('users.php?action=list');
+    const deptData = await api('departments.php?action=list');
+    window._depts = deptData.departments || [];
     const users = data.users;
     const isAdmin = state.user?.role === 'admin';
 
@@ -930,7 +961,7 @@ async function renderUsers(wrapper) {
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
           <td><div style="display:flex;gap:6px">
-            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}')">✏️ Editar</button>` : ''}
+            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}','${u.hierarchy_level || 'auxiliar'}')">✏️ Editar</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}" onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);padding:0 8px" onclick="deleteSystemUser(${u.id})" title="Eliminar usuario">🗑</button>` : ''}
           </div></td>
@@ -958,18 +989,25 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
             <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
             <div class="form-group"><label class="form-label">Departamento (Cmd/Ctrl + click para varios)</label>
-              <select class="form-select" id="cu-group" multiple size="5" style="height:auto">
-                <option value="emergencias">Emergencias</option>
-                <option value="actividades">Actividades</option>
-                <option value="otros_eventos">Otros eventos</option>
-                <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia</option>
+              <select class="form-select" id="cu-group" multiple size="7" style="height:auto">
+                <option value="emergencias">Emergencias (Base)</option>
+                <option value="actividades">Actividades (Base)</option>
+                <option value="otros_eventos">Otros eventos (Base)</option>
+                <option value="soporte_oficina">Soporte de oficina (Base)</option>
+                <option value="superintendencia">Superintendencia (Base)</option>
+                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
             </div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
               <select class="form-select" id="cu-role">
                 <option value="member" selected>Miembro normal</option>
                 <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
+              <select class="form-select" id="cu-hierarchy">
+                <option value="auxiliar" selected>Auxiliar / Miembro</option>
+                <option value="superintendente">Superintendente / Jefe</option>
               </select>
             </div>
           </div>
@@ -986,6 +1024,7 @@ async function renderUsers(wrapper) {
               email: document.getElementById('cu-email').value,
               password: document.getElementById('cu-pass').value,
               role: document.getElementById('cu-role').value,
+              hierarchy_level: document.getElementById('cu-hierarchy').value,
               user_group: Array.from(document.getElementById('cu-group').selectedOptions).map(o => o.value).join(',')
             })
           });
@@ -997,7 +1036,7 @@ async function renderUsers(wrapper) {
       });
     };
 
-    window.editUser = function (id, name, email) {
+    window.editUser = function (id, name, email, currentHierarchy) {
       showModal(`
         <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="edit-user-form">
@@ -1006,14 +1045,21 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
             <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
             <div class="form-group"><label class="form-label">Cambiar Grupo (Cmd/Ctrl + click)</label>
-              <select class="form-select" id="eu-group" multiple size="5" style="height:auto">
-                <option value="emergencias">Emergencias</option>
-                <option value="actividades">Actividades</option>
-                <option value="otros_eventos">Otros eventos</option>
-                <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia</option>
+              <select class="form-select" id="eu-group" multiple size="7" style="height:auto">
+                <option value="emergencias">Emergencias (Base)</option>
+                <option value="actividades">Actividades (Base)</option>
+                <option value="otros_eventos">Otros eventos (Base)</option>
+                <option value="soporte_oficina">Soporte de oficina (Base)</option>
+                <option value="superintendencia">Superintendencia (Base)</option>
+                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
+            </div>
+            <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
+              <select class="form-select" id="eu-hierarchy">
+                <option value="auxiliar" ${currentHierarchy === 'auxiliar' ? 'selected' : ''}>Auxiliar / Miembro</option>
+                <option value="superintendente" ${currentHierarchy === 'superintendente' ? 'selected' : ''}>Superintendente / Jefe</option>
+              </select>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
@@ -1025,6 +1071,8 @@ async function renderUsers(wrapper) {
           const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
           const pass = document.getElementById('eu-pass').value;
           if (pass) body.password = pass;
+          const hierarchy = document.getElementById('eu-hierarchy').value;
+          if (hierarchy) body.hierarchy_level = hierarchy;
           const selGrp = document.getElementById('eu-group');
           if (selGrp && selGrp.selectedOptions.length > 0) {
             body.user_group = Array.from(selGrp.selectedOptions).map(o => o.value).join(',');

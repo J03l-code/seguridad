@@ -61,7 +61,7 @@ function deleteUser($id, $auth)
 function getOrgChart()
 {
     global $pdo;
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group FROM users ORDER BY user_group, name');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level FROM users ORDER BY hierarchy_level DESC, name');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -82,6 +82,8 @@ function createUser($auth)
     // Si incluye superintendencia, el rol debe ser admin. Caso contrario, member.
     $role = (strpos($group, 'superintendencia') !== false) ? 'admin' : ($data['role'] ?? 'member');
 
+    $hierarchy_level = $data['hierarchy_level'] ?? 'auxiliar';
+
     if (!$name || !$email || !$password) {
         jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
     }
@@ -96,8 +98,38 @@ function createUser($auth)
     }
 
     $hashed = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role, user_group) VALUES (?, ?, ?, ?, ?)');
-    $stmt->execute([$name, $email, $hashed, $role, $group]);
+    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role, user_group, hierarchy_level) VALUES (?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $hashed, $role, $group, $hierarchy_level]);
+    $newUserId = $pdo->lastInsertId();
+
+    // Feature 3: Retroactive Notifications
+    try {
+        $groupArray = array_map('trim', explode(',', $group));
+
+        // 1. Retroactive Tasks
+        $tasksStmt = $pdo->query("SELECT id, title, target_group FROM tasks WHERE status != 'done'");
+        $activeTasks = $tasksStmt->fetchAll();
+        $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+
+        foreach ($activeTasks as $t) {
+            $taskGroups = array_map('trim', explode(',', $t['target_group'] ?: 'otros_eventos'));
+            if (count(array_intersect($groupArray, $taskGroups)) > 0) {
+                $notifStmt->execute([$newUserId, "Tienes una tarea pendiente en tu área: '{$t['title']}'"]);
+            }
+        }
+
+        // 2. Retroactive Events
+        $eventsStmt = $pdo->query("SELECT id, title, target_group FROM calendar_events WHERE event_date >= CURDATE()");
+        $activeEvents = $eventsStmt->fetchAll();
+        foreach ($activeEvents as $e) {
+            $eventGroups = array_map('trim', explode(',', $e['target_group'] ?: 'todos'));
+            if (in_array('todos', $eventGroups) || count(array_intersect($groupArray, $eventGroups)) > 0) {
+                $notifStmt->execute([$newUserId, "Hay un evento agendado para tu área: '{$e['title']}'"]);
+            }
+        }
+    } catch (Exception $e) {
+        // Ignorar falla de notificaciones anidadas para no quebrar el insert principal.
+    }
 
     jsonResponse(['message' => 'Usuario creado exitosamente.'], 201);
 }
@@ -106,7 +138,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.user_group, u.avatar, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.avatar, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -120,7 +152,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role, avatar, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, avatar, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -180,6 +212,10 @@ function updateUser($id, $auth)
             // For now, if superintendencia is not in the group, we don't force a role change.
             // If a specific downgrade is needed, it would be added here.
         }
+    }
+    if (!empty($data['hierarchy_level'])) {
+        $fields[] = 'hierarchy_level = ?';
+        $values[] = $data['hierarchy_level'];
     }
 
     if (empty($fields))
