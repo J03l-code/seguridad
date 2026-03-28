@@ -93,6 +93,7 @@ function createEvent($auth)
     try {
         $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by) VALUES (?, ?, ?, ?, ?)');
         $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id']]);
+        $eventId = $pdo->lastInsertId(); // CAPTURE ID IMMEDIATELY
 
         // Obtener datos del creador para la notificación
         $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
@@ -169,7 +170,6 @@ function createEvent($auth)
                 }
             }
             if (!empty($googleIds)) {
-                $eventId = $pdo->lastInsertId();
                 $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
                     ->execute([json_encode($googleIds), $eventId]);
             }
