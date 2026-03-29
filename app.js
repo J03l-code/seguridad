@@ -761,10 +761,8 @@ async function renderDepartments(wrapper) {
         const isJefe = u.hierarchy_level === 'superintendente';
         const isVol = u.hierarchy_level === 'voluntario_clave';
 
-        let roleText = 'MIEMBRO';
+        let roleText = u.hierarchy_level ? u.hierarchy_level.replace('_', ' ').toUpperCase() : 'AUXILIAR';
         if (u.role === 'admin') roleText = 'ADMIN';
-        else if (isJefe) roleText = 'SUPERINTENDENTE';
-        else if (isVol) roleText = 'VOLUNTARIO CLAVE';
 
         if (u.job_title) roleText += ` (${u.job_title})`;
 
@@ -773,7 +771,7 @@ async function renderDepartments(wrapper) {
               <div class="avatar" style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
               <div class="info">
                   <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}">
-                      ${isJefe ? '🌟 ' : isVol ? '⭐ ' : ''}${u.name}
+                      ${u.name}
                   </span>
                   <span class="role">${roleText}</span>
               </div>
