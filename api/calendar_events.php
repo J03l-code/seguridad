@@ -90,7 +90,7 @@ function createEvent($auth)
             $start = $eventDate . 'T00:00:00';
             $endDateTime = $eventDate . 'T23:59:59';
             // Push globally
-            $googleIds = pushEventToGroup(['todos'], $title, $description, $start, $endDateTime, $targetGroupStr, $eventId);
+            $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDateTime, $targetGroupStr);
             if (!empty($googleIds)) {
                 $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
                     ->execute([json_encode($googleIds), $eventId]);
@@ -160,7 +160,7 @@ function updateEvent($auth)
         require_once 'google_calendar_helper.php';
         $start = $eventDate . 'T00:00:00';
         $endDateTime = $eventDate . 'T23:59:59';
-        $googleIds = pushEventToGroup(['todos'], $title, $description, $start, $endDateTime, $targetGroupStr, $id);
+        $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDateTime, $targetGroupStr);
 
         if (!empty($googleIds)) {
             $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
