@@ -87,10 +87,15 @@ function createEvent($auth)
 
         try {
             require_once 'google_calendar_helper.php';
-            $start = $eventDate . 'T00:00:00';
-            $endDateTime = $eventDate . 'T23:59:59';
+            // Map group to Google Calendar color ID
+            $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
+            $googleColorId = $colorMap[$targetGroupStr] ?? 5;
+            // Extract just the date part (eventDate may contain time after space)
+            $datePart = explode(' ', $eventDate)[0];
+            $start = $datePart . 'T00:00:00';
+            $endDT = $datePart . 'T23:59:59';
             // Push globally
-            $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDateTime, $targetGroupStr);
+            $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
             if (!empty($googleIds)) {
                 $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
                     ->execute([json_encode($googleIds), $eventId]);
@@ -158,9 +163,12 @@ function updateEvent($auth)
     // Re-push to Google Calendar globally
     try {
         require_once 'google_calendar_helper.php';
-        $start = $eventDate . 'T00:00:00';
-        $endDateTime = $eventDate . 'T23:59:59';
-        $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDateTime, $targetGroupStr);
+        $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
+        $googleColorId = $colorMap[$targetGroupStr] ?? 5;
+        $datePart = explode(' ', $eventDate)[0];
+        $start = $datePart . 'T00:00:00';
+        $endDT = $datePart . 'T23:59:59';
+        $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
 
         if (!empty($googleIds)) {
             $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
