@@ -1452,7 +1452,7 @@ async function renderCalendar(wrapper) {
             method: 'POST', body: JSON.stringify({
               title: document.getElementById('ce-title').value,
               description: document.getElementById('ce-desc').value,
-              event_date: document.getElementById('ce-date').value
+              event_date: document.getElementById('ce-date').value.replace('T', ' ')
             })
           });
           toast('Evento creado');
