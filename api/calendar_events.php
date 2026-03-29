@@ -96,9 +96,16 @@ function createEvent($auth)
             $endDT = $datePart . 'T23:59:59';
             // Push globally
             $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
-            if (!empty($googleIds)) {
+            // Extract only the google_event_id strings for storage
+            $cleanIds = [];
+            foreach ($googleIds as $uid => $res) {
+                if (!empty($res['google_event_id'])) {
+                    $cleanIds[$uid] = $res['google_event_id'];
+                }
+            }
+            if (!empty($cleanIds)) {
                 $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
-                    ->execute([json_encode($googleIds), $eventId]);
+                    ->execute([json_encode($cleanIds), $eventId]);
             }
         } catch (Exception $gcErr) {
             // Don't fail if Google Calendar push fails
@@ -169,10 +176,15 @@ function updateEvent($auth)
         $start = $datePart . 'T00:00:00';
         $endDT = $datePart . 'T23:59:59';
         $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
-
-        if (!empty($googleIds)) {
+        $cleanIds = [];
+        foreach ($googleIds as $uid => $res) {
+            if (!empty($res['google_event_id'])) {
+                $cleanIds[$uid] = $res['google_event_id'];
+            }
+        }
+        if (!empty($cleanIds)) {
             $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
-                ->execute([json_encode($googleIds), $id]);
+                ->execute([json_encode($cleanIds), $id]);
         }
     } catch (Exception $e) {
     }
@@ -202,19 +214,27 @@ function deleteEvent($auth)
     }
 
     // Delete from Google Calendar for each linked user
-    $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
-    foreach ($gcIds as $userId => $googleEventId) {
-        $accessToken = getValidAccessToken($pdo, (int) $userId);
-        if ($accessToken && $googleEventId) {
-            $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
-            curl_setopt_array($ch, [
-                CURLOPT_CUSTOMREQUEST => 'DELETE',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken]
-            ]);
-            curl_exec($ch);
-            curl_close($ch);
+    try {
+        $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
+        foreach ($gcIds as $userId => $val) {
+            // Handle both old nested format and new flat format
+            $googleEventId = is_array($val) ? ($val['google_event_id'] ?? null) : $val;
+            if (!$googleEventId)
+                continue;
+            $accessToken = getValidAccessToken($pdo, (int) $userId);
+            if ($accessToken) {
+                $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
+                curl_setopt_array($ch, [
+                    CURLOPT_CUSTOMREQUEST => 'DELETE',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken]
+                ]);
+                curl_exec($ch);
+                curl_close($ch);
+            }
         }
+    } catch (Exception $e) {
+        // Don't fail if Google Calendar cleanup fails
     }
 
     $stmt = $pdo->prepare('DELETE FROM calendar_events WHERE id = ?');
