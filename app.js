@@ -172,6 +172,7 @@ function router() {
 
   switch (page) {
     case 'dashboard': renderDashboard(wrapper); break;
+    case 'mytasks': renderMyTasks(wrapper); break;
     case 'tasks': renderTasks(wrapper, params); break;
     case 'departments': renderDepartments(wrapper); break;
     case 'users': renderUsers(wrapper); break;
@@ -189,6 +190,7 @@ function router() {
 function renderLayout(container) {
   const navItems = [
     { page: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { page: 'mytasks', icon: '📋', label: 'Mis Tareas' },
     { page: 'tasks', icon: '✅', label: 'Tareas' },
     { page: 'departments', icon: '🏢', label: 'Departamentos' },
     { page: 'users', icon: '👥', label: 'Usuarios' },
@@ -1206,6 +1208,144 @@ async function renderUsers(wrapper) {
       try { await api(`users.php?action=role&id=${id}`, { method: 'PUT', body: JSON.stringify({ role }) }); toast(`Rol: ${role}`); navigate('users'); }
       catch (err) { toast(err.message, 'error'); }
     };
+  } catch (err) {
+    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
+  }
+}
+
+// ==========================================
+// My Tasks (Personal Agenda)
+// ==========================================
+async function renderMyTasks(wrapper) {
+  try {
+    const [tasksData, eventsData] = await Promise.all([
+      api('tasks.php?action=list'),
+      api('calendar_events.php?action=list')
+    ]);
+    const allTasks = tasksData.tasks || [];
+    const allEvents = eventsData.events || [];
+    const userId = state.user?.id;
+    const userGroups = (state.user?.user_group || 'otros_eventos').split(',').map(g => g.trim());
+
+    // Filter tasks that belong to the user's groups
+    const myTasks = allTasks.filter(t => {
+      const tGroups = (t.target_group || 'otros_eventos').split(',').map(g => g.trim());
+      return tGroups.some(g => userGroups.includes(g));
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const completed = myTasks.filter(t => t.status === 'done');
+    const pending = myTasks.filter(t => t.status !== 'done');
+    const overdue = pending.filter(t => t.due_date && t.due_date.split(' ')[0] < todayStr);
+    const totalCount = myTasks.length || 1;
+    const progressPct = Math.round((completed.length / totalCount) * 100);
+
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    const priorityLabel = { high: '🔴 Alta', medium: '🟡 Media', low: '🟢 Baja' };
+    const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', done: 'Completada' };
+    const statusBadge = { todo: 'badge-outline', in_progress: 'badge-warning', done: 'badge-success' };
+
+    const sortedPending = [...pending].sort((a, b) => (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2));
+
+    const pendingHTML = sortedPending.length === 0
+      ? '<div style="text-align:center;padding:32px;color:var(--gray-500)"><div style="font-size:48px;margin-bottom:12px">🎉</div><p>¡No tienes tareas pendientes!</p></div>'
+      : sortedPending.map(t => {
+        const isOverdue = t.due_date && t.due_date.split(' ')[0] < todayStr;
+        return `
+        <div class="activity-item" style="padding:14px 16px; border:1px solid ${isOverdue ? 'var(--danger-200)' : 'var(--gray-200)'}; border-left:4px solid ${isOverdue ? 'var(--danger-500)' : t.priority === 'high' ? 'var(--danger-400)' : t.priority === 'medium' ? 'var(--warning-400)' : 'var(--success-400)'}; border-radius:8px; margin-bottom:10px; cursor:pointer; background:${isOverdue ? 'var(--danger-50)' : '#fff'}; transition:transform .15s;" onclick="navigate('tasks')" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
+                <span class="badge ${statusBadge[t.status]}" style="font-size:11px">${statusLabel[t.status]}</span>
+                <span class="badge" style="font-size:11px">${priorityLabel[t.priority]}</span>
+                ${isOverdue ? '<span class="badge badge-danger" style="font-size:11px">⚠️ VENCIDA</span>' : ''}
+              </div>
+              <h4 style="margin:0;font-size:15px;color:var(--gray-800)">${t.title}</h4>
+              ${t.description ? `<p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);max-width:500px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description}</p>` : ''}
+            </div>
+            <div style="text-align:right;min-width:100px">
+              ${t.due_date ? `<div style="font-size:12px;color:${isOverdue ? 'var(--danger-600)' : 'var(--gray-500)'};font-weight:${isOverdue ? '600' : '400'}">📅 ${t.due_date.split(' ')[0]}</div>` : '<div style="font-size:12px;color:var(--gray-400)">Sin fecha</div>'}
+              <div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:capitalize">${(t.target_group || '').replace(/_/g, ' ')}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+    // Upcoming events (next 7 days)
+    const weekFromNow = new Date();
+    weekFromNow.setDate(weekFromNow.getDate() + 14);
+    const weekStr = weekFromNow.toISOString().split('T')[0];
+    const upcomingEvents = allEvents.filter(e => {
+      const d = e.event_date.split(' ')[0];
+      return d >= todayStr && d <= weekStr;
+    }).slice(0, 8);
+
+    const eventsHTML = upcomingEvents.length === 0
+      ? '<p style="color:var(--gray-500);text-align:center;padding:16px">No hay eventos próximos</p>'
+      : upcomingEvents.map(e => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
+          <div style="width:48px;height:48px;border-radius:10px;background:var(--primary-100);color:var(--primary-700);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">
+            <span style="font-size:16px;line-height:1">${e.event_date.split(' ')[0].split('-')[2]}</span>
+            <span style="font-size:9px;text-transform:uppercase">${['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'][parseInt(e.event_date.split(' ')[0].split('-')[1]) - 1]}</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:14px;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.title}</div>
+            <div style="font-size:12px;color:var(--gray-500)">${e.event_date.split(' ')[1] ? e.event_date.split(' ')[1].slice(0, 5) : ''} · ${(e.target_group || 'General').replace(/_/g, ' ')}</div>
+          </div>
+        </div>
+      `).join('');
+
+    wrapper.innerHTML = `
+      <div class="page-header">
+        <h2>Mi Agenda Personal</h2>
+        <span class="badge badge-primary" style="font-size:13px">👤 ${state.user?.name || 'Usuario'}</span>
+      </div>
+
+      <!-- Progress Stats -->
+      <div class="stats-grid" style="margin-bottom:24px">
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:32px;font-weight:800;color:var(--success-600)">${completed.length}</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:4px">✅ Completadas</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:32px;font-weight:800;color:var(--warning-600)">${pending.length}</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:4px">⏳ Pendientes</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:32px;font-weight:800;color:var(--danger-600)">${overdue.length}</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:4px">🔴 Vencidas</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:32px;font-weight:800;color:var(--primary-600)">${progressPct}%</div>
+          <div style="font-size:13px;color:var(--gray-500);margin-top:4px">📈 Progreso</div>
+          <div style="margin-top:8px;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${progressPct}%;background:linear-gradient(90deg,var(--primary-500),var(--success-500));border-radius:3px;transition:width .6s ease"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:24px">
+        <!-- Pending Tasks -->
+        <div class="card">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h3>⏳ Tareas Pendientes (${pending.length})</h3>
+            <button class="btn btn-sm btn-primary" onclick="navigate('tasks')">Ver todas →</button>
+          </div>
+          <div class="card-body" style="max-height:500px;overflow-y:auto">${pendingHTML}</div>
+        </div>
+
+        <!-- Upcoming Events -->
+        <div class="card">
+          <div class="card-header"><h3>📅 Próximos Eventos</h3></div>
+          <div class="card-body" style="max-height:500px;overflow-y:auto">${eventsHTML}</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('page-content').innerHTML = '';
+    document.getElementById('page-content').appendChild(wrapper);
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
     document.getElementById('page-content').innerHTML = '';
