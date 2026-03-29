@@ -9,7 +9,11 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'member') DEFAULT 'member',
-    hierarchy_level ENUM('superintendente', 'auxiliar') DEFAULT 'auxiliar',
+    hierarchy_level ENUM(
+        'superintendente',
+        'voluntario_clave',
+        'auxiliar'
+    ) DEFAULT 'auxiliar',
     job_title VARCHAR(100) DEFAULT NULL,
     user_group VARCHAR(255) DEFAULT 'otros_eventos',
     avatar VARCHAR(255) DEFAULT NULL,

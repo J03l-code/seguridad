@@ -749,33 +749,54 @@ async function renderDepartments(wrapper) {
       });
     });
 
-    const renderOrgNode = (gName, key, grpUsers) => {
+    const BASE_COLORS = {
+      emergencias: '#ef4444',     // danger-500
+      actividades: '#10b981',     // success-500
+      soporte_oficina: '#3b82f6', // primary-500
+      otros_eventos: '#f59e0b'    // warning-500
+    };
+
+    const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false) => {
       const mappedUsers = grpUsers.map(u => {
         const isJefe = u.hierarchy_level === 'superintendente';
+        const isVol = u.hierarchy_level === 'voluntario_clave';
+
+        let roleText = 'MIEMBRO';
+        if (u.role === 'admin') roleText = 'ADMIN';
+        else if (isJefe) roleText = 'SUPERINTENDENTE';
+        else if (isVol) roleText = 'VOLUNTARIO CLAVE';
+
+        if (u.job_title) roleText += ` (${u.job_title})`;
+
         return `
-          <div class="org-member" style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : ''}">
-              <div class="avatar" style="${isJefe ? 'background:var(--primary-600)' : ''}">${initials(u.name)}</div>
+          <div class="org-member" style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}">
+              <div class="avatar" style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
               <div class="info">
-                  <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : ''}">
-                      ${isJefe ? '🌟 ' : ''}${u.name}
+                  <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}">
+                      ${isJefe ? '🌟 ' : isVol ? '⭐ ' : ''}${u.name}
                   </span>
-                  <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'} ${u.job_title ? `(${u.job_title})` : ''}</span>
+                  <span class="role">${roleText}</span>
               </div>
           </div>
         `;
       }).join('') || '<div class="org-member empty">Sin miembros</div>';
 
+      const nodeClass = !isSub && BASE_COLORS[key] ? `target-${key}` : '';
+      const inlineBox = isSub && color ? `border-top: 4px solid ${color}; background: ${color}15;` : '';
+      const inlineHeader = isSub && color ? `background: ${color}35; color: #1e293b;` : '';
+
       return `
-        <div class="org-node target-${key}">
-            <h3>${gName}</h3>
+        <div class="org-node ${nodeClass}" style="${inlineBox}">
+            <h3 style="${inlineHeader}">${gName}</h3>
             <div class="org-members">${mappedUsers}</div>
         </div>
       `;
     };
 
-    const renderTree = (deptId, deptName) => {
+    const renderTree = (deptId, deptName, forceColor = null, isSub = false) => {
+      const color = forceColor || BASE_COLORS[deptId] || '#64748b';
       const children = depts.filter(d => d.parent_id == deptId);
-      const html = renderOrgNode(deptName, deptId, groups[deptId] || []);
+      const html = renderOrgNode(deptName, deptId, groups[deptId] || [], color, isSub);
       if (children.length === 0) return html;
 
       return `
@@ -785,7 +806,7 @@ async function renderDepartments(wrapper) {
           <div class="org-level-2-wrapper" style="margin-top:-20px; width:100%">
              <div class="org-horizontal-line" style="width: 80%; left: 10%"></div>
              <div class="org-level-2" style="gap:20px; align-items:flex-start">
-                 ${children.map(c => renderTree(c.id, c.name)).join('')}
+                 ${children.map(c => renderTree(c.id, c.name, color, true)).join('')}
              </div>
           </div>
         </div>
@@ -804,11 +825,11 @@ async function renderDepartments(wrapper) {
                 <div class="org-level-2-wrapper">
                     <div class="org-horizontal-line"></div>
                     <div class="org-level-2" style="align-items:flex-start">
-                        ${renderOrgNode('Emergencias', 'emergencias', groups.emergencias)}
-                        ${renderOrgNode('Actividades', 'actividades', groups.actividades)}
-                        ${renderOrgNode('Soporte de Oficina', 'soporte_oficina', groups.soporte_oficina)}
-                        ${renderOrgNode('Otros Eventos', 'otros_eventos', groups.otros_eventos)}
-                        ${depts.filter(d => !d.parent_id).map(d => renderTree(d.id, d.name)).join('')}
+                        ${renderTree('emergencias', 'Emergencias', null, false)}
+                        ${renderTree('actividades', 'Actividades', null, false)}
+                        ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
+                        ${renderTree('otros_eventos', 'Otros Eventos', null, false)}
+                        ${depts.filter(d => !d.parent_id || d.parent_id === 'null' || d.parent_id === '').map(d => renderTree(d.id, d.name, d.color, false)).join('')}
                     </div>
                 </div>
             </div>
@@ -1008,6 +1029,7 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
               <select class="form-select" id="cu-hierarchy">
                 <option value="auxiliar" selected>Auxiliar</option>
+                <option value="voluntario_clave">Voluntario Clave</option>
                 <option value="superintendente">Superintendente</option>
               </select>
             </div>
@@ -1061,6 +1083,7 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
               <select class="form-select" id="eu-hierarchy">
                 <option value="auxiliar" ${currentHierarchy === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
+                <option value="voluntario_clave" ${currentHierarchy === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
                 <option value="superintendente" ${currentHierarchy === 'superintendente' ? 'selected' : ''}>Superintendente</option>
               </select>
             </div>
