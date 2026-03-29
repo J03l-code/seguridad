@@ -989,12 +989,13 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
             <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
             <div class="form-group"><label class="form-label">Departamento (Cmd/Ctrl + click para varios)</label>
-              <select class="form-select" id="cu-group" multiple size="5" style="height:auto">
-                <option value="emergencias">Emergencias</option>
-                <option value="actividades">Actividades</option>
-                <option value="otros_eventos">Otros eventos</option>
-                <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia</option>
+              <select class="form-select" id="cu-group" multiple size="7" style="height:auto">
+                <option value="emergencias">Emergencias (Base)</option>
+                <option value="actividades">Actividades (Base)</option>
+                <option value="otros_eventos">Otros eventos (Base)</option>
+                <option value="soporte_oficina">Soporte de oficina (Base)</option>
+                <option value="superintendencia">Superintendencia (Base)</option>
+                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
             </div>
             <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="cu-job" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
@@ -1046,12 +1047,13 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
             <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
             <div class="form-group"><label class="form-label">Cambiar Grupo (Cmd/Ctrl + click)</label>
-              <select class="form-select" id="eu-group" multiple size="5" style="height:auto">
-                <option value="emergencias">Emergencias</option>
-                <option value="actividades">Actividades</option>
-                <option value="otros_eventos">Otros eventos</option>
-                <option value="soporte_oficina">Soporte de oficina</option>
-                <option value="superintendencia">Superintendencia</option>
+              <select class="form-select" id="eu-group" multiple size="7" style="height:auto">
+                <option value="emergencias">Emergencias (Base)</option>
+                <option value="actividades">Actividades (Base)</option>
+                <option value="otros_eventos">Otros eventos (Base)</option>
+                <option value="soporte_oficina">Soporte de oficina (Base)</option>
+                <option value="superintendencia">Superintendencia (Base)</option>
+                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
