@@ -61,7 +61,13 @@ function deleteUser($id, $auth)
 function getOrgChart()
 {
     global $pdo;
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, job_title FROM users ORDER BY hierarchy_level ASC, name ASC');
+    // Auto-migrate hierarchy_map column
+    try {
+        $pdo->query('SELECT hierarchy_map FROM users LIMIT 1');
+    } catch (PDOException $e) {
+        $pdo->exec('ALTER TABLE users ADD COLUMN hierarchy_map TEXT DEFAULT NULL');
+    }
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title FROM users ORDER BY hierarchy_level ASC, name ASC');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -139,7 +145,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.job_title, u.avatar, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -153,7 +159,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, job_title, avatar, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -221,6 +227,10 @@ function updateUser($id, $auth)
     if (array_key_exists('job_title', $data)) {
         $fields[] = 'job_title = ?';
         $values[] = trim($data['job_title']) === '' ? null : trim($data['job_title']);
+    }
+    if (array_key_exists('hierarchy_map', $data)) {
+        $fields[] = 'hierarchy_map = ?';
+        $values[] = is_array($data['hierarchy_map']) ? json_encode($data['hierarchy_map']) : $data['hierarchy_map'];
     }
 
     if (empty($fields))

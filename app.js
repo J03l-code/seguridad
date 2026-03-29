@@ -758,11 +758,16 @@ async function renderDepartments(wrapper) {
 
     const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false) => {
       const mappedUsers = grpUsers.map(u => {
-        const isJefe = u.hierarchy_level === 'superintendente';
-        const isVol = u.hierarchy_level === 'voluntario_clave';
+        // Per-group hierarchy: check hierarchy_map[key] first, fallback to global hierarchy_level
+        let hMap = {};
+        try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+        const effectiveHierarchy = hMap[key] || u.hierarchy_level || 'auxiliar';
 
-        let roleText = u.hierarchy_level ? u.hierarchy_level.replace('_', ' ').toUpperCase() : 'AUXILIAR';
-        if (u.role === 'admin') roleText = 'ADMIN';
+        const isJefe = effectiveHierarchy === 'superintendente';
+        const isVol = effectiveHierarchy === 'voluntario_clave';
+
+        let roleText = effectiveHierarchy.replace('_', ' ').toUpperCase();
+        if (u.role === 'admin' && !hMap[key]) roleText = 'ADMIN';
 
         if (u.job_title) roleText += ` (${u.job_title})`;
 
@@ -1042,7 +1047,7 @@ async function renderUsers(wrapper) {
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
           <td><div style="display:flex;gap:6px">
-            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}','${u.hierarchy_level || 'auxiliar'}','${u.job_title || ''}')">✏️ Editar</button>` : ''}
+            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick='editUser(${u.id},${JSON.stringify(u.name)},${JSON.stringify(u.email)},${JSON.stringify(u.hierarchy_level || "auxiliar")},${JSON.stringify(u.job_title || "")},${JSON.stringify(u.user_group || "otros_eventos")},${JSON.stringify(u.hierarchy_map || "{}")})'>✏️ Editar</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}" onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);padding:0 8px" onclick="deleteSystemUser(${u.id})" title="Eliminar usuario">🗑</button>` : ''}
           </div></td>
@@ -1120,7 +1125,26 @@ async function renderUsers(wrapper) {
       });
     };
 
-    window.editUser = function (id, name, email, currentHierarchy, jobTitle) {
+    window.editUser = function (id, name, email, currentHierarchy, jobTitle, userGroup, hierarchyMapStr) {
+      let hMap = {};
+      try { hMap = JSON.parse(hierarchyMapStr || '{}'); } catch (e) { }
+      const userGroups = (userGroup || 'otros_eventos').split(',').map(g => g.trim());
+      const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte de Oficina', superintendencia: 'Superintendencia' };
+
+      const perGroupHTML = userGroups.map(g => {
+        const effectiveH = hMap[g] || currentHierarchy || 'auxiliar';
+        const label = groupLabels[g] || g.replace(/_/g, ' ');
+        return `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="min-width:140px;font-size:13px;color:var(--gray-700)">${label}:</span>
+            <select class="form-select eu-grp-hierarchy" data-group="${g}" style="flex:1;padding:4px 8px;font-size:13px">
+              <option value="auxiliar" ${effectiveH === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
+              <option value="voluntario_clave" ${effectiveH === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
+              <option value="superintendente" ${effectiveH === 'superintendente' ? 'selected' : ''}>Superintendente</option>
+            </select>
+          </div>`;
+      }).join('');
+
       showModal(`
         <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="edit-user-form">
@@ -1140,12 +1164,11 @@ async function renderUsers(wrapper) {
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
             <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="eu-job" value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
-            <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
-              <select class="form-select" id="eu-hierarchy">
-                <option value="auxiliar" ${currentHierarchy === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
-                <option value="voluntario_clave" ${currentHierarchy === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
-                <option value="superintendente" ${currentHierarchy === 'superintendente' ? 'selected' : ''}>Superintendente</option>
-              </select>
+            <div class="form-group"><label class="form-label">Cargo por Departamento</label>
+              <div id="eu-hierarchy-per-group" style="border:1px solid var(--gray-300);border-radius:6px;padding:10px;background:#fafafa">
+                ${perGroupHTML}
+              </div>
+              <small style="color:var(--gray-500);font-size:11px">Asigna el cargo de este usuario en cada departamento al que pertenece.</small>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
@@ -1157,13 +1180,22 @@ async function renderUsers(wrapper) {
           const body = { name: document.getElementById('eu-name').value, email: document.getElementById('eu-email').value };
           const pass = document.getElementById('eu-pass').value;
           if (pass) body.password = pass;
-          const hierarchy = document.getElementById('eu-hierarchy').value;
-          if (hierarchy) body.hierarchy_level = hierarchy;
           body.job_title = document.getElementById('eu-job').value;
           const selGrp = document.getElementById('eu-group');
           if (selGrp && selGrp.selectedOptions.length > 0) {
             body.user_group = Array.from(selGrp.selectedOptions).map(o => o.value).join(',');
           }
+          // Build hierarchy_map from per-group selectors
+          const newHMap = {};
+          document.querySelectorAll('.eu-grp-hierarchy').forEach(sel => {
+            newHMap[sel.dataset.group] = sel.value;
+          });
+          body.hierarchy_map = newHMap;
+          // Set global hierarchy_level to the "highest" role across groups
+          const levels = Object.values(newHMap);
+          if (levels.includes('superintendente')) body.hierarchy_level = 'superintendente';
+          else if (levels.includes('voluntario_clave')) body.hierarchy_level = 'voluntario_clave';
+          else body.hierarchy_level = 'auxiliar';
           await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
           toast('Actualizado'); closeModal(); navigate('users');
         } catch (err) { toast(err.message, 'error'); }
