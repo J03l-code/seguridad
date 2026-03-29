@@ -759,7 +759,7 @@ async function renderDepartments(wrapper) {
                   <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : ''}">
                       ${isJefe ? '🌟 ' : ''}${u.name}
                   </span>
-                  <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'}${isJefe ? ' (Jefe)' : ''}</span>
+                  <span class="role">${u.role === 'admin' ? 'Admin' : 'Miembro'} ${u.job_title ? `(${u.job_title})` : ''}</span>
               </div>
           </div>
         `;
@@ -961,7 +961,7 @@ async function renderUsers(wrapper) {
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
           <td><div style="display:flex;gap:6px">
-            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}','${u.hierarchy_level || 'auxiliar'}')">✏️ Editar</button>` : ''}
+            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick="editUser(${u.id},'${u.name.replace(/'/g, "\\'")}','${u.email}','${u.hierarchy_level || 'auxiliar'}','${u.job_title || ''}')">✏️ Editar</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}" onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
             ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);padding:0 8px" onclick="deleteSystemUser(${u.id})" title="Eliminar usuario">🗑</button>` : ''}
           </div></td>
@@ -989,15 +989,15 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
             <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
             <div class="form-group"><label class="form-label">Departamento (Cmd/Ctrl + click para varios)</label>
-              <select class="form-select" id="cu-group" multiple size="7" style="height:auto">
-                <option value="emergencias">Emergencias (Base)</option>
-                <option value="actividades">Actividades (Base)</option>
-                <option value="otros_eventos">Otros eventos (Base)</option>
-                <option value="soporte_oficina">Soporte de oficina (Base)</option>
-                <option value="superintendencia">Superintendencia (Base)</option>
-                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+              <select class="form-select" id="cu-group" multiple size="5" style="height:auto">
+                <option value="emergencias">Emergencias</option>
+                <option value="actividades">Actividades</option>
+                <option value="otros_eventos">Otros eventos</option>
+                <option value="soporte_oficina">Soporte de oficina</option>
+                <option value="superintendencia">Superintendencia</option>
               </select>
             </div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="cu-job" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
               <select class="form-select" id="cu-role">
                 <option value="member" selected>Miembro normal</option>
@@ -1006,8 +1006,8 @@ async function renderUsers(wrapper) {
             </div>
             <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
               <select class="form-select" id="cu-hierarchy">
-                <option value="auxiliar" selected>Auxiliar / Miembro</option>
-                <option value="superintendente">Superintendente / Jefe</option>
+                <option value="auxiliar" selected>Auxiliar</option>
+                <option value="superintendente">Superintendente</option>
               </select>
             </div>
           </div>
@@ -1025,6 +1025,7 @@ async function renderUsers(wrapper) {
               password: document.getElementById('cu-pass').value,
               role: document.getElementById('cu-role').value,
               hierarchy_level: document.getElementById('cu-hierarchy').value,
+              job_title: document.getElementById('cu-job').value,
               user_group: Array.from(document.getElementById('cu-group').selectedOptions).map(o => o.value).join(',')
             })
           });
@@ -1036,7 +1037,7 @@ async function renderUsers(wrapper) {
       });
     };
 
-    window.editUser = function (id, name, email, currentHierarchy) {
+    window.editUser = function (id, name, email, currentHierarchy, jobTitle) {
       showModal(`
         <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
         <form id="edit-user-form">
@@ -1045,20 +1046,20 @@ async function renderUsers(wrapper) {
             <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
             <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
             <div class="form-group"><label class="form-label">Cambiar Grupo (Cmd/Ctrl + click)</label>
-              <select class="form-select" id="eu-group" multiple size="7" style="height:auto">
-                <option value="emergencias">Emergencias (Base)</option>
-                <option value="actividades">Actividades (Base)</option>
-                <option value="otros_eventos">Otros eventos (Base)</option>
-                <option value="soporte_oficina">Soporte de oficina (Base)</option>
-                <option value="superintendencia">Superintendencia (Base)</option>
-                ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+              <select class="form-select" id="eu-group" multiple size="5" style="height:auto">
+                <option value="emergencias">Emergencias</option>
+                <option value="actividades">Actividades</option>
+                <option value="otros_eventos">Otros eventos</option>
+                <option value="soporte_oficina">Soporte de oficina</option>
+                <option value="superintendencia">Superintendencia</option>
               </select>
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="eu-job" value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
               <select class="form-select" id="eu-hierarchy">
-                <option value="auxiliar" ${currentHierarchy === 'auxiliar' ? 'selected' : ''}>Auxiliar / Miembro</option>
-                <option value="superintendente" ${currentHierarchy === 'superintendente' ? 'selected' : ''}>Superintendente / Jefe</option>
+                <option value="auxiliar" ${currentHierarchy === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
+                <option value="superintendente" ${currentHierarchy === 'superintendente' ? 'selected' : ''}>Superintendente</option>
               </select>
             </div>
           </div>
@@ -1073,6 +1074,7 @@ async function renderUsers(wrapper) {
           if (pass) body.password = pass;
           const hierarchy = document.getElementById('eu-hierarchy').value;
           if (hierarchy) body.hierarchy_level = hierarchy;
+          body.job_title = document.getElementById('eu-job').value;
           const selGrp = document.getElementById('eu-group');
           if (selGrp && selGrp.selectedOptions.length > 0) {
             body.user_group = Array.from(selGrp.selectedOptions).map(o => o.value).join(',');

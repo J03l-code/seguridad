@@ -61,7 +61,7 @@ function deleteUser($id, $auth)
 function getOrgChart()
 {
     global $pdo;
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level FROM users ORDER BY hierarchy_level DESC, name');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, job_title FROM users ORDER BY hierarchy_level DESC, name');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -83,6 +83,7 @@ function createUser($auth)
     $role = (strpos($group, 'superintendencia') !== false) ? 'admin' : ($data['role'] ?? 'member');
 
     $hierarchy_level = $data['hierarchy_level'] ?? 'auxiliar';
+    $job_title = trim($data['job_title'] ?? '');
 
     if (!$name || !$email || !$password) {
         jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
@@ -98,8 +99,8 @@ function createUser($auth)
     }
 
     $hashed = password_hash($password, PASSWORD_BCRYPT);
-    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role, user_group, hierarchy_level) VALUES (?, ?, ?, ?, ?, ?)');
-    $stmt->execute([$name, $email, $hashed, $role, $group, $hierarchy_level]);
+    $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role, user_group, hierarchy_level, job_title) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $hashed, $role, $group, $hierarchy_level, $job_title]);
     $newUserId = $pdo->lastInsertId();
 
     // Feature 3: Retroactive Notifications
@@ -138,7 +139,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.avatar, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.job_title, u.avatar, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -152,7 +153,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, avatar, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, job_title, avatar, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -216,6 +217,10 @@ function updateUser($id, $auth)
     if (!empty($data['hierarchy_level'])) {
         $fields[] = 'hierarchy_level = ?';
         $values[] = $data['hierarchy_level'];
+    }
+    if (array_key_exists('job_title', $data)) {
+        $fields[] = 'job_title = ?';
+        $values[] = trim($data['job_title']) === '' ? null : trim($data['job_title']);
     }
 
     if (empty($fields))
