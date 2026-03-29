@@ -68,6 +68,40 @@ try {
         ON DUPLICATE KEY UPDATE access_token = VALUES(access_token), refresh_token = IF(VALUES(refresh_token) != '', VALUES(refresh_token), refresh_token), expires_at = VALUES(expires_at)");
     $stmt->execute([$userId, $accessToken, $refreshToken, $expiresAt]);
 
+    // === RETROACTIVE SYNC: Push all future events to the newly linked calendar ===
+    try {
+        require_once __DIR__ . '/google_calendar_helper.php';
+        $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
+
+        // Get all events from today onwards
+        $evStmt = $pdo->prepare("SELECT id, title, description, event_date, target_group, google_event_ids FROM calendar_events WHERE event_date >= CURDATE() ORDER BY event_date ASC");
+        $evStmt->execute();
+        $futureEvents = $evStmt->fetchAll();
+
+        foreach ($futureEvents as $ev) {
+            $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
+
+            // Skip if this user already has this event synced
+            if (isset($gcIds[$userId]))
+                continue;
+
+            $datePart = explode(' ', $ev['event_date'])[0];
+            $start = $datePart . 'T00:00:00';
+            $end = $datePart . 'T23:59:59';
+            $colorId = $colorMap[$ev['target_group'] ?? ''] ?? 5;
+
+            $result = createGoogleCalendarEvent($accessToken, $ev['title'], $ev['description'] ?? '', $start, $end, $colorId);
+
+            if (!empty($result['google_event_id'])) {
+                $gcIds[$userId] = $result['google_event_id'];
+                $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
+                    ->execute([json_encode($gcIds), $ev['id']]);
+            }
+        }
+    } catch (Exception $syncErr) {
+        // Don't block the linking process if retroactive sync fails
+    }
+
     header('Location: ' . $FRONTEND_URL . '?google=success#calendar');
 } catch (Exception $e) {
     header('Location: ' . $FRONTEND_URL . '?google=error#calendar');
