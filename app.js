@@ -1229,9 +1229,11 @@ async function renderMyTasks(wrapper) {
     const userId = state.user?.id;
     const userGroups = (state.user?.user_group || 'otros_eventos').split(',').map(g => g.trim());
 
-    // Filter tasks that belong to the user's groups
+    // Filter tasks that belong to the user's groups, or assigned to 'todos', or created by user
     const myTasks = allTasks.filter(t => {
       const tGroups = (t.target_group || 'otros_eventos').split(',').map(g => g.trim());
+      if (tGroups.includes('todos')) return true;
+      if (t.created_by == userId) return true;
       return tGroups.some(g => userGroups.includes(g));
     });
 
