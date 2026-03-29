@@ -1084,7 +1084,7 @@ async function renderUsers(wrapper) {
                 ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="cu-job" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input" id="cu-job" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
               <select class="form-select" id="cu-role">
                 <option value="member" selected>Miembro normal</option>
@@ -1163,7 +1163,7 @@ async function renderUsers(wrapper) {
               </select>
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
-            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Analista, Secretaria)</label><input class="form-input" id="eu-job" value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input" id="eu-job" value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Cargo por Departamento</label>
               <div id="eu-hierarchy-per-group" style="border:1px solid var(--gray-300);border-radius:6px;padding:10px;background:#fafafa">
                 ${perGroupHTML}
