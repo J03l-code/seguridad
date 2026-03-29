@@ -913,7 +913,7 @@ async function renderDepartments(wrapper) {
         const nonMembers = (window._allUsers || []).filter(u => !members.find(m => m.id == u.id));
 
         showModal(`
-          <div class="modal-header"><div style="display:flex;align-items:center;gap:12px"><div style="width:16px;height:16px;border-radius:4px;background:${d.color}"></div><h2>${d.name}</h2></div><button class="modal-close" onclick="closeModal()">✕</button></div>
+          <div class="modal-header"><div style="display:flex;align-items:center;gap:12px"><div style="width:16px;height:16px;border-radius:4px;background:${d.color}"></div><h2>${d.name}</h2>${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:10px" onclick="openEditDept(${d.id})">✏️ Editar Dept.</button>` : ''}</div><button class="modal-close" onclick="closeModal()">✕</button></div>
           <div class="modal-body">
             ${d.description ? `<p style="font-size:14px;color:var(--gray-600);margin-bottom:20px">${d.description}</p>` : ''}
             <div style="margin-bottom:20px"><h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary-800)">Miembros (${members.length})</h3>
@@ -930,6 +930,68 @@ async function renderDepartments(wrapper) {
             <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
+      } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.openEditDept = async function (id) {
+      try {
+        const data = await api(`departments.php?action=get&id=${id}`);
+        const d = data.department;
+        let selectedColor = d.color || '#2d3561';
+
+        showModal(`
+             <div class="modal-header"><h2>Editar Departamento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+             <form id="edit-dept-form">
+               <div class="modal-body">
+                 <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="ed-name" required value="${d.name.replace(/"/g, '&quot;')}"></div>
+                 <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ed-desc">${d.description || ''}</textarea></div>
+                 
+                 <div class="form-group"><label class="form-label">Subdepartamento de (Opcional)</label>
+                  <select class="form-select" id="ed-parent">
+                    <option value="">Ninguno</option>
+                    <optgroup label="Grupos Base">
+                      <option value="emergencias" ${d.parent_id === 'emergencias' ? 'selected' : ''}>Emergencias (Base)</option>
+                      <option value="actividades" ${d.parent_id === 'actividades' ? 'selected' : ''}>Actividades (Base)</option>
+                      <option value="otros_eventos" ${d.parent_id === 'otros_eventos' ? 'selected' : ''}>Otros eventos (Base)</option>
+                      <option value="soporte_oficina" ${d.parent_id === 'soporte_oficina' ? 'selected' : ''}>Soporte de oficina (Base)</option>
+                      <option value="superintendencia" ${d.parent_id === 'superintendencia' ? 'selected' : ''}>Superintendencia (Base)</option>
+                    </optgroup>
+                    <optgroup label="Otros Departamentos">
+                      ${depts.filter(dept => dept.id != id).map(dept => `<option value="${dept.id}" ${d.parent_id == dept.id ? 'selected' : ''}>${dept.name}</option>`).join('')}
+                    </optgroup>
+                  </select>
+                 </div>
+
+                 <div class="form-group"><label class="form-label">Color</label><div class="color-picker" id="ed-colors">${DEPT_COLORS.map(c => `<div class="color-swatch ${c === selectedColor ? 'selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}</div></div>
+               </div>
+               <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>
+             </form>
+           `);
+
+        document.querySelectorAll('#ed-colors .color-swatch').forEach(el => {
+          el.addEventListener('click', () => {
+            document.querySelectorAll('#ed-colors .color-swatch').forEach(s => s.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedColor = el.dataset.color;
+          });
+        });
+
+        document.getElementById('edit-dept-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            await api(`departments.php?action=update&id=${id}`, {
+              method: 'PUT', body: JSON.stringify({
+                name: document.getElementById('ed-name').value,
+                description: document.getElementById('ed-desc').value,
+                color: selectedColor,
+                parent_id: document.getElementById('ed-parent').value || null
+              })
+            });
+            toast('Departamento actualizado');
+            closeModal();
+            navigate('departments');
+          } catch (err) { toast(err.message, 'error'); }
+        });
       } catch (err) { toast(err.message, 'error'); }
     };
 

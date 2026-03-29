@@ -1,4 +1,4 @@
-# ICCP - Sistema de Gestión de Tareas Departamental
+ # ICCP - Sistema de Gestión de Tareas Departamental
 
 Sistema completo de gestión de tareas por departamento con tablero Kanban, integración Google Calendar, panel de métricas y diseño premium, desarrollado con PHP + MySQL (backend) y HTML/CSS/JS puro (frontend).
 
