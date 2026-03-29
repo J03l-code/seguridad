@@ -1302,7 +1302,7 @@ async function renderCalendar(wrapper) {
               <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${i.description || 'Sin descripción'}</p>
             </div>
-            ${(isAdmin || (userGroup.split(',').some(g => (i.target_group || '').includes(g)))) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" style="padding:6px" onclick="openEditEvent(${i.id})">✏️</button><button class="btn btn-sm btn-outline" style="padding:6px;color:var(--danger-600);border-color:var(--danger-200)" onclick="deleteEvent(${i.id})">🗑</button></div>` : ''}
+            ${(isAdmin || i.created_by == state.user.id) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" style="padding:6px" onclick="openEditEvent(${i.id})">✏️</button><button class="btn btn-sm btn-outline" style="padding:6px;color:var(--danger-600);border-color:var(--danger-200)" onclick="deleteEvent(${i.id})">🗑</button></div>` : ''}
           </div>`;
         }
       }).join('') + '</div>';
@@ -1409,16 +1409,6 @@ async function renderCalendar(wrapper) {
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ee-desc">${e.description || ''}</textarea></div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ee-date" value="${e.event_date.replace(' ', 'T')}" required></div>
-              <div class="form-group"><label class="form-label">Dirigidos a (Grupos) *</label>
-                <div class="checkbox-group" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid var(--gray-300); padding:10px; border-radius:4px; background:#fff;">
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="todos" ${isGrp('todos')}> Para Todos (General)</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="emergencias" ${isGrp('emergencias')}> Emergencias</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="actividades" ${isGrp('actividades')}> Actividades</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="otros_eventos" ${isGrp('otros_eventos')}> Otros eventos</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="soporte_oficina" ${isGrp('soporte_oficina')}> Soporte de oficina</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ee-group" value="superintendencia" ${isGrp('superintendencia')}> Superintendencia</label>
-                </div>
-              </div>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>
@@ -1431,8 +1421,7 @@ async function renderCalendar(wrapper) {
             method: 'PUT', body: JSON.stringify({
               title: document.getElementById('ee-title').value,
               description: document.getElementById('ee-desc').value,
-              event_date: document.getElementById('ee-date').value.replace('T', ' '),
-              target_group: Array.from(document.querySelectorAll('input[name="ee-group"]:checked')).map(cb => cb.value)
+              event_date: document.getElementById('ee-date').value.replace('T', ' ')
             })
           });
           toast('Evento actualizado');
@@ -1451,16 +1440,6 @@ async function renderCalendar(wrapper) {
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ce-desc"></textarea></div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ce-date" required></div>
-              <div class="form-group"><label class="form-label">Dirigidos a (Grupos) *</label>
-                <div class="checkbox-group" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid var(--gray-300); padding:10px; border-radius:4px; background:#fff;">
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="todos"> Para Todos (General)</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="emergencias"> Emergencias</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="actividades"> Actividades</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="otros_eventos"> Otros eventos</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="soporte_oficina"> Soporte de oficina</label>
-                  <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="ce-group" value="superintendencia"> Superintendencia</label>
-                </div>
-              </div>
             </div>
           </div>
           <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Evento</button></div>
@@ -1473,8 +1452,7 @@ async function renderCalendar(wrapper) {
             method: 'POST', body: JSON.stringify({
               title: document.getElementById('ce-title').value,
               description: document.getElementById('ce-desc').value,
-              event_date: document.getElementById('ce-date').value,
-              target_group: Array.from(document.querySelectorAll('input[name="ce-group"]:checked')).map(cb => cb.value)
+              event_date: document.getElementById('ce-date').value
             })
           });
           toast('Evento creado');

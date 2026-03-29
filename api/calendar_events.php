@@ -35,29 +35,13 @@ function listEvents($auth)
 {
     global $pdo;
 
-    if ($auth['role'] === 'admin') {
-        $stmt = $pdo->prepare('
-            SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
-            FROM calendar_events e 
-            JOIN users u ON e.created_by = u.id 
-            ORDER BY event_date ASC
-        ');
-        $stmt->execute();
-    } else {
-        $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
-        $uStmt->execute([$auth['id']]);
-        $user = $uStmt->fetch();
-        $group = $user ? $user['user_group'] : '';
-
-        $stmt = $pdo->prepare('
-            SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
-            FROM calendar_events e 
-            JOIN users u ON e.created_by = u.id 
-            WHERE FIND_IN_SET(?, e.target_group) > 0 OR e.target_group = "todos" OR u.user_group = ? OR e.created_by = ? 
-            ORDER BY event_date ASC
-        ');
-        $stmt->execute([$group, $group, $auth['id']]);
-    }
+    $stmt = $pdo->prepare('
+        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
+        FROM calendar_events e 
+        JOIN users u ON e.created_by = u.id 
+        ORDER BY event_date ASC
+    ');
+    $stmt->execute();
 
     jsonResponse(['events' => $stmt->fetchAll()]);
 }
@@ -73,24 +57,16 @@ function createEvent($auth)
     $description = trim($data['description'] ?? '');
     $eventDate = $data['event_date'] ?? '';
 
-    $targetGroupsRaw = $data['target_group'] ?? 'todos';
+    $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
+    $uStmt->execute([$auth['id']]);
+    $creatorUser = $uStmt->fetch();
+    $creatorName = $creatorUser['name'] ?? 'Alguien';
+    $creatorGroup = $creatorUser['user_group'] ?? 'otros_eventos';
 
-    if (is_array($targetGroupsRaw)) {
-        if (in_array('todos', $targetGroupsRaw)) {
-            $targetGroupStr = 'todos';
-            $groupsArray = ['todos'];
-        } else {
-            $targetGroupStr = implode(',', $targetGroupsRaw);
-            $groupsArray = $targetGroupsRaw;
-        }
-    } else {
-        $targetGroupStr = trim($targetGroupsRaw);
-        $groupsArray = [$targetGroupStr];
-    }
-
-    if (!$title || !$eventDate) {
-        jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
-    }
+    $targetGroupsArray = explode(',', $creatorGroup);
+    $targetGroupStr = trim($targetGroupsArray[0]);
+    if (!$targetGroupStr)
+        $targetGroupStr = 'otros_eventos';
 
     $pdo->beginTransaction();
     try {
@@ -98,80 +74,23 @@ function createEvent($auth)
         $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id']]);
         $eventId = $pdo->lastInsertId(); // CAPTURE ID IMMEDIATELY
 
-        // Obtener datos del creador para la notificación
-        $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
-        $uStmt->execute([$auth['id']]);
-        $creatorUser = $uStmt->fetch();
-        $creatorName = $creatorUser['name'] ?? 'Alguien';
-        $creatorGroup = $creatorUser['user_group'] ?? '';
-
         $msgTitle = $title;
         if (strlen($msgTitle) > 30)
             $msgTitle = mb_substr($msgTitle, 0, 30) . '...';
 
-        $friendlyTarget = implode(', ', array_map(function ($g) {
-            return str_replace('_', ' ', $g);
-        }, $groupsArray));
-        $msg = "{$creatorName} agendó '{$msgTitle}' para {$friendlyTarget}";
+        $msg = "{$creatorName} agendó un nuevo evento general: '{$msgTitle}'";
 
-        if ($targetGroupStr === 'todos') {
-            $notifStmt = $pdo->prepare('INSERT INTO notifications (user_id, message) SELECT id, ? FROM users WHERE id != ?');
-            $notifStmt->execute([$msg, $auth['id']]);
-        } else {
-            $cGroups = explode(',', $creatorGroup);
-            foreach ($cGroups as $cg) {
-                if (trim($cg))
-                    $groupsArray[] = trim($cg);
-            }
-            $groupsArray = array_unique($groupsArray);
-
-            $conditions = [];
-            foreach ($groupsArray as $g) {
-                $conditions[] = "FIND_IN_SET(?, user_group)";
-            }
-            $condSql = !empty($conditions) ? implode(' OR ', $conditions) : "1=0";
-
-            $notifStmt = $pdo->prepare("
-                INSERT INTO notifications (user_id, message) 
-                SELECT id, ? FROM users 
-                WHERE ($condSql) AND id != ?
-            ");
-
-            $params = [$msg];
-            foreach ($groupsArray as $g) {
-                $params[] = $g;
-            }
-            $params[] = $auth['id'];
-
-            $notifStmt->execute($params);
-        }
+        $notifStmt = $pdo->prepare('INSERT INTO notifications (user_id, message) SELECT id, ? FROM users WHERE id != ?');
+        $notifStmt->execute([$msg, $auth['id']]);
 
         $pdo->commit();
 
-        // Map application's target groups to Google Color IDs:
-        // 11=Red(Emergencias), 7=Blue(Actividades), 5=Yellow(Otros), 3=Purple(Soporte), 10=Green(Super)
-        $colorMap = [
-            'emergencias' => 11,
-            'actividades' => 7,
-            'otros_eventos' => 5,
-            'soporte_oficina' => 3,
-            'superintendencia' => 10
-        ];
-        $primaryGroup = (is_array($groupsArray) && count($groupsArray) > 0) ? $groupsArray[0] : 'otros_eventos';
-        $googleColorId = $colorMap[$primaryGroup] ?? 5;
-
-        // Push to Google Calendar and store returned event IDs per user
         try {
-            $pushGroups = ($targetGroupStr === 'todos') ? ['todos'] : $groupsArray;
-            $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate, null, $googleColorId);
-
-            // Store google_event_ids as JSON: {"userId": "googleEventId"}
-            $googleIds = [];
-            foreach ($gcResults as $uid => $res) {
-                if (!empty($res['google_event_id'])) {
-                    $googleIds[$uid] = $res['google_event_id'];
-                }
-            }
+            require_once 'google_calendar_helper.php';
+            $start = $eventDate . 'T00:00:00';
+            $endDateTime = $eventDate . 'T23:59:59';
+            // Push globally
+            $googleIds = pushEventToGroup(['todos'], $title, $description, $start, $endDateTime, $targetGroupStr, $eventId);
             if (!empty($googleIds)) {
                 $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
                     ->execute([json_encode($googleIds), $eventId]);
@@ -211,20 +130,7 @@ function updateEvent($auth)
     $title = trim($data['title'] ?? $ev['title']);
     $description = trim($data['description'] ?? $ev['description']);
     $eventDate = $data['event_date'] ?? $ev['event_date'];
-    $targetGroupsRaw = $data['target_group'] ?? $ev['target_group'];
-
-    if (is_array($targetGroupsRaw)) {
-        if (in_array('todos', $targetGroupsRaw)) {
-            $targetGroupStr = 'todos';
-            $groupsArray = ['todos'];
-        } else {
-            $targetGroupStr = implode(',', $targetGroupsRaw);
-            $groupsArray = $targetGroupsRaw;
-        }
-    } else {
-        $targetGroupStr = trim($targetGroupsRaw);
-        $groupsArray = explode(',', $targetGroupStr);
-    }
+    $targetGroupStr = $ev['target_group'];
 
     if (!$title || !$eventDate) {
         jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
@@ -249,32 +155,18 @@ function updateEvent($auth)
     $stmt = $pdo->prepare('UPDATE calendar_events SET title=?, description=?, event_date=?, target_group=?, google_event_ids=NULL WHERE id=?');
     $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $id]);
 
-    $colorMap = [
-        'emergencias' => 11,
-        'actividades' => 7,
-        'otros_eventos' => 5,
-        'soporte_oficina' => 3,
-        'superintendencia' => 10
-    ];
-    $primaryGroup = (is_array($groupsArray) && count($groupsArray) > 0) ? $groupsArray[0] : 'otros_eventos';
-    $googleColorId = $colorMap[$primaryGroup] ?? 5;
-
-    // Push new instances to Google Calendar
+    // Re-push to Google Calendar globally
     try {
-        $pushGroups = ($targetGroupStr === 'todos') ? ['todos'] : $groupsArray;
-        $gcResults = pushEventToGroup($pdo, $pushGroups, $title, $description, $eventDate, null, $googleColorId);
+        require_once 'google_calendar_helper.php';
+        $start = $eventDate . 'T00:00:00';
+        $endDateTime = $eventDate . 'T23:59:59';
+        $googleIds = pushEventToGroup(['todos'], $title, $description, $start, $endDateTime, $targetGroupStr, $id);
 
-        $googleIds = [];
-        foreach ($gcResults as $uid => $res) {
-            if (!empty($res['google_event_id'])) {
-                $googleIds[$uid] = $res['google_event_id'];
-            }
-        }
         if (!empty($googleIds)) {
             $pdo->prepare('UPDATE calendar_events SET google_event_ids = ? WHERE id = ?')
                 ->execute([json_encode($googleIds), $id]);
         }
-    } catch (Exception $gcErr) {
+    } catch (Exception $e) {
     }
 
     jsonResponse(['message' => 'Evento actualizado exitosamente.']);
