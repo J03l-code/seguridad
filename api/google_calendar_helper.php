@@ -66,7 +66,7 @@ function getValidAccessToken($pdo, $userId)
     return $token['access_token'];
 }
 
-function createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime = null, $colorId = null)
+function createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime = null, $colorId = null, $recurrenceRule = null)
 {
     $startTs = strtotime($startDateTime);
     if (!$startTs)
@@ -86,8 +86,13 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
             'overrides' => [['method' => 'popup', 'minutes' => 30]]
         ]
     ];
+
     if ($colorId) {
         $event['colorId'] = (string) $colorId;
+    }
+
+    if ($recurrenceRule && is_array($recurrenceRule)) {
+        $event['recurrence'] = $recurrenceRule;
     }
 
     $ch = curl_init('https://www.googleapis.com/calendar/v3/calendars/primary/events');
@@ -118,7 +123,7 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
  * Push an event to every linked Google Calendar user in specific groups.
  * If groups contains 'todos', sends to ALL users with a linked token.
  */
-function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateTime, $endDateTime = null, $colorId = null)
+function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateTime, $endDateTime = null, $colorId = null, $recurrenceRule = null)
 {
     ensureGoogleTokensTable($pdo);
 
@@ -142,13 +147,18 @@ function pushEventToGroup($pdo, $targetGroups, $title, $description, $startDateT
         $stmt->execute($params);
     }
 
-    $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    $results = [];
-    foreach ($userIds as $userId) {
-        $accessToken = getValidAccessToken($pdo, $userId);
+    $googleEventIds = [];
+    foreach ($stmt as $row) {
+        $userId = $row['user_id'];
+        $accessToken = getValidAccessToken($pdo, (int) $userId);
+
         if ($accessToken) {
-            $results[$userId] = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime, $colorId);
+            $result = createGoogleCalendarEvent($accessToken, $title, $description, $startDateTime, $endDateTime, $colorId, $recurrenceRule);
+            $googleEventIds[$userId] = [
+                'success' => $result['success'],
+                'google_event_id' => $result['google_event_id'] ?? null
+            ];
         }
     }
-    return $results;
+    return $googleEventIds;
 }

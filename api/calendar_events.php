@@ -14,6 +14,13 @@ try {
     $pdo->exec("ALTER TABLE calendar_events ADD COLUMN google_event_ids TEXT DEFAULT NULL");
 }
 
+// Auto-migrate recurrence column
+try {
+    $pdo->query("SELECT recurrence FROM calendar_events LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE calendar_events ADD COLUMN recurrence VARCHAR(50) DEFAULT NULL");
+}
+
 switch ($action) {
     case 'list':
         listEvents($auth);
@@ -36,7 +43,7 @@ function listEvents($auth)
     global $pdo;
 
     $stmt = $pdo->prepare('
-        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, u.user_group as creator_group 
+        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, e.recurrence, u.user_group as creator_group 
         FROM calendar_events e 
         JOIN users u ON e.created_by = u.id 
         ORDER BY event_date ASC
@@ -57,21 +64,30 @@ function createEvent($auth)
     $description = trim($data['description'] ?? '');
     $eventDate = $data['event_date'] ?? '';
 
-    $uStmt = $pdo->prepare('SELECT name, user_group FROM users WHERE id = ?');
+    $recurrence = $data['recurrence'] ?? null;
+    if ($recurrence === 'none' || !$recurrence)
+        $recurrence = null;
+
+    $uStmt = $pdo->prepare('SELECT name, user_group, role FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
     $creatorUser = $uStmt->fetch();
     $creatorName = $creatorUser['name'] ?? 'Alguien';
     $creatorGroup = $creatorUser['user_group'] ?? 'otros_eventos';
 
-    $targetGroupsArray = explode(',', $creatorGroup);
-    $targetGroupStr = trim($targetGroupsArray[0]);
+    $targetGroupStr = 'otros_eventos';
+    if ($creatorUser['role'] === 'admin' && !empty($data['target_group'])) {
+        $targetGroupStr = trim($data['target_group']);
+    } else {
+        $targetGroupsArray = explode(',', $creatorGroup);
+        $targetGroupStr = trim($targetGroupsArray[0]);
+    }
     if (!$targetGroupStr)
         $targetGroupStr = 'otros_eventos';
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by) VALUES (?, ?, ?, ?, ?)');
-        $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id']]);
+        $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by, recurrence) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id'], $recurrence]);
         $eventId = $pdo->lastInsertId(); // CAPTURE ID IMMEDIATELY
 
         $msgTitle = $title;
@@ -94,8 +110,17 @@ function createEvent($auth)
             $datePart = explode(' ', $eventDate)[0];
             $start = $datePart . 'T00:00:00';
             $endDT = $datePart . 'T23:59:59';
+
+            $rrule = null;
+            if ($recurrence === 'daily_14')
+                $rrule = ['RRULE:FREQ=DAILY;COUNT=14'];
+            else if ($recurrence === 'weekly_12')
+                $rrule = ['RRULE:FREQ=WEEKLY;COUNT=12'];
+            else if ($recurrence === 'monthly_6')
+                $rrule = ['RRULE:FREQ=MONTHLY;COUNT=6'];
+
             // Push globally
-            $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
+            $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId, $rrule);
             // Extract only the google_event_id strings for storage
             $cleanIds = [];
             foreach ($googleIds as $uid => $res) {
@@ -142,7 +167,11 @@ function updateEvent($auth)
     $title = trim($data['title'] ?? $ev['title']);
     $description = trim($data['description'] ?? $ev['description']);
     $eventDate = $data['event_date'] ?? $ev['event_date'];
+
     $targetGroupStr = $ev['target_group'];
+    if ($auth['role'] === 'admin' && !empty($data['target_group'])) {
+        $targetGroupStr = trim($data['target_group']);
+    }
 
     if (!$title || !$eventDate) {
         jsonResponse(['error' => 'Título y fecha son obligatorios.'], 400);
@@ -175,7 +204,17 @@ function updateEvent($auth)
         $datePart = explode(' ', $eventDate)[0];
         $start = $datePart . 'T00:00:00';
         $endDT = $datePart . 'T23:59:59';
-        $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId);
+
+        $rrule = null;
+        $recurrence = $ev['recurrence'] ?? null;
+        if ($recurrence === 'daily_14')
+            $rrule = ['RRULE:FREQ=DAILY;COUNT=14'];
+        else if ($recurrence === 'weekly_12')
+            $rrule = ['RRULE:FREQ=WEEKLY;COUNT=12'];
+        else if ($recurrence === 'monthly_6')
+            $rrule = ['RRULE:FREQ=MONTHLY;COUNT=6'];
+
+        $googleIds = pushEventToGroup($pdo, ['todos'], $title, $description, $start, $endDT, $googleColorId, $rrule);
         $cleanIds = [];
         foreach ($googleIds as $uid => $res) {
             if (!empty($res['google_event_id'])) {

@@ -41,7 +41,7 @@ function toast(message, type = 'success') {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
   el.innerHTML = `<span style="font-size:18px">${icon}</span><span class="toast-message">${message}</span>
-    <button onclick="this.parentElement.remove()" style="color:var(--gray-500);font-size:16px">✕</button>`;
+    <button onclick="this.parentElement.remove()"style="color:var(--gray-500);font-size:16px">✕</button>`;
   container.appendChild(el);
   setTimeout(() => el.remove(), 4000);
 }
@@ -199,8 +199,8 @@ function renderLayout(container) {
   ];
 
   container.innerHTML = `
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
-    <aside class="sidebar" id="sidebar">
+    <div class="sidebar-overlay"id="sidebar-overlay"></div>
+    <aside class="sidebar"id="sidebar">
       <div class="sidebar-brand">
         <div class="sidebar-brand-icon">IC</div>
         <h1>ICCP</h1>
@@ -208,52 +208,52 @@ function renderLayout(container) {
       <nav class="sidebar-nav">
         <div class="sidebar-section-title">Menú Principal</div>
         ${navItems.map(n => `
-          <div class="sidebar-link" data-page="${n.page}" onclick="closeMobile();navigate('${n.page}')">
+          <div class="sidebar-link"data-page="${n.page}"onclick="closeMobile();navigate('${n.page}')">
             <span class="link-icon">${n.icon}</span>
             <span>${n.label}</span>
           </div>
         `).join('')}
       </nav>
-      <div class="sidebar-toggle" onclick="toggleSidebar()">←</div>
+      <div class="sidebar-toggle"onclick="toggleSidebar()">←</div>
     </aside>
-    <div class="main-area" id="main-area">
-      <header class="topbar" id="topbar">
+    <div class="main-area"id="main-area">
+      <header class="topbar"id="topbar">
         <div class="topbar-left">
-          <div class="mobile-toggle" onclick="toggleMobile()">☰</div>
-          <h1 class="topbar-title" id="page-title">Dashboard</h1>
+          <div class="mobile-toggle"onclick="toggleMobile()">☰</div>
+          <h1 class="topbar-title"id="page-title">Dashboard</h1>
         </div>
         <div class="topbar-right">
-          <div class="notifications-container" style="position:relative; margin-right: 12px; cursor: pointer;" onclick="toggleNotifications()">
+          <div class="notifications-container"style="position:relative; margin-right: 12px; cursor: pointer;"onclick="toggleNotifications()">
             <span style="font-size: 22px;">🔔</span>
-            <span id="notif-badge" class="badge" style="background:var(--danger-500); color:white; position:absolute; top:-4px; right:-6px; font-size:10px; padding:2px 5px; display:none;">0</span>
-            <div id="notif-dropdown" class="user-dropdown" style="display:none; width: 300px; right: -10px; padding: 0;">
+            <span id="notif-badge"class="badge"style="background:var(--danger-500); color:white; position:absolute; top:-4px; right:-6px; font-size:10px; padding:2px 5px; display:none;">0</span>
+            <div id="notif-dropdown"class="user-dropdown"style="display:none; width: 300px; right: -10px; padding: 0;">
                 <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-200); font-weight: 600; font-size: 14px; background: var(--gray-50); display:flex; justify-content:space-between">
                     Notificaciones
-                    <span style="font-size: 12px; color: var(--primary-600); cursor: pointer;" onclick="event.stopPropagation();markNotifsRead()">Marcar leídas</span>
+                    <span style="font-size: 12px; color: var(--primary-600); cursor: pointer;"onclick="event.stopPropagation();markNotifsRead()">Marcar leídas</span>
                 </div>
-                <div id="notif-list" style="max-height: 300px; overflow-y: auto;">
+                <div id="notif-list"style="max-height: 300px; overflow-y: auto;">
                     <div style="padding: 16px; text-align: center; color: var(--gray-500); font-size: 13px;">Sin notificaciones nuevas</div>
                 </div>
             </div>
           </div>
-          <div class="topbar-user" onclick="toggleUserMenu()">
+          <div class="topbar-user"onclick="toggleUserMenu()">
             <div class="topbar-avatar">${initials(state.user?.name)}</div>
             <div class="topbar-user-info">
               <span class="topbar-user-name">${state.user?.name || ''}</span>
               <span class="topbar-user-role">${state.user?.role || ''}</span>
             </div>
-            <div class="user-dropdown" id="user-dropdown" style="display:none">
+            <div class="user-dropdown"id="user-dropdown"style="display:none">
               <div class="user-dropdown-info">
                 <div class="name">${state.user?.name}</div>
                 <div class="email">${state.user?.email}</div>
               </div>
               <button onclick="event.stopPropagation();navigate('settings');closeUserMenu()">⚙️ Configuración</button>
-              <button class="logout-btn" onclick="event.stopPropagation();logout()">🚪 Cerrar sesión</button>
+              <button class="logout-btn"onclick="event.stopPropagation();logout()">🚪 Cerrar sesión</button>
             </div>
           </div>
         </div>
       </header>
-      <main class="page-content" id="page-content"></main>
+      <main class="page-content"id="page-content"></main>
     </div>
   `;
 
@@ -280,7 +280,7 @@ function renderLayout(container) {
       let html = '';
       if (data.notifications && data.notifications.length > 0) {
         html = data.notifications.map(n => `
-                <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; ${n.is_read ? 'opacity: 0.6;' : 'background: rgba(66, 153, 225, 0.05);'}" onclick="handleNotificationClick(${n.id}, \`${n.message.replace(/`/g, '')}\`)">
+                <div style="padding: 12px 16px; border-bottom: 1px solid var(--gray-100); cursor: pointer; ${n.is_read ? 'opacity: 0.6;' : 'background: rgba(66, 153, 225, 0.05);'}"onclick="handleNotificationClick(${n.id}, \`${n.message.replace(/`/g, '')}\`)">
                     <div style="font-size: 13px; color: var(--gray-800); line-height: 1.4;">${n.message}</div>
                     <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">${timeAgo(n.created_at)}</div>
                 </div>
@@ -360,9 +360,9 @@ function renderLogin(container) {
           </div>
           <div id="login-error"></div>
           <form id="login-form">
-            <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input" id="login-email" type="email" placeholder="correo@ejemplo.com" required></div>
-            <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input" id="login-pass" type="password" placeholder="••••••••" required minlength="6"></div>
-            <button type="submit" class="btn btn-primary login-submit" id="login-btn">Iniciar Sesión</button>
+            <div class="form-group"><label class="form-label">Correo electrónico</label><input class="form-input"id="login-email"type="email"placeholder="correo@ejemplo.com"required></div>
+            <div class="form-group"><label class="form-label">Contraseña</label><input class="form-input"id="login-pass"type="password"placeholder="••••••••"required minlength="6"></div>
+            <button type="submit"class="btn btn-primary login-submit"id="login-btn">Iniciar Sesión</button>
           </form>
         </div>
       </div>
@@ -419,15 +419,15 @@ async function renderDashboard(wrapper) {
       const da = `${pct * 2.83} ${283 - pct * 2.83}`;
       const doff = -cumPct * 2.83;
       cumPct += pct;
-      return `<circle cx="50" cy="50" r="45" fill="none" stroke="${d.color}" stroke-width="8"
-        stroke-dasharray="${da}" stroke-dashoffset="${doff}" stroke-linecap="round"
-        transform="rotate(-90 50 50)" style="transition:stroke-dasharray .8s ease"/>`;
+      return `<circle cx="50"cy="50"r="45"fill="none"stroke="${d.color}"stroke-width="8"
+        stroke-dasharray="${da}"stroke-dashoffset="${doff}"stroke-linecap="round"
+        transform="rotate(-90 50 50)"style="transition:stroke-dasharray .8s ease"/>`;
     }).join('');
 
     wrapper.innerHTML = `
-      <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <div class="page-header"style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
         <h2>Dashboard Gerencial</h2>
-        ${state.user?.role === 'admin' ? `<button class="btn btn-primary" onclick="exportTasksCSV()" style="display:flex;align-items:center;gap:6px">📥 Descargar Reporte (CSV)</button>` : ''}
+        ${state.user?.role === 'admin' ? `<button class="btn btn-primary"onclick="exportTasksCSV()"style="display:flex;align-items:center;gap:6px">📥 Descargar Reporte (CSV)</button>` : ''}
       </div>
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-icon blue">📋</div><div class="metric-info"><h4>Total Tareas</h4><div class="metric-value">${m.totalTasks}</div><span class="metric-sub positive">↑ ${m.weeklyCreated} esta semana</span></div></div>
@@ -435,31 +435,31 @@ async function renderDashboard(wrapper) {
         <div class="metric-card"><div class="metric-icon orange">⏳</div><div class="metric-info"><h4>En Progreso</h4><div class="metric-value">${s.in_progress}</div></div></div>
         <div class="metric-card"><div class="metric-icon red">⚠️</div><div class="metric-info"><h4>Vencidas</h4><div class="metric-value">${m.overdueTasks}</div>${m.overdueTasks > 0 ? '<span class="metric-sub negative">Requiere atención</span>' : ''}</div></div>
       </div>
-      <div class="grid-auto" style="margin-bottom:28px">
+      <div class="grid-auto"style="margin-bottom:28px">
         <div class="card"><div class="card-header"><h3>Estado de Tareas</h3></div>
           <div class="donut-chart">
-            <svg viewBox="0 0 100 100" style="width:140px;height:140px;flex-shrink:0">
-              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--gray-200)" stroke-width="8"/>
+            <svg viewBox="0 0 100 100"style="width:140px;height:140px;flex-shrink:0">
+              <circle cx="50"cy="50"r="45"fill="none"stroke="var(--gray-200)"stroke-width="8"/>
               ${circles}
-              <text x="50" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="var(--primary-800)">${rate}%</text>
-              <text x="50" y="58" text-anchor="middle" font-size="7" fill="var(--gray-500)">completado</text>
+              <text x="50"y="46"text-anchor="middle"font-size="16"font-weight="700"fill="var(--primary-800)">${rate}%</text>
+              <text x="50"y="58"text-anchor="middle"font-size="7"fill="var(--gray-500)">completado</text>
             </svg>
             <div class="donut-legend">
-              ${donutData.map(d => `<div class="legend-item"><span class="legend-dot" style="background:${d.color}"></span><span>${d.label}</span><span class="legend-value">${d.val}</span></div>`).join('')}
+              ${donutData.map(d => `<div class="legend-item"><span class="legend-dot"style="background:${d.color}"></span><span>${d.label}</span><span class="legend-value">${d.val}</span></div>`).join('')}
             </div>
           </div>
         </div>
         <div class="card"><div class="card-header"><h3>Tareas por Prioridad</h3></div>
           <div class="chart-container"><div class="bar-chart">
             ${[{ k: 'low', l: 'Baja', c: 'primary', v: p.low }, { k: 'medium', l: 'Media', c: 'success', v: p.medium }, { k: 'high', l: 'Alta', c: 'warning', v: p.high }, { k: 'urgent', l: 'Urgente', c: 'danger', v: p.urgent }]
-        .map(i => `<div class="bar-item"><div class="bar-value">${i.v}</div><div class="bar ${i.c}" style="height:${(i.v / maxP) * 100}%"></div><div class="bar-label">${i.l}</div></div>`).join('')}
+        .map(i => `<div class="bar-item"><div class="bar-value">${i.v}</div><div class="bar ${i.c}"style="height:${(i.v / maxP) * 100}%"></div><div class="bar-label">${i.l}</div></div>`).join('')}
           </div></div>
         </div>
       </div>
       <div class="grid-auto">
         <div class="card"><div class="card-header"><h3>Actividad Reciente</h3></div>
-          <div class="card-body" style="max-height:400px;overflow-y:auto">
-            ${activity.length === 0 ? '<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📭</div><h3>Sin actividad aún</h3></div>' :
+          <div class="card-body"style="max-height:400px;overflow-y:auto">
+            ${activity.length === 0 ? '<div class="empty-state"style="padding:30px 0"><div class="empty-state-icon">📭</div><h3>Sin actividad aún</h3></div>' :
         '<div class="activity-list">' + activity.map(a => `
                 <div class="activity-item">
                   <div class="activity-avatar">${initials(a.user_name)}</div>
@@ -469,7 +469,7 @@ async function renderDashboard(wrapper) {
           </div>
         </div>
         <div class="card"><div class="card-header"><h3>Resumen General</h3></div>
-          <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+          <div class="card-body"style="display:flex;flex-direction:column;gap:16px">
             ${[{ i: '🏢', l: 'Departamentos activos', v: m.totalDepartments }, { i: '👥', l: 'Usuarios registrados', v: m.totalUsers }, { i: '📋', l: 'Tareas esta semana', v: m.weeklyCreated }, { i: '✅', l: 'Completadas esta semana', v: m.weeklyCompleted }]
         .map(s => `<div class="stat-row"><div class="stat-row-icon"><span style="font-size:20px">${s.i}</span><span>${s.l}</span></div><span class="stat-row-value">${s.v}</span></div>`).join('')}
           </div>
@@ -520,7 +520,7 @@ async function renderTasks(wrapper) {
           c.tasks.map(t => {
             const sla = getSLAStatus(t.due_date, t.status);
             return `
-                <div class="task-card ${sla ? 'task-card-' + sla : ''}" onclick="openTaskDetail(${t.id})">
+                <div class="task-card ${sla ? 'task-card-' + sla : ''}"onclick="openTaskDetail(${t.id})">
                   <div class="task-card-header">
                     <span class="task-card-title">${t.title}</span>
                     <span class="badge badge-${t.priority}">${priorityLabel[t.priority]}</span>
@@ -530,10 +530,10 @@ async function renderTasks(wrapper) {
                     <div class="task-card-meta">
                       ${t.due_date ? `<span class="${isOverdue(t.due_date) && t.status !== 'done' ? 'task-due-overdue' : ''}">📅 ${formatDate(t.due_date)}</span>` : ''}
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
-                      ${t.target_group ? `<span class="dept-tag" style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
+                      ${t.target_group ? `<span class="dept-tag"style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
                     </div>
                   </div>
-                  ${c.next && (canManage || (t.target_group === myGroup)) ? `<div class="task-actions"><button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
+                  ${c.next && (canManage || (t.target_group === myGroup)) ? `<div class="task-actions"><button class="btn btn-sm btn-outline"onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
                 </div>
               `;
           }).join('')}
@@ -546,10 +546,10 @@ async function renderTasks(wrapper) {
     const canManage = true; // All users can manage tasks
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary" onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
+      <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary"onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
       <div class="filters-bar">
-        <select class="form-select" id="filter-dept" onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select>
-        <select class="form-select" id="filter-priority" onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>
+        <select class="form-select"id="filter-dept"onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select>
+        <select class="form-select"id="filter-priority"onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>
       </div>
       <div id="kanban-container">${buildBoard(tasks)}</div>
     `;
@@ -591,14 +591,14 @@ async function renderTasks(wrapper) {
         const act = data.activity || [];
 
         showModal(`
-          <div class="modal-header"><h2>${t.title}</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+          <div class="modal-header"><h2>${t.title}</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
           <div class="modal-body">
             <div style="display:flex;gap:8px;margin-bottom:20px">
               <span class="badge badge-${t.status.replace('_', '-')}">${statusLabel[t.status]}</span>
               <span class="badge badge-${t.priority}">${priorityLabel[t.priority]}</span>
             </div>
             ${t.description ? `<div style="margin-bottom:20px"><label class="form-label">Descripción</label><p style="font-size:14px;color:var(--gray-700);line-height:1.6">${t.description}</p></div>` : ''}
-            <div class="grid-2" style="margin-bottom:20px">
+            <div class="grid-2"style="margin-bottom:20px">
               <div><label class="form-label">Departamento</label><p style="font-size:14px">${t.target_group ? (groupLabels[t.target_group] || t.target_group) : '—'}</p></div>
               <div><label class="form-label">Sector</label><p style="font-size:14px">Tarea de Equipo</p></div>
               <div><label class="form-label">Creado por</label><p style="font-size:14px">${t.creator_name}</p></div>
@@ -606,23 +606,23 @@ async function renderTasks(wrapper) {
             </div>
             ${(canManage || (t.target_group === myGroup)) ? `
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
-              ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
+              ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}"onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
-            ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}" target="_blank" style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
-            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar" style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text" style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800)">${a.details}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
+            ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}"target="_blank"style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
+            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar"style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text"style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800)">${a.details}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
             
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-200)">
               <label class="form-label">Añadir Comentario</label>
               <div style="display:flex;gap:8px">
-                <textarea id="task-comment-input" class="form-input" placeholder="Escribe un comentario o actualización..." style="height:40px; min-height:40px; resize:vertical;"></textarea>
-                <button class="btn btn-primary" style="white-space:nowrap" onclick="addComment(${t.id})">Enviar</button>
+                <textarea id="task-comment-input"class="form-input"placeholder="Escribe un comentario o actualización..."style="height:40px; min-height:40px; resize:vertical;"></textarea>
+                <button class="btn btn-primary"style="white-space:nowrap"onclick="addComment(${t.id})">Enviar</button>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-sm btn-outline" onclick="syncCalendar(${t.id})">📅 Sincronizar</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">🗑 Eliminar</button>
-            <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
+            <button class="btn btn-sm btn-outline"onclick="syncCalendar(${t.id})">📅 Sincronizar</button>
+            <button class="btn btn-sm btn-danger"onclick="deleteTask(${t.id})">🗑 Eliminar</button>
+            <button class="btn btn-outline"onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
       } catch (err) { toast(err.message, 'error'); }
@@ -672,26 +672,26 @@ async function renderTasks(wrapper) {
 
     window.openCreateTask = function () {
       showModal(`
-        <div class="modal-header"><h2>Nueva Tarea</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-header"><h2>Nueva Tarea</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="create-task-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Título *</label><input class="form-input" id="ct-title" placeholder="Nombre de la tarea" required></div>
-            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ct-desc" placeholder="Describe la tarea..."></textarea></div>
+            <div class="form-group"><label class="form-label">Título *</label><input class="form-input"id="ct-title"placeholder="Nombre de la tarea"required></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="ct-desc"placeholder="Describe la tarea..."></textarea></div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select" id="ct-target_group" required><option value="">Seleccionar...</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select></div>
-              <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select" id="ct-pri"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div>
+              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select"id="ct-target_group"required><option value="">Seleccionar...</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select></div>
+              <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select"id="ct-pri"><option value="low">Baja</option><option value="medium"selected>Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div>
             </div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input" id="ct-due" type="datetime-local"></div>
+              <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input"id="ct-due"type="datetime-local"></div>
               <div></div>
             </div>
             <div class="form-group"><label class="form-label">Archivos</label>
-              <div class="dropzone" onclick="document.getElementById('ct-files').click()"><div class="dropzone-icon">📂</div><div class="dropzone-text">Haz clic para seleccionar</div><div class="dropzone-hint">PDF, Word, Excel, imágenes (máx. 10MB)</div></div>
-              <input type="file" id="ct-files" multiple style="display:none">
-              <div id="ct-file-list" class="file-list"></div>
+              <div class="dropzone"onclick="document.getElementById('ct-files').click()"><div class="dropzone-icon">📂</div><div class="dropzone-text">Haz clic para seleccionar</div><div class="dropzone-hint">PDF, Word, Excel, imágenes (máx. 10MB)</div></div>
+              <input type="file"id="ct-files"multiple style="display:none">
+              <div id="ct-file-list"class="file-list"></div>
             </div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Tarea</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Crear Tarea</button></div>
         </form>
       `, 'modal-lg');
 
@@ -774,10 +774,10 @@ async function renderDepartments(wrapper) {
         if (u.job_title) roleText += ` (${u.job_title})`;
 
         return `
-          <div class="org-member" style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}">
-              <div class="avatar" style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
+          <div class="org-member"style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}">
+              <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
               <div class="info">
-                  <span class="name" style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}">
+                  <span class="name"style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}">
                       ${u.name}
                   </span>
                   <span class="role">${roleText}</span>
@@ -791,7 +791,7 @@ async function renderDepartments(wrapper) {
       const inlineHeader = isSub && color ? `background: ${color}35; color: #1e293b;` : '';
 
       return `
-        <div class="org-node ${nodeClass}" style="${inlineBox}">
+        <div class="org-node ${nodeClass}"style="${inlineBox}">
             <h3 style="${inlineHeader}">${gName}</h3>
             <div class="org-members">${mappedUsers}</div>
         </div>
@@ -808,9 +808,9 @@ async function renderDepartments(wrapper) {
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
           <div class="org-lines"></div>
-          <div class="org-level-2-wrapper" style="margin-top:-20px; width:100%">
-             <div class="org-horizontal-line" style="width: 80%; left: 10%"></div>
-             <div class="org-level-2" style="gap:20px; align-items:flex-start">
+          <div class="org-level-2-wrapper"style="margin-top:-20px; width:100%">
+             <div class="org-horizontal-line"style="width: 80%; left: 10%"></div>
+             <div class="org-level-2"style="gap:20px; align-items:flex-start">
                  ${children.map(c => renderTree(c.id, c.name, color, true)).join('')}
              </div>
           </div>
@@ -819,9 +819,9 @@ async function renderDepartments(wrapper) {
     };
 
     const orgChartHTML = `
-      <div class="card" style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
-        <div class="card-header" style="background:#fff"><h3>Organigrama del Personal (Por Dependencias)</h3></div>
-        <div class="card-body" style="min-width: 800px">
+      <div class="card"style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
+        <div class="card-header"style="background:#fff"><h3>Organigrama del Personal (Por Dependencias)</h3></div>
+        <div class="card-body"style="min-width: 800px">
             <div class="org-chart-container">
                 <div class="org-level">
                     ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
@@ -829,7 +829,7 @@ async function renderDepartments(wrapper) {
                 <div class="org-lines"></div>
                 <div class="org-level-2-wrapper">
                     <div class="org-horizontal-line"></div>
-                    <div class="org-level-2" style="align-items:flex-start">
+                    <div class="org-level-2"style="align-items:flex-start">
                         ${renderTree('emergencias', 'Emergencias', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
                         ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
@@ -843,7 +843,7 @@ async function renderDepartments(wrapper) {
     `;
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateDept()">＋ Nuevo Dpto. (Tareas)</button></div>' : ''}</div>
+      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary"onclick="openCreateDept()">＋ Nuevo Dpto. (Tareas)</button></div>' : ''}</div>
       
       ${orgChartHTML}
 
@@ -851,13 +851,13 @@ async function renderDepartments(wrapper) {
       ${depts.length === 0 ? '<div class="card"><div class="empty-state"><div class="empty-state-icon">🏢</div><h3>Sin departamentos</h3><p>Crea tu primer departamento.</p></div></div>' :
         '<div class="dept-grid">' + depts.map(d => {
           const comp = d.task_count > 0 ? Math.round((d.completed_count / d.task_count) * 100) : 0;
-          return `<div class="dept-card" onclick="openDeptDetail(${d.id})">
-            <div class="dept-card-accent" style="background:${d.color}"></div>
+          return `<div class="dept-card"onclick="openDeptDetail(${d.id})">
+            <div class="dept-card-accent"style="background:${d.color}"></div>
             <div class="dept-card-body">
               <h3 class="dept-card-name">${d.name}</h3>
               <p class="dept-card-desc">${d.description || 'Sin descripción'}</p>
-              <div style="margin-bottom:12px"><div class="flex-between" style="font-size:12px;margin-bottom:4px"><span style="color:var(--gray-500)">Progreso</span><span style="font-weight:600;color:var(--primary-800)">${comp}%</span></div>
-              <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${comp}%;background:linear-gradient(90deg,${d.color},var(--success-400))"></div></div></div>
+              <div style="margin-bottom:12px"><div class="flex-between"style="font-size:12px;margin-bottom:4px"><span style="color:var(--gray-500)">Progreso</span><span style="font-weight:600;color:var(--primary-800)">${comp}%</span></div>
+              <div class="progress-bar-bg"><div class="progress-bar-fill"style="width:${comp}%;background:linear-gradient(90deg,${d.color},var(--success-400))"></div></div></div>
               <div class="dept-card-stats">
                 <div><span class="dept-stat-value">${d.task_count || 0}</span><br><span class="dept-stat-label">Tareas</span></div>
                 <div><span class="dept-stat-value">${d.member_count || 0}</span><br><span class="dept-stat-label">Miembros</span></div>
@@ -876,14 +876,14 @@ async function renderDepartments(wrapper) {
     window.openCreateDept = function () {
       let selectedColor = '#2d3561';
       showModal(`
-        <div class="modal-header"><h2>Nuevo Departamento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-header"><h2>Nuevo Departamento</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="create-dept-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="cd-name" required placeholder="Nombre del departamento"></div>
-            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="cd-desc" placeholder="Describe el departamento..."></textarea></div>
-            <div class="form-group"><label class="form-label">Color</label><div class="color-picker" id="cd-colors">${DEPT_COLORS.map(c => `<div class="color-swatch ${c === '#2d3561' ? 'selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}</div></div>
+            <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input"id="cd-name"required placeholder="Nombre del departamento"></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="cd-desc"placeholder="Describe el departamento..."></textarea></div>
+            <div class="form-group"><label class="form-label">Color</label><div class="color-picker"id="cd-colors">${DEPT_COLORS.map(c => `<div class="color-swatch ${c === '#2d3561' ? 'selected' : ''}"style="background:${c}"data-color="${c}"></div>`).join('')}</div></div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Crear</button></div>
         </form>
       `);
 
@@ -920,21 +920,21 @@ async function renderDepartments(wrapper) {
         const nonMembers = (window._allUsers || []).filter(u => !members.find(m => m.id == u.id));
 
         showModal(`
-          <div class="modal-header"><div style="display:flex;align-items:center;gap:12px"><div style="width:16px;height:16px;border-radius:4px;background:${d.color}"></div><h2>${d.name}</h2>${isAdmin ? `<button class="btn btn-sm btn-outline" style="margin-left:10px" onclick="openEditDept(${d.id})">✏️ Editar Dept.</button>` : ''}</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+          <div class="modal-header"><div style="display:flex;align-items:center;gap:12px"><div style="width:16px;height:16px;border-radius:4px;background:${d.color}"></div><h2>${d.name}</h2>${isAdmin ? `<button class="btn btn-sm btn-outline"style="margin-left:10px"onclick="openEditDept(${d.id})">✏️ Editar Dept.</button>` : ''}</div><button class="modal-close"onclick="closeModal()">✕</button></div>
           <div class="modal-body">
             ${d.description ? `<p style="font-size:14px;color:var(--gray-600);margin-bottom:20px">${d.description}</p>` : ''}
             <div style="margin-bottom:20px"><h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary-800)">Miembros (${members.length})</h3>
               <div style="display:flex;flex-direction:column;gap:8px">
-                ${members.map(m => `<div class="member-row"><div style="display:flex;align-items:center;gap:10px"><div class="topbar-avatar" style="width:32px;height:32px;font-size:12px">${initials(m.name)}</div><div><div style="font-size:14px;font-weight:500">${m.name}</div><div style="font-size:12px;color:var(--gray-500)">${m.email}</div></div><span class="badge badge-${m.role}">${m.role}</span></div>
-                ${isAdmin ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500)" onclick="removeDeptMember(${d.id},${m.id})">✕</button>` : ''}</div>`).join('')}
+                ${members.map(m => `<div class="member-row"><div style="display:flex;align-items:center;gap:10px"><div class="topbar-avatar"style="width:32px;height:32px;font-size:12px">${initials(m.name)}</div><div><div style="font-size:14px;font-weight:500">${m.name}</div><div style="font-size:12px;color:var(--gray-500)">${m.email}</div></div><span class="badge badge-${m.role}">${m.role}</span></div>
+                ${isAdmin ? `<button class="btn btn-sm btn-ghost"style="color:var(--danger-500)"onclick="removeDeptMember(${d.id},${m.id})">✕</button>` : ''}</div>`).join('')}
               </div>
             </div>
             ${isAdmin && nonMembers.length > 0 ? `<div><h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:var(--primary-800)">Agregar miembro</h3>
-              <div style="display:flex;flex-direction:column;gap:6px">${nonMembers.map(u => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-radius:var(--radius-md);border:1px solid var(--gray-200)"><div style="display:flex;align-items:center;gap:10px"><div class="topbar-avatar" style="width:28px;height:28px;font-size:11px">${initials(u.name)}</div><span style="font-size:14px">${u.name}</span></div><button class="btn btn-sm btn-success" onclick="addDeptMember(${d.id},${u.id})">＋ Agregar</button></div>`).join('')}</div></div>` : ''}
+              <div style="display:flex;flex-direction:column;gap:6px">${nonMembers.map(u => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-radius:var(--radius-md);border:1px solid var(--gray-200)"><div style="display:flex;align-items:center;gap:10px"><div class="topbar-avatar"style="width:28px;height:28px;font-size:11px">${initials(u.name)}</div><span style="font-size:14px">${u.name}</span></div><button class="btn btn-sm btn-success"onclick="addDeptMember(${d.id},${u.id})">＋ Agregar</button></div>`).join('')}</div></div>` : ''}
           </div>
           <div class="modal-footer">
-            ${isAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteDept(${d.id})">🗑 Eliminar</button>` : ''}
-            <button class="btn btn-outline" onclick="closeModal()">Cerrar</button>
+            ${isAdmin ? `<button class="btn btn-sm btn-danger"onclick="deleteDept(${d.id})">🗑 Eliminar</button>` : ''}
+            <button class="btn btn-outline"onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
       } catch (err) { toast(err.message, 'error'); }
@@ -947,31 +947,31 @@ async function renderDepartments(wrapper) {
         let selectedColor = d.color || '#2d3561';
 
         showModal(`
-             <div class="modal-header"><h2>Editar Departamento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+             <div class="modal-header"><h2>Editar Departamento</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
              <form id="edit-dept-form">
                <div class="modal-body">
-                 <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="ed-name" required value="${d.name.replace(/"/g, '&quot;')}"></div>
-                 <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ed-desc">${d.description || ''}</textarea></div>
+                 <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input"id="ed-name"required value="${d.name.replace(/"/g, '&quot;')}"></div>
+                 <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="ed-desc">${d.description || ''}</textarea></div>
                  
                  <div class="form-group"><label class="form-label">Subdepartamento de (Opcional)</label>
-                  <select class="form-select" id="ed-parent">
+                  <select class="form-select"id="ed-parent">
                     <option value="">Ninguno</option>
                     <optgroup label="Grupos Base">
-                      <option value="emergencias" ${d.parent_id === 'emergencias' ? 'selected' : ''}>Emergencias (Base)</option>
-                      <option value="actividades" ${d.parent_id === 'actividades' ? 'selected' : ''}>Actividades (Base)</option>
-                      <option value="otros_eventos" ${d.parent_id === 'otros_eventos' ? 'selected' : ''}>Otros eventos (Base)</option>
-                      <option value="soporte_oficina" ${d.parent_id === 'soporte_oficina' ? 'selected' : ''}>Soporte de oficina (Base)</option>
-                      <option value="superintendencia" ${d.parent_id === 'superintendencia' ? 'selected' : ''}>Superintendencia (Base)</option>
+                      <option value="emergencias"${d.parent_id === 'emergencias' ? 'selected' : ''}>Emergencias (Base)</option>
+                      <option value="actividades"${d.parent_id === 'actividades' ? 'selected' : ''}>Actividades (Base)</option>
+                      <option value="otros_eventos"${d.parent_id === 'otros_eventos' ? 'selected' : ''}>Otros eventos (Base)</option>
+                      <option value="soporte_oficina"${d.parent_id === 'soporte_oficina' ? 'selected' : ''}>Soporte de oficina (Base)</option>
+                      <option value="superintendencia"${d.parent_id === 'superintendencia' ? 'selected' : ''}>Superintendencia (Base)</option>
                     </optgroup>
                     <optgroup label="Otros Departamentos">
-                      ${depts.filter(dept => dept.id != id).map(dept => `<option value="${dept.id}" ${d.parent_id == dept.id ? 'selected' : ''}>${dept.name}</option>`).join('')}
+                      ${depts.filter(dept => dept.id != id).map(dept => `<option value="${dept.id}"${d.parent_id == dept.id ? 'selected' : ''}>${dept.name}</option>`).join('')}
                     </optgroup>
                   </select>
                  </div>
 
-                 <div class="form-group"><label class="form-label">Color</label><div class="color-picker" id="ed-colors">${DEPT_COLORS.map(c => `<div class="color-swatch ${c === selectedColor ? 'selected' : ''}" style="background:${c}" data-color="${c}"></div>`).join('')}</div></div>
+                 <div class="form-group"><label class="form-label">Color</label><div class="color-picker"id="ed-colors">${DEPT_COLORS.map(c => `<div class="color-swatch ${c === selectedColor ? 'selected' : ''}"style="background:${c}"data-color="${c}"></div>`).join('')}</div></div>
                </div>
-               <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>
+               <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Guardar Cambios</button></div>
              </form>
            `);
 
@@ -1035,13 +1035,13 @@ async function renderUsers(wrapper) {
         <h2>Usuarios</h2>
         <div style="display:flex;align-items:center;gap:16px">
           <div style="font-size:14px;color:var(--gray-500)">${users.length} usuario${users.length !== 1 ? 's' : ''}</div>
-          ${isAdmin ? `<button class="btn btn-primary" onclick="openCreateUser()">＋ Nuevo Usuario</button>` : ''}
+          ${isAdmin ? `<button class="btn btn-primary"onclick="openCreateUser()">＋ Nuevo Usuario</button>` : ''}
         </div>
       </div>
-      <div class="card"><div class="card-body" style="padding:0;overflow:auto">
+      <div class="card"><div class="card-body"style="padding:0;overflow:auto">
         <table class="data-table"><thead><tr><th>Usuario</th><th>Grupo / Rol</th><th>Departamentos</th><th>Registro</th><th>Acciones</th></tr></thead>
         <tbody>${users.map(u => `<tr>
-          <td><div class="user-cell"><div class="topbar-avatar" style="width:36px;height:36px;font-size:13px">${initials(u.name)}</div><div><div style="font-weight:600;color:var(--primary-800)">${u.name}</div><div style="font-size:12px;color:var(--gray-500)">${u.email}</div></div></div></td>
+          <td><div class="user-cell"><div class="topbar-avatar"style="width:36px;height:36px;font-size:13px">${initials(u.name)}</div><div><div style="font-weight:600;color:var(--primary-800)">${u.name}</div><div style="font-size:12px;color:var(--gray-500)">${u.email}</div></div></div></td>
           <td>
             <div style="margin-bottom:4px"><span class="badge badge-${u.role}">${u.role}</span></div>
             <div style="font-size:12px;color:var(--gray-600);text-transform:capitalize">${(u.user_group || 'Otros eventos').replace(/_/g, ' ')}</div>
@@ -1049,9 +1049,9 @@ async function renderUsers(wrapper) {
           <td style="font-size:13px;color:var(--gray-600)">${u.departments || '—'}</td>
           <td style="font-size:13px;color:var(--gray-500)">${formatDate(u.created_at)}</td>
           <td><div style="display:flex;gap:6px">
-            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline" onclick='editUser(${u.id},${JSON.stringify(u.name)},${JSON.stringify(u.email)},${JSON.stringify(u.hierarchy_level || "auxiliar")},${JSON.stringify(u.job_title || "")},${JSON.stringify(u.user_group || "otros_eventos")},${JSON.stringify(u.hierarchy_map || "{}")})'>✏️ Editar</button>` : ''}
-            ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}" onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
-            ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost" style="color:var(--danger-500);padding:0 8px" onclick="deleteSystemUser(${u.id})" title="Eliminar usuario">🗑</button>` : ''}
+            ${(isAdmin || state.user.id == u.id) ? `<button class="btn btn-sm btn-outline"onclick='editUser(${u.id},${JSON.stringify(u.name)},${JSON.stringify(u.email)},${JSON.stringify(u.hierarchy_level || "auxiliar")},${JSON.stringify(u.job_title || "")},${JSON.stringify(u.user_group || "otros_eventos")},${JSON.stringify(u.hierarchy_map || "{}")})'>✏️ Editar</button>` : ''}
+            ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm ${u.role === 'admin' ? 'btn-outline' : 'btn-success'}"onclick="toggleRole(${u.id},'${u.role === 'admin' ? 'member' : 'admin'}')">${u.role === 'admin' ? '↓ Miembro' : '↑ Admin'}</button>` : ''}
+            ${isAdmin && u.id != state.user.id ? `<button class="btn btn-sm btn-ghost"style="color:var(--danger-500);padding:0 8px"onclick="deleteSystemUser(${u.id})"title="Eliminar usuario">🗑</button>` : ''}
           </div></td>
         </tr>`).join('')}</tbody></table>
       </div></div>
@@ -1070,14 +1070,14 @@ async function renderUsers(wrapper) {
 
     window.openCreateUser = function () {
       showModal(`
-        <div class="modal-header"><h2>Crear Nuevo Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-header"><h2>Crear Nuevo Usuario</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="create-user-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Nombre Completo *</label><input class="form-input" id="cu-name" required></div>
-            <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input" id="cu-email" type="email" required></div>
-            <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input" id="cu-pass" type="password" required minlength="6"></div>
+            <div class="form-group"><label class="form-label">Nombre Completo *</label><input class="form-input"id="cu-name"required></div>
+            <div class="form-group"><label class="form-label">Correo electrónico *</label><input class="form-input"id="cu-email"type="email"required></div>
+            <div class="form-group"><label class="form-label">Contraseña *</label><input class="form-input"id="cu-pass"type="password"required minlength="6"></div>
             <div class="form-group"><label class="form-label">Departamento (Cmd/Ctrl + click para varios)</label>
-              <select class="form-select" id="cu-group" multiple size="7" style="height:auto">
+              <select class="form-select"id="cu-group"multiple size="7"style="height:auto">
                 <option value="emergencias">Emergencias (Base)</option>
                 <option value="actividades">Actividades (Base)</option>
                 <option value="otros_eventos">Otros eventos (Base)</option>
@@ -1086,22 +1086,22 @@ async function renderUsers(wrapper) {
                 ${(window._depts || []).map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input" id="cu-job" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input"id="cu-job"placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Rol inicial</label>
-              <select class="form-select" id="cu-role">
-                <option value="member" selected>Miembro normal</option>
+              <select class="form-select"id="cu-role">
+                <option value="member"selected>Miembro normal</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
             <div class="form-group"><label class="form-label">Cargo (Organigrama)</label>
-              <select class="form-select" id="cu-hierarchy">
-                <option value="auxiliar" selected>Auxiliar</option>
+              <select class="form-select"id="cu-hierarchy">
+                <option value="auxiliar"selected>Auxiliar</option>
                 <option value="voluntario_clave">Voluntario Clave</option>
                 <option value="superintendente">Superintendente</option>
               </select>
             </div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Usuario</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Crear Usuario</button></div>
         </form>
       `);
 
@@ -1139,23 +1139,23 @@ async function renderUsers(wrapper) {
         return `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
             <span style="min-width:140px;font-size:13px;color:var(--gray-700)">${label}:</span>
-            <select class="form-select eu-grp-hierarchy" data-group="${g}" style="flex:1;padding:4px 8px;font-size:13px">
-              <option value="auxiliar" ${effectiveH === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
-              <option value="voluntario_clave" ${effectiveH === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
-              <option value="superintendente" ${effectiveH === 'superintendente' ? 'selected' : ''}>Superintendente</option>
+            <select class="form-select eu-grp-hierarchy"data-group="${g}"style="flex:1;padding:4px 8px;font-size:13px">
+              <option value="auxiliar"${effectiveH === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
+              <option value="voluntario_clave"${effectiveH === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
+              <option value="superintendente"${effectiveH === 'superintendente' ? 'selected' : ''}>Superintendente</option>
             </select>
           </div>`;
       }).join('');
 
       showModal(`
-        <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+        <div class="modal-header"><h2>Editar Usuario</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="edit-user-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="eu-name" value="${name}" required></div>
-            <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="eu-email" type="email" value="${email}" required></div>
-            <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input" id="eu-pass" type="password" placeholder="••••••••" minlength="6"></div>
+            <div class="form-group"><label class="form-label">Nombre</label><input class="form-input"id="eu-name"value="${name}"required></div>
+            <div class="form-group"><label class="form-label">Email</label><input class="form-input"id="eu-email"type="email"value="${email}"required></div>
+            <div class="form-group"><label class="form-label">Nueva contraseña (vacío = sin cambiar)</label><input class="form-input"id="eu-pass"type="password"placeholder="••••••••"minlength="6"></div>
             <div class="form-group"><label class="form-label">Cambiar Grupo (Cmd/Ctrl + click)</label>
-              <select class="form-select" id="eu-group" multiple size="7" style="height:auto">
+              <select class="form-select"id="eu-group"multiple size="7"style="height:auto">
                 <option value="emergencias">Emergencias (Base)</option>
                 <option value="actividades">Actividades (Base)</option>
                 <option value="otros_eventos">Otros eventos (Base)</option>
@@ -1165,15 +1165,15 @@ async function renderUsers(wrapper) {
               </select>
               <small style="color:var(--gray-500);font-size:11px">Deja sin seleccionar si no quieres cambiar los grupos actuales.</small>
             </div>
-            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input" id="eu-job" value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}" placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
+            <div class="form-group"><label class="form-label">Nombre del Rol (Ej: Capitán, Otros Eventos)</label><input class="form-input"id="eu-job"value="${jobTitle === 'null' || !jobTitle ? '' : jobTitle}"placeholder="Rol descriptivo que aparecerá en el organigrama"></div>
             <div class="form-group"><label class="form-label">Cargo por Departamento</label>
-              <div id="eu-hierarchy-per-group" style="border:1px solid var(--gray-300);border-radius:6px;padding:10px;background:#fafafa">
+              <div id="eu-hierarchy-per-group"style="border:1px solid var(--gray-300);border-radius:6px;padding:10px;background:#fafafa">
                 ${perGroupHTML}
               </div>
               <small style="color:var(--gray-500);font-size:11px">Asigna el cargo de este usuario en cada departamento al que pertenece.</small>
             </div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Guardar</button></div>
         </form>
       `);
       document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
@@ -1193,7 +1193,7 @@ async function renderUsers(wrapper) {
             newHMap[sel.dataset.group] = sel.value;
           });
           body.hierarchy_map = newHMap;
-          // Set global hierarchy_level to the "highest" role across groups
+          // Set global hierarchy_level to the "highest"role across groups
           const levels = Object.values(newHMap);
           if (levels.includes('superintendente')) body.hierarchy_level = 'superintendente';
           else if (levels.includes('voluntario_clave')) body.hierarchy_level = 'voluntario_clave';
@@ -1256,13 +1256,13 @@ async function renderMyTasks(wrapper) {
       : sortedPending.map(t => {
         const isOverdue = t.due_date && t.due_date.split(' ')[0] < todayStr;
         return `
-        <div class="activity-item" style="padding:14px 16px; border:1px solid ${isOverdue ? 'var(--danger-200)' : 'var(--gray-200)'}; border-left:4px solid ${isOverdue ? 'var(--danger-500)' : t.priority === 'high' ? 'var(--danger-400)' : t.priority === 'medium' ? 'var(--warning-400)' : 'var(--success-400)'}; border-radius:8px; margin-bottom:10px; cursor:pointer; background:${isOverdue ? 'var(--danger-50)' : '#fff'}; transition:transform .15s;" onclick="navigate('tasks')" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform=''">
+        <div class="activity-item"style="padding:14px 16px; border:1px solid ${isOverdue ? 'var(--danger-200)' : 'var(--gray-200)'}; border-left:4px solid ${isOverdue ? 'var(--danger-500)' : t.priority === 'high' ? 'var(--danger-400)' : t.priority === 'medium' ? 'var(--warning-400)' : 'var(--success-400)'}; border-radius:8px; margin-bottom:10px; cursor:pointer; background:${isOverdue ? 'var(--danger-50)' : '#fff'}; transition:transform .15s;"onclick="navigate('tasks')"onmouseover="this.style.transform='translateX(4px)'"onmouseout="this.style.transform=''">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
             <div style="flex:1">
               <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">
-                <span class="badge ${statusBadge[t.status]}" style="font-size:11px">${statusLabel[t.status]}</span>
-                <span class="badge" style="font-size:11px">${priorityLabel[t.priority]}</span>
-                ${isOverdue ? '<span class="badge badge-danger" style="font-size:11px">⚠️ VENCIDA</span>' : ''}
+                <span class="badge ${statusBadge[t.status]}"style="font-size:11px">${statusLabel[t.status]}</span>
+                <span class="badge"style="font-size:11px">${priorityLabel[t.priority]}</span>
+                ${isOverdue ? '<span class="badge badge-danger"style="font-size:11px">⚠️ VENCIDA</span>' : ''}
               </div>
               <h4 style="margin:0;font-size:15px;color:var(--gray-800)">${t.title}</h4>
               ${t.description ? `<p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);max-width:500px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.description}</p>` : ''}
@@ -1302,24 +1302,24 @@ async function renderMyTasks(wrapper) {
     wrapper.innerHTML = `
       <div class="page-header">
         <h2>Mi Agenda Personal</h2>
-        <span class="badge badge-primary" style="font-size:13px">👤 ${state.user?.name || 'Usuario'}</span>
+        <span class="badge badge-primary"style="font-size:13px">👤 ${state.user?.name || 'Usuario'}</span>
       </div>
 
       <!-- Progress Stats -->
-      <div class="stats-grid" style="margin-bottom:24px">
-        <div class="card" style="text-align:center;padding:20px">
+      <div class="stats-grid"style="margin-bottom:24px">
+        <div class="card"style="text-align:center;padding:20px">
           <div style="font-size:32px;font-weight:800;color:var(--success-600)">${completed.length}</div>
           <div style="font-size:13px;color:var(--gray-500);margin-top:4px">✅ Completadas</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
+        <div class="card"style="text-align:center;padding:20px">
           <div style="font-size:32px;font-weight:800;color:var(--warning-600)">${pending.length}</div>
           <div style="font-size:13px;color:var(--gray-500);margin-top:4px">⏳ Pendientes</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
+        <div class="card"style="text-align:center;padding:20px">
           <div style="font-size:32px;font-weight:800;color:var(--danger-600)">${overdue.length}</div>
           <div style="font-size:13px;color:var(--gray-500);margin-top:4px">🔴 Vencidas</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
+        <div class="card"style="text-align:center;padding:20px">
           <div style="font-size:32px;font-weight:800;color:var(--primary-600)">${progressPct}%</div>
           <div style="font-size:13px;color:var(--gray-500);margin-top:4px">📈 Progreso</div>
           <div style="margin-top:8px;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden">
@@ -1331,17 +1331,17 @@ async function renderMyTasks(wrapper) {
       <div style="display:grid;grid-template-columns:1fr 380px;gap:24px">
         <!-- Pending Tasks -->
         <div class="card">
-          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-header"style="display:flex;justify-content:space-between;align-items:center">
             <h3>⏳ Tareas Pendientes (${pending.length})</h3>
-            <button class="btn btn-sm btn-primary" onclick="navigate('tasks')">Ver todas →</button>
+            <button class="btn btn-sm btn-primary"onclick="navigate('tasks')">Ver todas →</button>
           </div>
-          <div class="card-body" style="max-height:500px;overflow-y:auto">${pendingHTML}</div>
+          <div class="card-body"style="max-height:500px;overflow-y:auto">${pendingHTML}</div>
         </div>
 
         <!-- Upcoming Events -->
         <div class="card">
           <div class="card-header"><h3>📅 Próximos Eventos</h3></div>
-          <div class="card-body" style="max-height:500px;overflow-y:auto">${eventsHTML}</div>
+          <div class="card-body"style="max-height:500px;overflow-y:auto">${eventsHTML}</div>
         </div>
       </div>
     `;
@@ -1386,9 +1386,45 @@ async function renderCalendar(wrapper) {
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
+    // Expand recurring events
+    const expandedEvents = [];
+    events.forEach(e => {
+      expandedEvents.push(e);
+      if (e.recurrence) {
+        let count = 0;
+        let rType = '';
+        if (e.recurrence === 'daily_14') { count = 14; rType = 'daily'; }
+        else if (e.recurrence === 'weekly_12') { count = 12; rType = 'weekly'; }
+        else if (e.recurrence === 'monthly_6') { count = 6; rType = 'monthly'; }
+
+        if (count > 0) {
+          const baseDate = new Date(e.event_date.replace(' ', 'T'));
+          for (let i = 1; i < count; i++) {
+            const nextDate = new Date(baseDate);
+            if (rType === 'daily') nextDate.setDate(nextDate.getDate() + i);
+            else if (rType === 'weekly') nextDate.setDate(nextDate.getDate() + (i * 7));
+            else if (rType === 'monthly') nextDate.setMonth(nextDate.getMonth() + i);
+
+            const y = nextDate.getFullYear();
+            const m = String(nextDate.getMonth() + 1).padStart(2, '0');
+            const d = String(nextDate.getDate()).padStart(2, '0');
+            const hh = String(nextDate.getHours()).padStart(2, '0');
+            const mm = String(nextDate.getMinutes()).padStart(2, '0');
+            const ss = String(nextDate.getSeconds()).padStart(2, '0');
+
+            expandedEvents.push({
+              ...e,
+              id: e.id + '_rec_' + i,
+              event_date: `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+            });
+          }
+        }
+      }
+    });
+
     // Group events by day (YYYY-MM-DD)
     const eventsByDate = {};
-    events.forEach(e => {
+    expandedEvents.forEach(e => {
       const dateStr = e.event_date.split(' ')[0];
       if (!eventsByDate[dateStr]) eventsByDate[dateStr] = [];
       eventsByDate[dateStr].push(e);
@@ -1420,7 +1456,7 @@ async function renderCalendar(wrapper) {
       const eventsHTML = dayEvents.map(e => {
         const primaryGroup = e.target_group ? e.target_group.split(',')[0] : 'todos';
         return `
-            <div class="calendar-event-chip target-${primaryGroup}" onclick="showEventDetails(${e.id})" title="${e.title}">
+            <div class="calendar-event-chip target-${primaryGroup}"onclick="showEventDetails(${e.id})"title="${e.title}">
                 ${e.event_date.split(' ')[1].slice(0, 5)} - ${e.title}
             </div>
             `;
@@ -1428,7 +1464,7 @@ async function renderCalendar(wrapper) {
 
       const tasksHTML = dayTasks.map(t => {
         const primaryGroup = t.target_group ? t.target_group.split(',')[0] : 'todos';
-        return `<div class="calendar-task-dot target-${primaryGroup}" title="Vence tarea: ${t.title}" onclick="openTaskDetail(${t.id}); event.stopPropagation();"></div>`;
+        return `<div class="calendar-task-dot target-${primaryGroup}"title="Vence tarea: ${t.title}"onclick="openTaskDetail(${t.id}); event.stopPropagation();"></div>`;
       }).join('');
 
       cellsHTML += `
@@ -1443,7 +1479,7 @@ async function renderCalendar(wrapper) {
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const upcomingEvents = events.filter(e => e.event_date >= todayStr).map(e => ({ ...e, isTask: false }));
+    const upcomingEvents = expandedEvents.filter(e => e.event_date >= todayStr).map(e => ({ ...e, isTask: false }));
     const upcomingTasks = allTasks.filter(t => t.due_date && t.due_date >= todayStr && t.status !== 'done').map(t => ({ ...t, isTask: true }));
 
     const allUpcoming = [...upcomingEvents, ...upcomingTasks]
@@ -1456,27 +1492,28 @@ async function renderCalendar(wrapper) {
     const upcomingHTML = allUpcoming.length === 0 ? '<p style="color:var(--gray-500)">No hay eventos ni tareas próximas.</p>' :
       '<div class="activity-list">' + allUpcoming.map(i => {
         if (i.isTask) {
-          return `<div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;" onclick="openTaskDetail(${i.id})">
+          return `<div class="activity-item"style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;"onclick="openTaskDetail(${i.id})">
             <div>
               <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
                 <span class="badge badge-outline">📝 Vence: ${i.due_date.split(' ')[0]}</span>
                 <span class="badge badge-${i.priority}">${priorityLabel[i.priority]}</span>
-                <span class="badge badge-warning" style="text-transform:uppercase">${groupLabels[i.target_group] || i.target_group}</span>
+                <span class="badge badge-warning"style="text-transform:uppercase">${groupLabels[i.target_group] || i.target_group}</span>
               </div>
               <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title}</h3>
             </div>
           </div>`;
         } else {
-          return `<div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <div>
+          const recurBadge = i.recurrence ? '<span title="Evento recurrente"style="margin-left:4px;font-size:12px">🔄</span>' : '';
+          return `<div class="activity-item"style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="flex:1">
               <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
                 <span class="badge badge-primary">📅 ${i.event_date.split(' ')[0]} ${i.event_date.split(' ')[1].slice(0, 5)}</span>
-                <span class="badge badge-warning" style="text-transform:uppercase">${i.target_group ? i.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+                <span class="badge badge-warning"style="text-transform:uppercase">${i.target_group ? i.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
               </div>
-              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title}</h3>
+              <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title} ${recurBadge}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${i.description || 'Sin descripción'}</p>
             </div>
-            ${(isAdmin || i.created_by == state.user.id) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline" style="padding:6px" onclick="openEditEvent(${i.id})">✏️</button><button class="btn btn-sm btn-outline" style="padding:6px;color:var(--danger-600);border-color:var(--danger-200)" onclick="deleteEvent(${i.id})">🗑</button></div>` : ''}
+            ${(isAdmin || i.created_by == state.user.id) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"style="padding:6px; background:#fff"onclick="openEditEvent('${i.id}')">✏️</button><button class="btn btn-sm btn-outline"style="padding:6px; color:var(--danger-600); border-color:var(--danger-200); background:#fff"onclick="deleteEvent(${parseInt(i.id, 10)})">🗑</button></div>` : ''}
           </div>`;
         }
       }).join('') + '</div>';
@@ -1484,20 +1521,20 @@ async function renderCalendar(wrapper) {
     wrapper.innerHTML = `
       <div class="page-header">
         <h2>Calendario de Eventos</h2>
-        <div style="display:flex;gap:10px;align-items:center">
-          <button class="btn ${googleLinked ? 'btn-outline' : 'btn-secondary'}" id="google-link-btn" onclick="${googleLinked ? 'unlinkGoogleCalendar()' : 'linkGoogleCalendar()'}" style="font-size:13px;display:flex;align-items:center;gap:6px">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn ${googleLinked ? 'btn-outline' : 'btn-secondary'}"id="google-link-btn"onclick="${googleLinked ? 'unlinkGoogleCalendar()' : 'linkGoogleCalendar()'}"style="font-size:13px;display:flex;align-items:center;gap:6px">
             <span style="font-size:16px">${googleLinked ? '✅' : '🔗'}</span> ${googleLinked ? 'Google Vinculado' : 'Vincular Google Calendar'}
           </button>
-          <button class="btn btn-primary" onclick="openCreateEvent()">＋ Nuevo Evento</button>
+          <button class="btn btn-primary"onclick="openCreateEvent()">＋ Nuevo Evento</button>
         </div>
       </div>
       
-      <div class="card" style="margin-bottom: 24px;">
-        <div class="card-body" style="padding: 24px;">
+      <div class="card"style="margin-bottom: 24px;">
+        <div class="card-body"style="padding: 24px;">
             <div class="calendar-top-controls">
-                <button class="calendar-nav-btn" onclick="calPrevMonth()">← Anterior</button>
+                <button class="calendar-nav-btn"onclick="calPrevMonth()">← Anterior</button>
                 <div class="calendar-title">${monthNames[currMonth]} ${currYear}</div>
-                <button class="calendar-nav-btn" onclick="calNextMonth()">Siguiente →</button>
+                <button class="calendar-nav-btn"onclick="calNextMonth()">Siguiente →</button>
             </div>
             
             <div class="calendar-grid">
@@ -1515,9 +1552,7 @@ async function renderCalendar(wrapper) {
 
       <div class="card">
         <div class="card-header"><h3>Próximos Eventos</h3></div>
-        <div class="card-body">
-            ${upcomingHTML}
-        </div>
+        ${upcomingHTML}
       </div>
     `;
 
@@ -1527,7 +1562,7 @@ async function renderCalendar(wrapper) {
     window.calPrevMonth = () => { window.calDate.setMonth(window.calDate.getMonth() - 1); renderCalendar(wrapper); };
     window.calNextMonth = () => { window.calDate.setMonth(window.calDate.getMonth() + 1); renderCalendar(wrapper); };
 
-    window._calEventsObj = events;
+    window._calEventsObj = expandedEvents;
 
     window.linkGoogleCalendar = async function () {
       try {
@@ -1546,57 +1581,73 @@ async function renderCalendar(wrapper) {
     };
 
     window.showEventDetails = function (id) {
-      const e = window._calEventsObj.find(x => x.id === id);
+      const e = window._calEventsObj.find(x => x.id == id);
       if (!e) return;
       const canDelete = isAdmin || e.created_by == state.user.id;
 
       showModal(`
-            <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
             <div class="modal-body">
                 <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
                     <span class="badge badge-primary">📅 ${e.event_date}</span>
-                    <span class="badge badge-warning" style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+                    <span class="badge badge-warning"style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
                 </div>
                 <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
                 <p style="color:var(--gray-700); line-height:1.5">${e.description || 'Sin descripción detallada.'}</p>
             </div>
-            <div class="modal-footer" style="display:flex; justify-content:space-between">
+            <div class="modal-footer"style="display:flex; justify-content:space-between">
                 <div style="display:flex;gap:8px">
-                    ${canDelete ? `<button class="btn btn-outline" style="color:var(--danger-500); border-color:var(--danger-300)" onclick="deleteEvent(${e.id})">🗑 Eliminar</button>` : '<div></div>'}
-                    ${canDelete ? `<button class="btn btn-outline" onclick="openEditEvent(${e.id})">✏️ Editar</button>` : ''}
+                    ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${e.id}')">🗑 Eliminar</button>` : '<div></div>'}
+                    ${canDelete ? `<button class="btn btn-outline"onclick="openEditEvent('${e.id}')">✏️ Editar</button>` : ''}
                 </div>
-                <button type="button" class="btn btn-primary" onclick="closeModal()">Cerrar</button>
+                <button type="button"class="btn btn-primary"onclick="closeModal()">Cerrar</button>
             </div>
-        `);
+    `);
     };
 
     window.openEditEvent = function (id) {
-      const e = window._calEventsObj.find(x => x.id === id);
+      const e = window._calEventsObj.find(x => x.id == id);
       if (!e) return;
-      const isGrp = (g) => (e.target_group && e.target_group.split(',').includes(g)) || e.target_group === 'todos' ? 'checked' : '';
+
+      const adminDeptSelect = state.user.role === 'admin' ? `
+      <div class="form-group"><label class="form-label">Color / Departamento (Admins)</label>
+          <select class="form-select"id="ee-dept">
+            <option value="emergencias"${e.target_group === 'emergencias' ? 'selected' : ''}>🔴 Emergencias</option>
+            <option value="actividades"${e.target_group === 'actividades' ? 'selected' : ''}>🟠 Actividades</option>
+            <option value="otros_eventos"${e.target_group === 'otros_eventos' ? 'selected' : ''}>🟢 Otros Eventos</option>
+            <option value="soporte_oficina"${e.target_group === 'soporte_oficina' ? 'selected' : ''}>🔵 Soporte de Oficina</option>
+            <option value="superintendencia"${e.target_group === 'superintendencia' ? 'selected' : ''}>🟣 Superintendencia</option>
+          </select>
+        </div> ` : '';
 
       showModal(`
-        <div class="modal-header"><h2>Editar Evento del Calendario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-header"><h2>Editar Evento del Calendario</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="edit-event-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input" id="ee-title" value="${e.title.replace(/"/g, '&quot;')}" required></div>
-            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ee-desc">${e.description || ''}</textarea></div>
+            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input"id="ee-title"value="${e.title.replace(/"/g, '&quot;')}"required></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="ee-desc">${e.description || ''}</textarea></div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ee-date" value="${e.event_date.replace(' ', 'T')}" required></div>
+              <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input"type="datetime-local"id="ee-date"value="${e.event_date.replace(' ', 'T')}"required></div>
+              ${adminDeptSelect}
             </div>
+            ${e.recurrence ? '<small style="color:var(--gray-500)">Al actualizar la fecha/hora base o cambiar el color, se actualizará toda la serie recurrente.</small>' : ''}
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar Cambios</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Guardar Cambios</button></div>
         </form>
-      `);
+    `);
       document.getElementById('edit-event-form').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         try {
-          await api('calendar_events.php?action=update&id=' + e.id, {
-            method: 'PUT', body: JSON.stringify({
-              title: document.getElementById('ee-title').value,
-              description: document.getElementById('ee-desc').value,
-              event_date: document.getElementById('ee-date').value.replace('T', ' ')
-            })
+          const bodyJSON = {
+            title: document.getElementById('ee-title').value,
+            description: document.getElementById('ee-desc').value,
+            event_date: document.getElementById('ee-date').value.replace('T', ' ')
+          };
+          if (state.user.role === 'admin' && document.getElementById('ee-dept')) {
+            bodyJSON.target_group = document.getElementById('ee-dept').value;
+          }
+          await api('calendar_events.php?action=update&id=' + parseInt(id, 10), {
+            method: 'PUT', body: JSON.stringify(bodyJSON)
           });
           toast('Evento actualizado');
           closeModal();
@@ -1606,28 +1657,60 @@ async function renderCalendar(wrapper) {
     };
 
     window.openCreateEvent = function () {
+      const adminDeptSelect = state.user.role === 'admin' ? `
+      <div class="form-group"><label class="form-label">Color / Departamento (Admins)</label>
+          <select class="form-select"id="ce-dept">
+            <option value="emergencias">🔴 Emergencias</option>
+            <option value="actividades">🟠 Actividades</option>
+            <option value="otros_eventos"selected>🟢 Otros Eventos</option>
+            <option value="soporte_oficina">🔵 Soporte de Oficina</option>
+            <option value="superintendencia">🟣 Superintendencia</option>
+          </select>
+        </div> ` : '';
+
       showModal(`
-        <div class="modal-header"><h2>Nuevo Evento del Calendario</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-header"><h2>Nuevo Evento del Calendario</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="create-event-form">
           <div class="modal-body">
-            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input" id="ce-title" required></div>
-            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input" id="ce-desc"></textarea></div>
+            <div class="form-group"><label class="form-label">Título del Evento *</label><input class="form-input"id="ce-title"required></div>
+            <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="ce-desc"></textarea></div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input" type="datetime-local" id="ce-date" required></div>
+              <div class="form-group"><label class="form-label">Fecha y Hora Base *</label><input class="form-input"type="datetime-local"id="ce-date"required></div>
+              ${adminDeptSelect}
+            </div>
+            <div class="form-group">
+              <label class="form-label">Recurrencia (Opcional)</label>
+              <select class="form-select"id="ce-recurrence">
+                <option value="none">No se repite</option>
+                <option value="daily_14">Diariamente (por 14 días)</option>
+                <option value="weekly_12">Semanalmente (por 12 semanas)</option>
+                <option value="monthly_6">Mensualmente (por 6 meses)</option>
+              </select>
             </div>
           </div>
-          <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button><button type="submit" class="btn btn-primary">Crear Evento</button></div>
+          <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Crear Evento</button></div>
         </form>
-      `);
-      document.getElementById('create-event-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    `);
+      document.getElementById('create-event-form').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const saveBtn = ev.target.querySelector('button[type="submit"]');
+        const ogText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner spinner-sm"></span> Creando...';
         try {
+          const bodyJSON = {
+            title: document.getElementById('ce-title').value,
+            description: document.getElementById('ce-desc').value,
+            event_date: document.getElementById('ce-date').value.replace('T', ' '),
+            recurrence: document.getElementById('ce-recurrence').value
+          };
+          if (state.user.role === 'admin' && document.getElementById('ce-dept')) {
+            bodyJSON.target_group = document.getElementById('ce-dept').value;
+          }
+
           await api('calendar_events.php?action=create', {
-            method: 'POST', body: JSON.stringify({
-              title: document.getElementById('ce-title').value,
-              description: document.getElementById('ce-desc').value,
-              event_date: document.getElementById('ce-date').value.replace('T', ' ')
-            })
+            method: 'POST',
+            body: JSON.stringify(bodyJSON)
           });
           toast('Evento creado');
           closeModal();
@@ -1639,14 +1722,14 @@ async function renderCalendar(wrapper) {
     window.deleteEvent = async function (id) {
       if (!confirm('¿Estás seguro de eliminar este evento?')) return;
       try {
-        await api(`calendar_events.php?action=delete&id=${id}`, { method: 'DELETE' });
+        await api(`calendar_events.php ? action = delete& id=${id} `, { method: 'DELETE' });
         toast('Evento eliminado');
         closeModal();
         renderCalendar(document.createElement('div')).then(() => { navigate('calendar'); });
       } catch (err) { toast(err.message, 'error'); }
     }
   } catch (err) {
-    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    wrapper.innerHTML = `<div class="error-box"> ${err.message}</div> `;
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
   }
@@ -1664,17 +1747,17 @@ async function renderSettings(wrapper, params) {
     if (params.google === 'error') toast('❌ Error al conectar Google Calendar', 'error');
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Configuración</h2></div>
+      <div class="page-header"> <h2>Configuración</h2></div>
       <div class="settings-card card"><div class="card-header"><h3>👤 Perfil</h3></div><div class="card-body">
         <div style="display:flex;align-items:center;gap:16px">
-          <div class="topbar-avatar" style="width:60px;height:60px;font-size:22px">${initials(state.user?.name)}</div>
-          <div><div style="font-size:18px;font-weight:600;color:var(--primary-800)">${state.user?.name}</div><div style="font-size:14px;color:var(--gray-500)">${state.user?.email}</div><span class="badge badge-${state.user?.role}" style="margin-top:4px">${state.user?.role}</span></div>
+          <div class="topbar-avatar"style="width:60px;height:60px;font-size:22px">${initials(state.user?.name)}</div>
+          <div><div style="font-size:18px;font-weight:600;color:var(--primary-800)">${state.user?.name}</div><div style="font-size:14px;color:var(--gray-500)">${state.user?.email}</div><span class="badge badge-${state.user?.role}"style="margin-top:4px">${state.user?.role}</span></div>
         </div>
       </div></div>
       <div class="settings-card card"><div class="card-header"><h3>📅 Google Calendar</h3></div><div class="card-body">
         <p style="font-size:14px;color:var(--gray-600);margin-bottom:16px">Conecta tu cuenta para sincronizar tareas con tu calendario.</p>
         <div class="google-cal-status ${connected ? 'connected' : 'disconnected'}"><span class="status-dot ${connected ? 'green' : 'gray'}"></span><span style="font-size:14px;font-weight:500">${connected ? 'Conectado' : 'No conectado'}</span></div>
-        ${connected ? '<button class="btn btn-outline" onclick="disconnectCal()">Desconectar</button>' : '<button class="btn btn-primary" onclick="connectCal()">🔗 Conectar Google Calendar</button>'}
+        ${connected ? '<button class="btn btn-outline"onclick="disconnectCal()">Desconectar</button>' : '<button class="btn btn-primary"onclick="connectCal()">🔗 Conectar Google Calendar</button>'}
       </div></div>
       <div class="settings-card card"><div class="card-header"><h3>ℹ️ Acerca de</h3></div><div class="card-body">
         ${[['Sistema', 'ICCP - Gestión de Tareas'], ['Versión', '1.0.0'], ['Frontend', 'HTML + CSS + JavaScript'], ['Backend', 'PHP + MySQL']].map(([l, v]) => `<div class="info-row"><span class="info-label">${l}</span><span class="info-value">${v}</span></div>`).join('')}
@@ -1692,7 +1775,7 @@ async function renderSettings(wrapper, params) {
       try { await api('google_auth.php?action=unlink', { method: 'POST' }); toast('Google Calendar desconectado'); navigate('settings'); } catch (err) { toast(err.message, 'error'); }
     };
   } catch (err) {
-    wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
+    wrapper.innerHTML = `<div class="error-box"> ${err.message}</div> `;
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
   }
@@ -1708,7 +1791,7 @@ function showModal(content, extraClass = '') {
   overlay.id = 'modal-overlay';
   overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
   const modal = document.createElement('div');
-  modal.className = `modal ${extraClass}`;
+  modal.className = `modal ${extraClass} `;
   modal.innerHTML = content;
   modal.onclick = (e) => e.stopPropagation();
   overlay.appendChild(modal);
@@ -1735,7 +1818,8 @@ window.exportTasksCSV = async function () {
     tasks.forEach(t => {
       const row = [
         t.id,
-        `"${(t.title || '').replace(/"/g, '""')}"`,
+        `"${(t.title || '').replace(/"/g, '""')
+        }"`,
         `"${(t.description || '').replace(/"/g, '""')}"`,
         statusLabel[t.status] || t.status,
         priorityLabel[t.priority] || t.priority,
