@@ -49,6 +49,11 @@ $response = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
+if ($response === false) {
+    header('Location: ' . $FRONTEND_URL . '?google=error#calendar');
+    exit;
+}
+
 $tokens = json_decode($response, true);
 
 if ($httpCode !== 200 || !isset($tokens['access_token'])) {

@@ -211,7 +211,6 @@ function updateEvent($auth)
 
     // Re-push to Google Calendar globally
     try {
-        require_once 'google_calendar_helper.php';
         $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
         $googleColorId = $colorMap[$targetGroupStr] ?? 5;
         $datePart = explode(' ', $eventDate)[0];

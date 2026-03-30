@@ -38,8 +38,10 @@ function refreshGoogleToken($pdo, $userId, $refreshToken)
     $response = curl_exec($ch);
     curl_close($ch);
 
+    if ($response === false) return null;
+
     $data = json_decode($response, true);
-    if (isset($data['access_token'])) {
+    if ($data && isset($data['access_token'])) {
         $expiresAt = date('Y-m-d H:i:s', time() + ($data['expires_in'] ?? 3600));
         $pdo->prepare('UPDATE google_tokens SET access_token = ?, expires_at = ? WHERE user_id = ?')
             ->execute([$data['access_token'], $expiresAt, $userId]);
@@ -108,6 +110,10 @@ function createGoogleCalendarEvent($accessToken, $title, $description, $startDat
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+
+    if ($response === false) {
+        return ['success' => false, 'http_code' => 500, 'error' => 'cURL connection error'];
+    }
 
     $result = json_decode($response, true);
     return [
