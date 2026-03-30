@@ -1251,6 +1251,68 @@ async function renderMyTasks(wrapper) {
 
     const sortedPending = [...pending].sort((a, b) => (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2));
 
+    // Expand recurring events for "Mis Reuniones" checking
+    const expandedEvents = [];
+    allEvents.forEach(e => {
+      expandedEvents.push(e);
+      if (e.recurrence) {
+        let count = 0;
+        let rType = '';
+        if (e.recurrence === 'daily_14') { count = 14; rType = 'daily'; }
+        else if (e.recurrence === 'weekly_12') { count = 12; rType = 'weekly'; }
+        else if (e.recurrence === 'monthly_6') { count = 6; rType = 'monthly'; }
+
+        if (count > 0) {
+          const baseDate = new Date(e.event_date.replace(' ', 'T'));
+          for (let i = 1; i < count; i++) {
+            const nextDate = new Date(baseDate);
+            if (rType === 'daily') nextDate.setDate(nextDate.getDate() + i);
+            else if (rType === 'weekly') nextDate.setDate(nextDate.getDate() + (i * 7));
+            else if (rType === 'monthly') nextDate.setMonth(nextDate.getMonth() + i);
+
+            const y = nextDate.getFullYear();
+            const m = String(nextDate.getMonth() + 1).padStart(2, '0');
+            const d = String(nextDate.getDate()).padStart(2, '0');
+            const hh = String(nextDate.getHours()).padStart(2, '0');
+            const mm = String(nextDate.getMinutes()).padStart(2, '0');
+            const ss = String(nextDate.getSeconds()).padStart(2, '0');
+
+            expandedEvents.push({
+              ...e,
+              id: e.id + '_rec_' + i,
+              event_date: `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+            });
+          }
+        }
+      }
+    });
+
+    const myAssignedEvents = expandedEvents.filter(e => e.assigned_to == userId && e.event_date.split(' ')[0] >= todayStr)
+      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+
+    const assignedHTML = myAssignedEvents.length === 0
+      ? ''
+      : `<div class="card" style="margin-bottom:24px; border:left: 4px solid var(--primary-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">
+          <div class="card-header" style="background:var(--primary-50); border-bottom:1px solid var(--primary-100)"><h3 style="color:var(--primary-700); font-weight:700">🗓️ Mis Reuniones (Soporte)</h3></div>
+          <div class="card-body">
+            <div class="activity-list">
+              ${myAssignedEvents.map(e => `
+                <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                  <div style="flex:1">
+                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
+                      <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
+                      <span class="badge badge-outline" style="text-transform:uppercase">${e.target_group.replace(/_/g, ' ')}</span>
+                    </div>
+                    <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
+                    <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
+                    <div style="margin-top:8px; font-size:12px; color:var(--gray-500)">Creado por el departamento: <strong>${e.creator_group}</strong></div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>`;
+
     const pendingHTML = sortedPending.length === 0
       ? '<div style="text-align:center;padding:32px;color:var(--gray-500)"><div style="font-size:48px;margin-bottom:12px">🎉</div><p>¡No tienes tareas pendientes!</p></div>'
       : sortedPending.map(t => {
@@ -1605,7 +1667,8 @@ async function renderCalendar(wrapper) {
     `);
     };
 
-    window.openEditEvent = function (id) {
+    window.openEditEvent = async function (id) {
+      const baseId = id.split('_')[0];
       const e = window._calEventsObj.find(x => x.id == id);
       if (!e) return;
 
@@ -1620,6 +1683,22 @@ async function renderCalendar(wrapper) {
           </select>
         </div> ` : '';
 
+      let supportSelect = '';
+      try {
+        const usersRes = await api('users.php?action=list');
+        const supportUsers = usersRes.users.filter(u => u.user_group && u.user_group.includes('soporte_'));
+        const supportOptions = supportUsers.map(u => `<option value="${u.id}" ${e.assigned_to == u.id ? 'selected' : ''}>${u.name} (${u.user_group.split(',')[0].replace(/_/g, ' ')})</option>`).join('');
+        supportSelect = `
+          <div class="form-group">
+            <label class="form-label">Asignar a (Soporte)</label>
+            <select class="form-select" id="ee-assigned-to">
+              <option value="">Nadie</option>
+              ${supportOptions}
+            </select>
+          </div>
+        `;
+      } catch (err) { }
+
       showModal(`
       <div class="modal-header"><h2>Editar Evento del Calendario</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="edit-event-form">
@@ -1630,6 +1709,7 @@ async function renderCalendar(wrapper) {
               <div class="form-group"><label class="form-label">Fecha y Hora *</label><input class="form-input"type="datetime-local"id="ee-date"value="${e.event_date.replace(' ', 'T')}"required></div>
               ${adminDeptSelect}
             </div>
+            ${supportSelect}
             ${e.recurrence ? '<small style="color:var(--gray-500)">Al actualizar la fecha/hora base o cambiar el color, se actualizará toda la serie recurrente.</small>' : ''}
           </div>
           <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Guardar Cambios</button></div>
@@ -1646,7 +1726,10 @@ async function renderCalendar(wrapper) {
           if (state.user.role === 'admin' && document.getElementById('ee-dept')) {
             bodyJSON.target_group = document.getElementById('ee-dept').value;
           }
-          await api('calendar_events.php?action=update&id=' + parseInt(id, 10), {
+          if (document.getElementById('ee-assigned-to')) {
+            bodyJSON.assigned_to = document.getElementById('ee-assigned-to').value;
+          }
+          await api('calendar_events.php?action=update&id=' + parseInt(baseId, 10), {
             method: 'PUT', body: JSON.stringify(bodyJSON)
           });
           toast('Evento actualizado');
@@ -1656,7 +1739,23 @@ async function renderCalendar(wrapper) {
       });
     };
 
-    window.openCreateEvent = function () {
+    window.openCreateEvent = async function () {
+      let supportSelect = '';
+      try {
+        const usersRes = await api('users.php?action=list');
+        const supportUsers = usersRes.users.filter(u => u.user_group && u.user_group.includes('soporte_'));
+        const supportOptions = supportUsers.map(u => `<option value="${u.id}">${u.name} (${u.user_group.split(',')[0].replace(/_/g, ' ')})</option>`).join('');
+        supportSelect = `
+          <div class="form-group">
+            <label class="form-label">Asignar a (Soporte)</label>
+            <select class="form-select" id="ce-assigned-to">
+              <option value="">Nadie</option>
+              ${supportOptions}
+            </select>
+          </div>
+        `;
+      } catch (err) { }
+
       const adminDeptSelect = state.user.role === 'admin' ? `
       <div class="form-group"><label class="form-label">Color / Departamento (Admins)</label>
           <select class="form-select"id="ce-dept">
@@ -1678,14 +1777,17 @@ async function renderCalendar(wrapper) {
               <div class="form-group"><label class="form-label">Fecha y Hora Base *</label><input class="form-input"type="datetime-local"id="ce-date"required></div>
               ${adminDeptSelect}
             </div>
-            <div class="form-group">
-              <label class="form-label">Recurrencia (Opcional)</label>
-              <select class="form-select"id="ce-recurrence">
-                <option value="none">No se repite</option>
-                <option value="daily_14">Diariamente (por 14 días)</option>
-                <option value="weekly_12">Semanalmente (por 12 semanas)</option>
-                <option value="monthly_6">Mensualmente (por 6 meses)</option>
-              </select>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Recurrencia (Opcional)</label>
+                <select class="form-select"id="ce-recurrence">
+                  <option value="none">No se repite</option>
+                  <option value="daily_14">Diariamente (por 14 días)</option>
+                  <option value="weekly_12">Semanalmente (por 12 semanas)</option>
+                  <option value="monthly_6">Mensualmente (por 6 meses)</option>
+                </select>
+              </div>
+              ${supportSelect}
             </div>
           </div>
           <div class="modal-footer"><button type="button"class="btn btn-outline"onclick="closeModal()">Cancelar</button><button type="submit"class="btn btn-primary">Crear Evento</button></div>
@@ -1706,6 +1808,9 @@ async function renderCalendar(wrapper) {
           };
           if (state.user.role === 'admin' && document.getElementById('ce-dept')) {
             bodyJSON.target_group = document.getElementById('ce-dept').value;
+          }
+          if (document.getElementById('ce-assigned-to')) {
+            bodyJSON.assigned_to = document.getElementById('ce-assigned-to').value;
           }
 
           await api('calendar_events.php?action=create', {

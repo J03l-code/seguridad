@@ -21,6 +21,14 @@ try {
     $pdo->exec("ALTER TABLE calendar_events ADD COLUMN recurrence VARCHAR(50) DEFAULT NULL");
 }
 
+// Auto-migrate assigned_to column
+try {
+    $pdo->query("SELECT assigned_to FROM calendar_events LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE calendar_events ADD COLUMN assigned_to INT DEFAULT NULL");
+    $pdo->exec("ALTER TABLE calendar_events ADD CONSTRAINT fk_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL");
+}
+
 switch ($action) {
     case 'list':
         listEvents($auth);
@@ -43,9 +51,10 @@ function listEvents($auth)
     global $pdo;
 
     $stmt = $pdo->prepare('
-        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, e.recurrence, u.user_group as creator_group 
+        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, e.recurrence, e.assigned_to, u.user_group as creator_group, a.name as assigned_name
         FROM calendar_events e 
         JOIN users u ON e.created_by = u.id 
+        LEFT JOIN users a ON e.assigned_to = a.id
         ORDER BY event_date ASC
     ');
     $stmt->execute();
@@ -68,6 +77,8 @@ function createEvent($auth)
     if ($recurrence === 'none' || !$recurrence)
         $recurrence = null;
 
+    $assignedTo = !empty($data['assigned_to']) ? (int) $data['assigned_to'] : null;
+
     $uStmt = $pdo->prepare('SELECT name, user_group, role FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
     $creatorUser = $uStmt->fetch();
@@ -86,8 +97,8 @@ function createEvent($auth)
 
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by, recurrence) VALUES (?, ?, ?, ?, ?, ?)');
-        $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id'], $recurrence]);
+        $stmt = $pdo->prepare('INSERT INTO calendar_events (title, description, event_date, target_group, created_by, recurrence, assigned_to) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $auth['id'], $recurrence, $assignedTo]);
         $eventId = $pdo->lastInsertId(); // CAPTURE ID IMMEDIATELY
 
         $msgTitle = $title;
@@ -168,6 +179,8 @@ function updateEvent($auth)
     $description = trim($data['description'] ?? $ev['description']);
     $eventDate = $data['event_date'] ?? $ev['event_date'];
 
+    $assignedTo = isset($data['assigned_to']) ? ($data['assigned_to'] ? (int) $data['assigned_to'] : null) : $ev['assigned_to'];
+
     $targetGroupStr = $ev['target_group'];
     if ($auth['role'] === 'admin' && !empty($data['target_group'])) {
         $targetGroupStr = trim($data['target_group']);
@@ -193,8 +206,8 @@ function updateEvent($auth)
         }
     }
 
-    $stmt = $pdo->prepare('UPDATE calendar_events SET title=?, description=?, event_date=?, target_group=?, google_event_ids=NULL WHERE id=?');
-    $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $id]);
+    $stmt = $pdo->prepare('UPDATE calendar_events SET title=?, description=?, event_date=?, target_group=?, assigned_to=?, google_event_ids=NULL WHERE id=?');
+    $stmt->execute([$title, $description, $eventDate, $targetGroupStr, $assignedTo, $id]);
 
     // Re-push to Google Calendar globally
     try {
