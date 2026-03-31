@@ -1300,6 +1300,7 @@ async function renderMyTasks(wrapper) {
       }
     });
 
+    const isAdmin = state.user?.role === 'admin';
     const isSupportUser = isAdmin || userGroups.some(g => g.includes('soporte_oficina'));
     const supportEvents = isSupportUser
       ? expandedEvents.filter(e => e.assigned_to && e.event_date.split(' ')[0] >= todayStr)
