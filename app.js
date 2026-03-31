@@ -664,6 +664,8 @@ async function renderTasks(wrapper) {
       }
     };
 
+
+
     window.deleteTask = async function (id) {
       if (!confirm('¿Eliminar esta tarea?')) return;
       try {
@@ -1838,11 +1840,16 @@ async function renderCalendar(wrapper) {
     window.deleteEvent = async function (id) {
       if (!confirm('¿Estás seguro de eliminar este evento?')) return;
       try {
-        await api(`calendar_events.php ? action = delete& id=${id} `, { method: 'DELETE' });
+        await api('calendar_events.php?action=delete', {
+          method: 'POST',
+          body: JSON.stringify({ id: id })
+        });
         toast('Evento eliminado');
         closeModal();
         renderCalendar(document.createElement('div')).then(() => { navigate('calendar'); });
-      } catch (err) { toast(err.message, 'error'); }
+      } catch (err) {
+        // Error will be caught and shown in the toast by api()
+      }
     }
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box"> ${err.message}</div> `;

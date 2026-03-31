@@ -260,12 +260,15 @@ function updateEvent($auth)
 function deleteEvent($auth)
 {
     global $pdo;
-    if (getMethod() !== 'DELETE')
+    if (getMethod() !== 'POST')
         jsonResponse(['error' => 'Método no permitido.'], 405);
 
-    $id = (int) getParam('id', 0);
-    if (!$id)
+    $data = getJsonBody();
+    $idStr = $data['id'] ?? '';
+    if (!$idStr)
         jsonResponse(['error' => 'ID requerido.'], 400);
+
+    $id = (int) $idStr;
 
     $stmt = $pdo->prepare('SELECT * FROM calendar_events WHERE id = ?');
     $stmt->execute([$id]);
