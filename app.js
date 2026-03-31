@@ -25,11 +25,22 @@ async function api(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API}/${endpoint}`, { ...options, headers });
-  const data = await res.json();
-  if (res.status === 401 && !endpoint.includes('action=login')) { logout(); return; }
-  if (!res.ok) throw new Error(data.error || 'Error del servidor');
-  return data;
+  try {
+    const res = await fetch(`${API}/${endpoint}`, { ...options, headers });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error('Error de Servidor: ' + text.substring(0, 150));
+    }
+    if (res.status === 401 && !endpoint.includes('action=login')) { logout(); return; }
+    if (!res.ok) throw new Error(data.error || 'Error del servidor');
+    return data;
+  } catch (err) {
+    toast(err.message, 'error');
+    throw err;
+  }
 }
 
 // ==========================================
@@ -1292,7 +1303,7 @@ async function renderMyTasks(wrapper) {
 
     const assignedHTML = myAssignedEvents.length === 0
       ? ''
-      : `<div class="card" style="margin-bottom:24px; border:left: 4px solid var(--primary-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">
+      : `<div class="card" style="margin-bottom:24px; border-left:4px solid var(--primary-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">
           <div class="card-header" style="background:var(--primary-50); border-bottom:1px solid var(--primary-100)"><h3 style="color:var(--primary-700); font-weight:700">🗓️ Mis Reuniones (Soporte)</h3></div>
           <div class="card-body">
             <div class="activity-list">

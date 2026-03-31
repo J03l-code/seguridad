@@ -192,10 +192,14 @@ function updateEvent($auth)
 
     // Delete old instances from Google Calendar
     $gcIds = json_decode($ev['google_event_ids'] ?? '{}', true) ?: [];
-    foreach ($gcIds as $userId => $googleEventId) {
+    foreach ($gcIds as $userId => $val) {
+        $googleEventId = is_array($val) ? ($val['google_event_id'] ?? null) : $val;
+        if (!$googleEventId || !is_scalar($googleEventId))
+            continue;
+
         $accessToken = getValidAccessToken($pdo, (int) $userId);
-        if ($accessToken && $googleEventId) {
-            $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
+        if ($accessToken) {
+            $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode((string) $googleEventId));
             curl_setopt_array($ch, [
                 CURLOPT_CUSTOMREQUEST => 'DELETE',
                 CURLOPT_RETURNTRANSFER => true,
@@ -270,11 +274,11 @@ function deleteEvent($auth)
         foreach ($gcIds as $userId => $val) {
             // Handle both old nested format and new flat format
             $googleEventId = is_array($val) ? ($val['google_event_id'] ?? null) : $val;
-            if (!$googleEventId)
+            if (!$googleEventId || !is_scalar($googleEventId))
                 continue;
             $accessToken = getValidAccessToken($pdo, (int) $userId);
             if ($accessToken) {
-                $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode($googleEventId));
+                $ch = curl_init("https://www.googleapis.com/calendar/v3/calendars/primary/events/" . urlencode((string) $googleEventId));
                 curl_setopt_array($ch, [
                     CURLOPT_CUSTOMREQUEST => 'DELETE',
                     CURLOPT_RETURNTRANSFER => true,
