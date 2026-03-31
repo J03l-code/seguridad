@@ -1361,8 +1361,9 @@ async function renderMyTasks(wrapper) {
             '</div>' +
             '<h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">' + t.title + '</h3>' +
             '<p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">' + (t.description || 'Sin descripción') + '</p>' +
-            '<div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">' +
-            'Fecha límite: <span style="color:' + (isOverdue ? 'var(--danger-600)' : 'var(--primary-600)') + '">' + (t.due_date ? t.due_date.split(' ')[0] : 'Sin fecha') + '</span>' +
+            '<div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px">' +
+            '<span>Fecha límite: <span style="color:' + (isOverdue ? 'var(--danger-600)' : 'var(--primary-600)') + '">' + (t.due_date ? t.due_date.split(' ')[0] : 'Sin fecha') + '</span></span>' +
+            '<span>Asignada por: <span style="color:var(--primary-600); text-transform:uppercase">' + (t.creator_name || 'Desconocido') + '</span></span>' +
             '</div>' +
             '</div>';
         }).join('') +
