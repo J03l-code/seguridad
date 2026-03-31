@@ -1307,30 +1307,32 @@ async function renderMyTasks(wrapper) {
         .sort((a, b) => a.event_date.localeCompare(b.event_date))
       : [];
 
-    const assignedHTML = supportEvents.length === 0
+    const assignedContent = supportEvents.length === 0
+      ? '<div style="text-align:center;padding:24px;color:var(--gray-500);font-size:14px">🛌 No hay asignaciones pendientes para el equipo de soporte.</div>'
+      : `<div class="activity-list">
+          ${supportEvents.map(e => `
+            <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px">
+                  <div style="display:flex; gap:6px">
+                    <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
+                    <span class="badge badge-outline" style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ') : 'TODOS'}</span>
+                  </div>
+                  <span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A: ${e.assigned_name || 'Soporte General'}</span>
+              </div>
+              <h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
+              <p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">${e.description || 'Sin descripción'}</p>
+              <div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">
+                Agendado por: <span style="color:var(--primary-600)">${e.creator_group ? e.creator_group.replace(/_/g, ' ').toUpperCase() : 'ADMINISTRACIÓN'}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+
+    const assignedHTML = !isSupportUser
       ? ''
       : `<div class="card" style="margin-bottom:24px; border-left:4px solid var(--primary-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">
           <div class="card-header" style="background:var(--primary-50); border-bottom:1px solid var(--primary-100); text-align:center"><h3 style="color:var(--primary-700); font-weight:800; text-transform:uppercase; margin:0">📋 asignaciones de soporte de oficina en reuniones</h3></div>
-          <div class="card-body">
-            <div class="activity-list">
-              ${supportEvents.map(e => `
-                <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; margin-bottom:12px;">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px">
-                      <div style="display:flex; gap:6px">
-                        <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
-                        <span class="badge badge-outline" style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ') : 'TODOS'}</span>
-                      </div>
-                      <span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A SOPORTE: ${e.assigned_name || 'N/A'}</span>
-                  </div>
-                  <h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
-                  <p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">${e.description || 'Sin descripción'}</p>
-                  <div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">
-                    Agendado por: <span style="color:var(--primary-600)">${e.creator_group ? e.creator_group.replace(/_/g, ' ').toUpperCase() : 'ADMINISTRACIÓN'}</span>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
+          <div class="card-body">${assignedContent}</div>
         </div>`;
 
     const pendingHTML = sortedPending.length === 0
