@@ -1300,10 +1300,10 @@ async function renderMyTasks(wrapper) {
       }
     });
 
-    const isSupportUser = userGroups.some(g => g.includes('soporte_oficina'));
-    const supportEvents = isSupportUser 
+    const isSupportUser = isAdmin || userGroups.some(g => g.includes('soporte_oficina'));
+    const supportEvents = isSupportUser
       ? expandedEvents.filter(e => e.assigned_to && e.event_date.split(' ')[0] >= todayStr)
-          .sort((a, b) => a.event_date.localeCompare(b.event_date))
+        .sort((a, b) => a.event_date.localeCompare(b.event_date))
       : [];
 
     const assignedHTML = supportEvents.length === 0
