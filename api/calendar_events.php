@@ -61,7 +61,7 @@ function listEvents($auth)
     global $pdo;
 
     $stmt = $pdo->prepare('
-        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, e.recurrence, e.assigned_to, u.user_group as creator_group, a.name as assigned_name
+        SELECT e.id, e.title, e.description, e.event_date, e.target_group, e.created_by, e.created_at, e.recurrence, e.assigned_to, u.user_group as creator_group, u.name as creator_name, a.name as assigned_name
         FROM calendar_events e 
         JOIN users u ON e.created_by = u.id 
         LEFT JOIN users a ON e.assigned_to = a.id

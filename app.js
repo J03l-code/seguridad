@@ -1322,7 +1322,7 @@ async function renderMyTasks(wrapper) {
               <h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">${e.description || 'Sin descripción'}</p>
               <div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">
-                Agendado por: <span style="color:var(--primary-600)">${e.creator_group ? e.creator_group.replace(/_/g, ' ').toUpperCase() : 'ADMINISTRACIÓN'}</span>
+                Agendado por: <span style="color:var(--primary-600); text-transform:uppercase">${e.creator_name || 'ADMINISTRACIÓN'}</span>
               </div>
             </div>
           `).join('')}
