@@ -1300,25 +1300,31 @@ async function renderMyTasks(wrapper) {
       }
     });
 
-    const myAssignedEvents = expandedEvents.filter(e => e.assigned_to == userId && e.event_date.split(' ')[0] >= todayStr)
-      .sort((a, b) => a.event_date.localeCompare(b.event_date));
+    const isSupportUser = userGroups.some(g => g.includes('soporte_oficina'));
+    const supportEvents = isSupportUser 
+      ? expandedEvents.filter(e => e.assigned_to && e.event_date.split(' ')[0] >= todayStr)
+          .sort((a, b) => a.event_date.localeCompare(b.event_date))
+      : [];
 
-    const assignedHTML = myAssignedEvents.length === 0
+    const assignedHTML = supportEvents.length === 0
       ? ''
       : `<div class="card" style="margin-bottom:24px; border-left:4px solid var(--primary-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">
-          <div class="card-header" style="background:var(--primary-50); border-bottom:1px solid var(--primary-100)"><h3 style="color:var(--primary-700); font-weight:700">🗓️ Mis Reuniones (Soporte)</h3></div>
+          <div class="card-header" style="background:var(--primary-50); border-bottom:1px solid var(--primary-100); text-align:center"><h3 style="color:var(--primary-700); font-weight:800; text-transform:uppercase; margin:0">📋 asignaciones de soporte de oficina en reuniones</h3></div>
           <div class="card-body">
             <div class="activity-list">
-              ${myAssignedEvents.map(e => `
-                <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                  <div style="flex:1">
-                    <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
-                      <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
-                      <span class="badge badge-outline" style="text-transform:uppercase">${e.target_group.replace(/_/g, ' ')}</span>
-                    </div>
-                    <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
-                    <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${e.description || 'Sin descripción'}</p>
-                    <div style="margin-top:8px; font-size:12px; color:var(--gray-500)">Creado por el departamento: <strong>${e.creator_group}</strong></div>
+              ${supportEvents.map(e => `
+                <div class="activity-item" style="padding:16px; border:1px solid var(--gray-200); border-left:4px solid var(--primary-500); border-radius:8px; margin-bottom:12px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px">
+                      <div style="display:flex; gap:6px">
+                        <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
+                        <span class="badge badge-outline" style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ') : 'TODOS'}</span>
+                      </div>
+                      <span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A SOPORTE: ${e.assigned_name || 'N/A'}</span>
+                  </div>
+                  <h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">${e.title} ${e.recurrence ? '<span title="Evento recurrente" style="font-size:12px; margin-left:4px">🔄</span>' : ''}</h3>
+                  <p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">${e.description || 'Sin descripción'}</p>
+                  <div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">
+                    Agendado por: <span style="color:var(--primary-600)">${e.creator_group ? e.creator_group.replace(/_/g, ' ').toUpperCase() : 'ADMINISTRACIÓN'}</span>
                   </div>
                 </div>
               `).join('')}
