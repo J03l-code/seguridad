@@ -1672,15 +1672,19 @@ async function renderCalendar(wrapper) {
       const canDelete = isAdmin || e.created_by == state.user.id;
 
       showModal(`
-      <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
-            <div class="modal-body">
-                <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <span class="badge badge-primary">📅 ${e.event_date}</span>
-                    <span class="badge badge-warning"style="text-transform:uppercase">${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
-                </div>
-                <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
-                <p style="color:var(--gray-700); line-height:1.5">${e.description || 'Sin descripción detallada.'}</p>
+        <div class="modal-header"><h2>Detalles del Evento</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
+        <div class="modal-body">
+            <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+                <span class="badge badge-primary">📅 ${e.event_date}</span>
+                <span class="badge badge-warning"style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+                ${e.assigned_name ? `<span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A SOPORTE: ${e.assigned_name}</span>` : ''}
             </div>
+            <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
+            <p style="color:var(--gray-700); line-height:1.5; margin-bottom:14px">${e.description || 'Sin descripción detallada.'}</p>
+            <div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:12px; border-top:1px dashed var(--gray-200)">
+              Agendado por: <span style="color:var(--primary-600); text-transform:uppercase">${e.creator_name || 'ADMINISTRACIÓN'}</span>
+            </div>
+        </div>
             <div class="modal-footer"style="display:flex; justify-content:space-between">
                 <div style="display:flex;gap:8px">
                     ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${e.id}')">🗑 Eliminar</button>` : '<div></div>'}
