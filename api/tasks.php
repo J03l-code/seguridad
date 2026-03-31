@@ -47,7 +47,7 @@ switch ($action) {
 function listTasks()
 {
     global $pdo;
-    $sql = "SELECT t.*, u1.name as creator_name,
+    $sql = "SELECT t.*, u1.name as creator_name, u1.user_group as creator_group,
                 (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count
             FROM tasks t
             LEFT JOIN users u1 ON t.created_by = u1.id

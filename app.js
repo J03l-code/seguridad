@@ -1335,6 +1335,42 @@ async function renderMyTasks(wrapper) {
           <div class="card-body">${assignedContent}</div>
         </div>`;
 
+    const supportDelegatedTasks = isSupportUser
+      ? allTasks.filter(t => t.creator_group && t.creator_group.includes('soporte_oficina'))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      : [];
+
+    const delegatedHTML = !isSupportUser
+      ? ''
+      : '<div class="card" style="margin-bottom:24px; border-left:4px solid var(--info-500); border-radius:12px; overflow:hidden; box-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1);">' +
+      '<div class="card-header" style="background:var(--info-50); border-bottom:1px solid var(--info-100); text-align:center">' +
+      '<h3 style="color:var(--info-700); font-weight:800; text-transform:uppercase; margin:0">📋 Mis tareas asignadas (Registro de Departamentos)</h3>' +
+      '</div>' +
+      '<div class="card-body">' +
+      (supportDelegatedTasks.length === 0
+        ? '<div style="text-align:center;padding:24px;color:var(--gray-500);font-size:14px">📭 No hay tareas asignadas a otros departamentos.</div>'
+        : '<div class="activity-list">' +
+        supportDelegatedTasks.map(t => {
+          const isOverdue = t.due_date && t.due_date.split(' ')[0] < todayStr;
+          return '<div class="activity-item" style="padding:16px; border:1px solid ' + (isOverdue ? 'var(--danger-200)' : 'var(--gray-200)') + '; border-left:4px solid ' + (isOverdue ? 'var(--danger-500)' : 'var(--info-500)') + '; border-radius:8px; margin-bottom:12px; cursor:pointer;" onclick="openTaskDetail(\'' + t.id + '\')">' +
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px">' +
+            '<div style="display:flex; gap:6px">' +
+            '<span class="badge ' + statusBadge[t.status] + '" style="font-size:12px; font-weight:600">' + statusLabel[t.status] + '</span>' +
+            '<span class="badge badge-outline" style="text-transform:uppercase">DEPARTAMENTO ASIGNADO: ' + (t.target_group || '').replace(/_/g, ' ') + '</span>' +
+            '</div>' +
+            '</div>' +
+            '<h3 style="font-size:16px; margin:0 0 6px 0; color:var(--gray-800)">' + t.title + '</h3>' +
+            '<p style="font-size:14px; color:var(--gray-600); margin:0 0 10px 0">' + (t.description || 'Sin descripción') + '</p>' +
+            '<div style="font-size:13px; color:var(--gray-600); font-weight:600; padding-top:8px; border-top:1px dashed var(--gray-200)">' +
+            'Fecha límite: <span style="color:' + (isOverdue ? 'var(--danger-600)' : 'var(--primary-600)') + '">' + (t.due_date ? t.due_date.split(' ')[0] : 'Sin fecha') + '</span>' +
+            '</div>' +
+            '</div>';
+        }).join('') +
+        '</div>'
+      ) +
+      '</div>' +
+      '</div>';
+
     const pendingHTML = sortedPending.length === 0
       ? '<div style="text-align:center;padding:32px;color:var(--gray-500)"><div style="font-size:48px;margin-bottom:12px">🎉</div><p>¡No tienes tareas pendientes!</p></div>'
       : sortedPending.map(t => {
@@ -1413,6 +1449,7 @@ async function renderMyTasks(wrapper) {
       </div>
       
       ${assignedHTML}
+      ${delegatedHTML}
 
       <div style="display:grid;grid-template-columns:1fr 380px;gap:24px">
         <!-- Pending Tasks -->
