@@ -1315,7 +1315,7 @@ async function renderMyTasks(wrapper) {
               <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; gap:8px">
                   <div style="display:flex; gap:6px">
                     <span class="badge badge-primary" style="font-size:12px; font-weight:600">📅 ${e.event_date.split(' ')[0]} ${e.event_date.split(' ')[1].slice(0, 5)}</span>
-                    <span class="badge badge-outline" style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ') : 'TODOS'}</span>
+                    <span class="badge badge-outline" style="text-transform:uppercase">DEPARTAMENTO: ${e.target_group ? e.target_group.replace(/_/g, ' ') : 'TODOS'}</span>
                   </div>
                   <span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A: ${e.assigned_name || 'Soporte General'}</span>
               </div>
@@ -1676,7 +1676,7 @@ async function renderCalendar(wrapper) {
         <div class="modal-body">
             <div style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
                 <span class="badge badge-primary">📅 ${e.event_date}</span>
-                <span class="badge badge-warning"style="text-transform:uppercase">LUGAR: ${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
+                <span class="badge badge-warning"style="text-transform:uppercase">DEPARTAMENTO: ${e.target_group ? e.target_group.replace(/_/g, ' ').split(',').join(' • ') : 'TODOS'}</span>
                 ${e.assigned_name ? `<span class="badge" style="background:var(--warning-100); color:var(--warning-800); border:1px solid var(--warning-300)">ASIGNADO A SOPORTE: ${e.assigned_name}</span>` : ''}
             </div>
             <h3 style="margin:0 0 8px 0; color:var(--primary-800)">${e.title}</h3>
