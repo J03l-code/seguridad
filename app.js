@@ -1411,6 +1411,8 @@ async function renderMyTasks(wrapper) {
           </div>
         </div>
       </div>
+      
+      ${assignedHTML}
 
       <div style="display:grid;grid-template-columns:1fr 380px;gap:24px">
         <!-- Pending Tasks -->
