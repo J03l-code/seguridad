@@ -1661,15 +1661,17 @@ async function renderCalendar(wrapper) {
                 <button class="calendar-nav-btn"onclick="calNextMonth()">Siguiente →</button>
             </div>
             
-            <div class="calendar-grid">
-                <div class="calendar-header-day">Dom</div>
-                <div class="calendar-header-day">Lun</div>
-                <div class="calendar-header-day">Mar</div>
-                <div class="calendar-header-day">Mié</div>
-                <div class="calendar-header-day">Jue</div>
-                <div class="calendar-header-day">Vie</div>
-                <div class="calendar-header-day">Sáb</div>
-                ${cellsHTML}
+            <div style="overflow-x: auto; padding-bottom: 8px; width: 100%;">
+                <div class="calendar-grid">
+                    <div class="calendar-header-day">Dom</div>
+                    <div class="calendar-header-day">Lun</div>
+                    <div class="calendar-header-day">Mar</div>
+                    <div class="calendar-header-day">Mié</div>
+                    <div class="calendar-header-day">Jue</div>
+                    <div class="calendar-header-day">Vie</div>
+                    <div class="calendar-header-day">Sáb</div>
+                    ${cellsHTML}
+                </div>
             </div>
         </div>
       </div>
