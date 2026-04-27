@@ -2067,48 +2067,50 @@ window.openCreateExtMember = () => {
     overlay.className = 'modal-overlay';
     overlay.id = 'ext-user-modal';
     overlay.innerHTML = `
-        <div class="modal-content">
+        <div class="modal">
             <div class="modal-header">
-                <h3>Añadir Miembro al Organigrama</h3>
-                <span class="close-modal"onclick="this.closest('.modal-overlay').remove()">✕</span>
+                <h2>Añadir Miembro al Organigrama</h2>
+                <div class="modal-close" style="cursor:pointer;" onclick="this.closest('.modal-overlay').remove()">✕</div>
             </div>
-            <form id="create-ext-member-form">
-                <div class="form-group">
-                    <label>Nombre Completo *</label>
-                    <input type="text"name="name"required>
-                </div>
-                <div class="form-group">
-                    <label>Correo Electrónico</label>
-                    <input type="email"name="email">
-                </div>
-                <div class="form-group">
-                    <label>Título / Puesto (Opcional)</label>
-                    <input type="text"name="job_title">
-                </div>
-                <div class="form-group">
-                    <label>Nivel Jerárquico *</label>
-                    <select name="hierarchy_level"required>
-                        <option value="voluntario_clave">Voluntario Clave</option>
-                        <option value="auxiliar">Auxiliar</option>
-                        <option value="superintendente">Superintendente</option>
-                        <option value="admin">Administrador (Admin)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Departamento Principal *</label>
-                    <select name="user_group"required>
-                        <option value="emergencias">Emergencias</option>
-                        <option value="actividades">Actividades</option>
-                        <option value="soporte_oficina">Soporte de Oficina</option>
-                        <option value="otros_eventos">Otros Eventos</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Día / Hora de Reunión (Opcional)</label>
-                    <input type="text"name="meeting_day"placeholder="Ej. Lunes 19:30">
-                </div>
-                <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
-            </form>
+            <div class="modal-body">
+                <form id="create-ext-member-form">
+                    <div class="form-group">
+                        <label>Nombre Completo *</label>
+                        <input type="text"name="name"required>
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Electrónico</label>
+                        <input type="email"name="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Asignación (Opcional)</label>
+                        <input type="text"name="job_title">
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel Jerárquico *</label>
+                        <select name="hierarchy_level"required>
+                            <option value="voluntario_clave">Voluntario Clave</option>
+                            <option value="auxiliar">Auxiliar</option>
+                            <option value="superintendente">Superintendente</option>
+                            <option value="admin">Administrador (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Departamento Principal *</label>
+                        <select name="user_group"required>
+                            <option value="emergencias">Emergencias</option>
+                            <option value="actividades">Actividades</option>
+                            <option value="soporte_oficina">Soporte de Oficina</option>
+                            <option value="otros_eventos">Otros Eventos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Día / Hora de Reunión (Opcional)</label>
+                        <input type="text"name="meeting_day"placeholder="Ej. Lunes 19:30">
+                    </div>
+                    <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
+                </form>
+            </div>
         </div>
     `;
     document.body.appendChild(overlay);
