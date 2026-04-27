@@ -747,10 +747,10 @@ const DEPT_COLORS = ['#2d3561', '#38b2ac', '#e53e3e', '#ecc94b', '#4299e1', '#9f
 
 async function renderDepartments(wrapper) {
   try {
-    const [dRes, uRes, orgRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list'), api('users.php?action=org_chart')]);
+    const [dRes, uRes, orgRes, extRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list'), api('users.php?action=org_chart'), api('external_members.php?action=list')]);
     const depts = dRes.departments;
     const users = uRes.users;
-    const orgUsers = orgRes.users;
+    const orgUsers = [...orgRes.users, ...(extRes?.members || [])];
     const isAdmin = state.user?.role === 'admin';
 
     const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
@@ -790,10 +790,15 @@ async function renderDepartments(wrapper) {
           <div class="org-member"style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}">
               <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
               <div class="info">
-                  <span class="name"style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}">
-                      ${u.name}
-                  </span>
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                      <span class="name"style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}; margin-bottom:2px;">
+                          ${u.name}
+                      </span>
+                      ${isAdmin && u.is_external ? `<button onclick="deleteExtMember('${u.id}')" style="color:var(--danger-500); font-size:10px; padding:0 2px; border:none; background:none; cursor:pointer;" title="Eliminar Miembro Externo">✕</button>` : ''}
+                  </div>
                   <span class="role">${roleText}</span>
+                  ${u.meeting_day ? `<div style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
+                  ${u.is_external && u.email ? `<div style="font-size:10px; color:var(--gray-500); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">✉️</span> ${u.email}</div>` : ''}
               </div>
           </div>
         `;
@@ -862,7 +867,10 @@ async function renderDepartments(wrapper) {
 
     const orgChartHTML = `
       <div class="card"style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
-        <div class="card-header"style="background:#fff"><h3>Organigrama del Personal (Por Dependencias)</h3></div>
+        <div class="card-header"style="background:#fff; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0">Organigrama del Personal (Por Dependencias)</h3>
+            ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Añadir Miembro Externo</button>` : ''}
+        </div>
         <div class="card-body"style="min-width: 800px">
             <div class="org-chart-container">
                 <div class="org-level">
@@ -2049,6 +2057,88 @@ window.exportTasksCSV = async function () {
   } catch (err) {
     toast('Error al exportar: ' + err.message, 'error');
   }
+};
+
+// ==========================================
+// External Members UI Handlers
+// ==========================================
+window.openCreateExtMember = () => {
+    let overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'ext-user-modal';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Añadir Miembro al Organigrama</h3>
+                <span class="close-modal"onclick="this.closest('.modal-overlay').remove()">✕</span>
+            </div>
+            <form id="create-ext-member-form">
+                <div class="form-group">
+                    <label>Nombre Completo *</label>
+                    <input type="text"name="name"required>
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email"name="email">
+                </div>
+                <div class="form-group">
+                    <label>Título / Puesto (Opcional)</label>
+                    <input type="text"name="job_title">
+                </div>
+                <div class="form-group">
+                    <label>Nivel Jerárquico *</label>
+                    <select name="hierarchy_level"required>
+                        <option value="voluntario_clave">Voluntario Clave</option>
+                        <option value="auxiliar">Auxiliar</option>
+                        <option value="superintendente">Superintendente</option>
+                        <option value="admin">Administrador (Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Departamento Principal *</label>
+                    <select name="user_group"required>
+                        <option value="emergencias">Emergencias</option>
+                        <option value="actividades">Actividades</option>
+                        <option value="soporte_oficina">Soporte de Oficina</option>
+                        <option value="otros_eventos">Otros Eventos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Día / Hora de Reunión (Opcional)</label>
+                    <input type="text"name="meeting_day"placeholder="Ej. Lunes 19:30">
+                </div>
+                <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('create-ext-member-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        try {
+            await api('external_members.php?action=create', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            toast('Miembro externo añadido');
+            overlay.remove();
+            navigate('departments');
+        } catch(err) {
+            toast('Error: ' + err.message, 'error');
+        }
+    });
+};
+
+window.deleteExtMember = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este miembro del organigrama?')) return;
+    try {
+        await api('external_members.php?action=delete&id=' + id, {method: 'DELETE'});
+        toast('Miembro eliminado exitosamente');
+        navigate('departments');
+    } catch(err) {
+        toast('Error: ' + err.message, 'error');
+    }
 };
 
 // ==========================================
