@@ -714,7 +714,7 @@ textarea.form-input {
 /* Kanban */
 .kanban-board {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 20px;
     min-height: 500px
 }
@@ -834,7 +834,9 @@ textarea.form-input {
     font-weight: 600;
     color: var(--primary-800);
     line-height: 1.4;
-    flex: 1
+    flex: 1;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .task-card-desc {
@@ -845,7 +847,9 @@ textarea.form-input {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden
+    overflow: hidden;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .task-card-footer {
@@ -2144,7 +2148,7 @@ textarea.form-input {
 /* Responsive */
 @media(max-width:1024px) {
     .kanban-board {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 16px
     }
 
