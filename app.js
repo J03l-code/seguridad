@@ -814,8 +814,37 @@ async function renderDepartments(wrapper) {
     const renderTree = (deptId, deptName, forceColor = null, isSub = false) => {
       const color = forceColor || BASE_COLORS[deptId] || '#64748b';
       const children = depts.filter(d => d.parent_id == deptId);
-      const html = renderOrgNode(deptName, deptId, groups[deptId] || [], color, isSub);
-      if (children.length === 0) return html;
+      
+      let topUsers = [];
+      let bottomUsers = [];
+      const grpUsers = groups[deptId] || [];
+
+      if (!isSub) {
+          grpUsers.forEach(u => {
+            let hMap = {};
+            try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+            const effectiveHierarchy = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+            const isSup = effectiveHierarchy === 'superintendente';
+            const isAux = effectiveHierarchy === 'auxiliar';
+            
+            if (isSup || isAux) {
+               topUsers.push(u);
+            } else {
+               bottomUsers.push(u);
+            }
+          });
+      } else {
+          topUsers = grpUsers;
+      }
+
+      const html = renderOrgNode(deptName, deptId, topUsers, color, isSub);
+      
+      if (children.length === 0 && bottomUsers.length === 0) return html;
+
+      let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+      if (bottomUsers.length > 0) {
+         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
+      }
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
@@ -824,7 +853,7 @@ async function renderDepartments(wrapper) {
           <div class="org-level-2-wrapper"style="margin-top:-20px; width:100%">
              <div class="org-horizontal-line"style="width: 80%; left: 10%"></div>
              <div class="org-level-2"style="gap:20px; align-items:flex-start">
-                 ${children.map(c => renderTree(c.id, c.name, color, true)).join('')}
+                 ${subBoxes}
              </div>
           </div>
         </div>
