@@ -773,7 +773,7 @@ async function renderDepartments(wrapper) {
       otros_eventos: '#f59e0b'    // warning-500
     };
 
-    const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false) => {
+    const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false, isBottomNode = false) => {
       const mappedUsers = grpUsers.map(u => {
         // Per-group hierarchy: check hierarchy_map[key] first, fallback to global hierarchy_level
         let hMap = {};
@@ -813,11 +813,12 @@ async function renderDepartments(wrapper) {
       const nodeClass = !isSub && BASE_COLORS[key] ? `target-${key}` : '';
       const inlineBox = isSub && color ? `border-top: 4px solid ${color}; background: ${color}15;` : '';
       const inlineHeader = isSub && color ? `background: ${color}35; color: #1e293b;` : '';
-      const onClickDept = isAdmin ? `onclick="openCreateExtMember('${key}')" style="cursor:pointer;" title="Añadir miembro a ${gName}"` : '';
+      const canClick = isAdmin && !isBottomNode;
+      const onClickDept = canClick ? `onclick="openQuickExtMember('${key}', '${gName}')" title="Añadir miembro rápido a ${gName}"` : '';
 
       return `
         <div class="org-node ${nodeClass}"style="${inlineBox}">
-            <h3 style="${inlineHeader}; ${isAdmin ? 'cursor:pointer;' : ''}" ${onClickDept}>${gName} ${isAdmin ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</h3>
+            <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}" ${onClickDept}>${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</h3>
             <div class="org-members">${mappedUsers}</div>
         </div>
       `;
@@ -851,13 +852,15 @@ async function renderDepartments(wrapper) {
 
       if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
       
-      const html = renderOrgNode(deptName, deptId, topUsers, color, isSub);
+      if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
+      
+      const html = renderOrgNode(deptName, deptId, topUsers, color, isSub, false);
       
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
       if (bottomUsers.length > 0) {
-         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
+         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true, true) + subBoxes;
       }
 
       return `
@@ -2106,7 +2109,50 @@ window.exportTasksCSV = async function () {
 // ==========================================
 // External Members UI Handlers
 // ==========================================
-window.openCreateExtMember = (prefillDept = '') => {
+window.openQuickExtMember = (deptId, deptName) => {
+    let overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'quick-ext-user-modal';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 400px; text-align:center;">
+            <div class="modal-header">
+                <h2>Añadir a ${deptName}</h2>
+                <div class="modal-close" style="cursor:pointer;" onclick="this.closest('.modal-overlay').remove()">✕</div>
+            </div>
+            <div class="modal-body" style="text-align:left;">
+                <form id="quick-ext-member-form">
+                    <input type="hidden" name="user_group" value="${deptId}">
+                    <input type="hidden" name="hierarchy_level" value="auxiliar">
+                    <div class="form-group">
+                        <label>Ingresa Nombre y Apellido *</label>
+                        <input type="text" name="name" class="form-input" required autofocus placeholder="Ej. Juan Pérez">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:20px">Agregar Rápido y Limpio</button>
+                    <div style="font-size:11px; color:var(--gray-500); margin-top:10px; text-align:center;">Para más detalles ve a ➕ Miembro Externo.</div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('quick-ext-member-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        try {
+            await api('external_members.php?action=create', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            toast('Miembro añadido rápidamente');
+            overlay.remove();
+            navigate('departments');
+        } catch(err) {
+            toast('Error: ' + err.message, 'error');
+        }
+    });
+};
+
+window.openCreateExtMember = () => {
     let overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'ext-user-modal';
