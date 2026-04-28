@@ -37,6 +37,9 @@ switch ($action) {
     case 'org_chart':
         getOrgChart();
         break;
+    case 'upload_avatar':
+        uploadAvatarUser($id, $auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -261,4 +264,43 @@ function changeRole($id, $auth)
         jsonResponse(['error' => 'Usuario no encontrado.'], 404);
 
     jsonResponse(['message' => "Rol actualizado a \"$role\"."]);
+}
+
+function uploadAvatarUser($id, $auth) {
+    global $pdo, $UPLOAD_DIR, $MAX_FILE_SIZE;
+    if (getMethod() !== 'POST') jsonResponse(['error' => 'Método no permitido.'], 405);
+    if (!$id) jsonResponse(['error' => 'ID requerido.'], 400);
+
+    if ($auth['id'] != $id && $auth['role'] !== 'admin') {
+        jsonResponse(['error' => 'No tienes permiso.'], 403);
+    }
+
+    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+        jsonResponse(['error' => 'Error al subir la imagen.'], 400);
+    }
+    
+    $file = $_FILES['avatar'];
+    if ($file['size'] > $MAX_FILE_SIZE) jsonResponse(['error' => 'El archivo supera el límite (10MB).'], 400);
+    
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+        jsonResponse(['error' => 'Formato no permitido (solo jpg, png, webp).'], 400);
+    }
+
+    $filename = 'user_avatar_' . $id . '_' . time() . '.' . $ext;
+    $targetPath = $UPLOAD_DIR . $filename;
+    
+    $stmt = $pdo->prepare('SELECT avatar FROM users WHERE id = ?');
+    $stmt->execute([$id]);
+    $old = $stmt->fetchColumn();
+    
+    if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        if ($old && file_exists($UPLOAD_DIR . $old)) {
+            unlink($UPLOAD_DIR . $old);
+        }
+        $pdo->prepare('UPDATE users SET avatar = ? WHERE id = ?')->execute([$filename, $id]);
+        jsonResponse(['message' => 'Avatar actualizado.', 'avatar' => $filename]);
+    } else {
+        jsonResponse(['error' => 'Hubo un error al guardar el archivo.'], 500);
+    }
 }

@@ -751,6 +751,7 @@ async function renderDepartments(wrapper) {
     const depts = dRes.departments;
     const users = uRes.users;
     const orgUsers = [...orgRes.users, ...(extRes?.members || [])];
+    window.currentOrgUsers = orgUsers;
     const isAdmin = state.user?.role === 'admin';
 
     const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
@@ -786,19 +787,22 @@ async function renderDepartments(wrapper) {
 
         if (u.job_title) roleText += ` (${u.job_title})`;
 
+        const hoverCursor = isAdmin ? 'cursor:pointer; transition: transform 0.2s;' : '';
+        const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
+        const avatarContent = u.avatar ? `<img src="api/uploads/${u.avatar}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
+
         return `
-          <div class="org-member"style="${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}">
-              <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}">${initials(u.name)}</div>
+          <div class="org-member org-interactive-card" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
+              <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                       <span class="name"style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}; margin-bottom:2px;">
                           ${u.name}
                       </span>
-                      ${isAdmin && u.is_external ? `<button onclick="deleteExtMember('${u.id}')" style="color:var(--danger-500); font-size:10px; padding:0 2px; border:none; background:none; cursor:pointer;" title="Eliminar Miembro Externo">✕</button>` : ''}
                   </div>
                   <span class="role">${roleText}</span>
                   ${u.meeting_day ? `<div style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
-                  ${u.is_external && u.email ? `<div style="font-size:10px; color:var(--gray-500); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">✉️</span> ${u.email}</div>` : ''}
+                  ${u.email && u.is_external ? `<div style="font-size:10px; color:var(--gray-500); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">✉️</span> ${u.email}</div>` : ''}
               </div>
           </div>
         `;
@@ -2141,6 +2145,113 @@ window.deleteExtMember = async (id) => {
     } catch(err) {
         toast('Error: ' + err.message, 'error');
     }
+};
+
+window.openEditOrgUser = (id, isExternal) => {
+    const u = window.currentOrgUsers.find(x => String(x.id) === String(id));
+    if (!u) return;
+
+    const realId = isExternal ? String(u.id).replace('ext_', '') : u.id;
+    const endpoint = isExternal ? 'external_members.php' : 'users.php';
+
+    let overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'edit-org-user-modal';
+    overlay.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Editar Detalles (${u.name})</h2>
+                <div class="modal-close" style="cursor:pointer;" onclick="this.closest('.modal-overlay').remove()">✕</div>
+            </div>
+            <div class="modal-body">
+                <form id="edit-org-user-form" style="display:flex; flex-direction:column; gap:15px;">
+                    <input type="hidden" name="id" value="${realId}">
+                    
+                    <div style="display:flex; gap:15px; align-items:center;">
+                        <div style="width:60px; height:60px; border-radius:50%; background:var(--gray-200); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                            ${u.avatar ? `<img src="api/uploads/${u.avatar}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:24px; color:var(--gray-500); font-weight:bold;">${u.name.substring(0,2).toUpperCase()}</span>`}
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>Actualizar Foto de Perfil (Opcional)</label>
+                            <input type="file" id="avatarUpload" accept="image/png, image/jpeg, image/webp" style="font-size:13px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nombre Completo *</label>
+                        <input type="text" name="name" value="${u.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Electrónico</label>
+                        <input type="email" name="email" value="${u.email || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Asignación / Título (Opcional)</label>
+                        <input type="text" name="job_title" value="${u.job_title || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Nivel Jerárquico *</label>
+                        <select name="hierarchy_level" required>
+                            <option value="auxiliar" ${u.hierarchy_level === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
+                            <option value="voluntario_clave" ${u.hierarchy_level === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
+                            <option value="superintendente" ${u.hierarchy_level === 'superintendente' ? 'selected' : ''}>Superintendente</option>
+                            <option value="admin" ${u.hierarchy_level === 'admin' ? 'selected' : ''}>Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Departamento Principal *</label>
+                        <input type="text" name="user_group" value="${u.user_group || ''}" required>
+                        <small style="color:var(--gray-500); font-size:11px;">Escribe el código interno (ej. emergencias, otros_eventos). Usa comas para múltiples.</small>
+                    </div>
+                    ${isExternal ? `
+                    <div class="form-group">
+                        <label>Día / Hora de Reunión</label>
+                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}">
+                    </div>
+                    ` : ''}
+                    
+                    <div style="display:flex; justify-content:space-between; margin-top:20px;">
+                        ${isExternal ? `<button type="button" class="btn" style="background:var(--danger-100); color:var(--danger-700);" onclick="deleteExtMember('${u.id}'); this.closest('.modal-overlay').remove()">Borrar Miembro Externo</button>` : '<div></div>'}
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('edit-org-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target));
+        const fileInput = document.getElementById('avatarUpload');
+        
+        try {
+            await api(endpoint + '?action=update&id=' + realId, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+
+            if (fileInput.files.length > 0) {
+                const formData = new FormData();
+                formData.append('avatar', fileInput.files[0]);
+                
+                const token = localStorage.getItem('iccp_token');
+                const uploadRes = await fetch('api/' + endpoint + '?action=upload_avatar&id=' + realId, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+                const uploadJson = await uploadRes.json();
+                if (!uploadRes.ok) throw new Error(uploadJson.error || 'Error al subir foto');
+            }
+
+            toast('Usuario actualizado exitosamente');
+            overlay.remove();
+            navigate('departments');
+        } catch(err) {
+            toast('Error: ' + err.message, 'error');
+        }
+    });
 };
 
 // ==========================================
