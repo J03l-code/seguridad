@@ -853,6 +853,9 @@ async function renderDepartments(wrapper) {
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+      if (deptId === 'emergencias') {
+          subBoxes += renderTree('soporte_oficina', 'Soporte de Oficina', BASE_COLORS['soporte_oficina'], true);
+      }
       if (bottomUsers.length > 0) {
          subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
       }
@@ -942,7 +945,6 @@ async function renderDepartments(wrapper) {
                     <div class="org-level-2"style="align-items:flex-start">
                         ${renderTree('emergencias', 'Emergencias', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
-                        ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
                         ${renderTree('otros_eventos', 'Otros Eventos', null, false)}
                         ${depts.filter(d => !d.parent_id || d.parent_id === 'null' || d.parent_id === '').map(d => renderTree(d.id, d.name, d.color, false)).join('')}
                     </div>
