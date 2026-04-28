@@ -804,9 +804,9 @@ async function renderDepartments(wrapper) {
                       </span>
                   </div>
                   <span class="role">${roleText}</span>
-                  ${u.meeting_day ? `<div style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
-                  ${u.phone ? `<div style="font-size:10px; color:var(--gray-600); margin-top:2px; font-weight:500;"><span style="margin-right:2px">📞</span> ${u.phone}</div>` : ''}
-                  ${u.jwpub_email ? `<div style="font-size:10px; color:var(--primary-600); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">📘</span> ${u.jwpub_email}</div>` : ''}
+                  ${u.meeting_day ? `<div class="org-contact-info" style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
+                  ${u.phone ? `<div class="org-contact-info" style="font-size:10px; color:var(--gray-600); margin-top:2px; font-weight:500;"><span style="margin-right:2px">📞</span> ${u.phone}</div>` : ''}
+                  ${u.jwpub_email ? `<div class="org-contact-info" style="font-size:10px; color:var(--primary-600); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">📘</span> ${u.jwpub_email}</div>` : ''}
               </div>
           </div>
         `;
@@ -938,7 +938,7 @@ async function renderDepartments(wrapper) {
                     <button id="btn-view-tree" class="btn btn-sm" style="background:${state.orgViewMode==='tree'?'#fff':'transparent'}; color:${state.orgViewMode==='tree'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='tree'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('tree')">🌳 Árbol</button>
                     <button id="btn-view-table" class="btn btn-sm" style="background:${state.orgViewMode==='table'?'#fff':'transparent'}; color:${state.orgViewMode==='table'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='table'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('table')">📋 Tabla</button>
                 </div>
-                <button class="btn btn-sm" style="background:var(--primary-100); color:var(--primary-700);" onclick="exportOrgChart()" title="Exportar a Imagen PNG">🖼️ Exportar</button>
+                <button class="btn btn-sm" style="background:var(--primary-100); color:var(--primary-700);" onclick="openExportOptionsModal()" title="Exportar a Imagen PNG">🖼️ Exportar</button>
                 ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Agregar Miembro</button>` : ''}
             </div>
         </div>
@@ -2418,7 +2418,7 @@ window.filterOrg = (term) => {
     });
 };
 
-window.exportOrgChart = async () => {
+window.exportOrgChart = async (conf) => {
     const target = document.getElementById('org-tree-view');
     if (!target) return;
     
@@ -2429,28 +2429,49 @@ window.exportOrgChart = async () => {
         document.getElementById('org-table-view').style.display = 'none';
     }
 
-    const originalWidth = target.style.width;
-    const originalOverflow = target.style.overflow;
-    target.style.width = target.scrollWidth + 'px';
+    // Apply strict filtering in LIVE DOM briefly before snapshot
+    if (conf) {
+        if (!conf.contacts) {
+            target.querySelectorAll('.org-contact-info').forEach(e => e.style.display = 'none');
+        }
+        if (!conf.avatars) {
+            target.querySelectorAll('.avatar:not(.topbar-avatar)').forEach(e => e.style.display = 'none');
+        }
+        if (!conf.volunteers) {
+            target.querySelectorAll('.org-member').forEach(e => {
+                 // Check if it's a volunteer (using the success color border logic)
+                 if(e.style.borderLeft.includes('success')) { e.style.display = 'none'; }
+            });
+        }
+    }
+
+    const tWidth = target.scrollWidth;
+    const tHeight = target.scrollHeight;
+    
+    // Hard lock dimensions to avoid jumps
+    target.style.width = tWidth + 'px';
     target.style.overflow = 'visible';
 
     try {
-        toast('Generando reporte profesional, por favor espera...');
-        // Need to ensure fonts and images resolve
+        toast('Generando reporte corporativo, por favor espera...');
         const canvas = await html2canvas(target, {
             scale: 2, // High resolution
             useCORS: true,
             backgroundColor: '#ffffff', // Clean white
+            width: tWidth + 120, // Add padding margin bounds
+            height: tHeight + 250, // Add header and footer bounds
+            windowWidth: tWidth + 120,
+            x: -60, // Shift x-axis back to center the node inside the new padded canvas
+            y: -140, // Shift y-axis down significantly so the header fits above
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
-                // Hide interactive UI elements
+                // Hide interactive UI elements safely
                 clonedTarget.querySelectorAll('h3 span').forEach(el => el.style.display = 'none');
                 
-                // Add sophisticated styling to the container
-                clonedTarget.style.padding = '60px 50px';
-                clonedTarget.style.background = '#ffffff';
-                clonedTarget.style.width = (target.scrollWidth + 100) + 'px';
+                // Eliminate the top padding completely to force the header upwards
+                clonedTarget.style.padding = '0';
+                clonedTarget.style.background = 'transparent';
                 
                 // Enhance nodes specifically for print
                 clonedTarget.querySelectorAll('.org-node').forEach(n => {
@@ -2458,25 +2479,37 @@ window.exportOrgChart = async () => {
                     n.style.border = '1px solid #e2e8f0';
                 });
                 
-                // Create a beautiful header
+                // Create a beautiful header injected directly into the body OUTSIDE the tree so it spans across
                 const header = clonedDoc.createElement('div');
+                header.style.position = 'absolute';
+                header.style.top = '-110px';
+                header.style.left = '0';
+                header.style.width = tWidth + 'px';
+                header.style.textAlign = 'center';
+                header.style.fontFamily = "'Inter', sans-serif";
                 header.innerHTML = `
-                    <div style="text-align:center; margin-bottom:50px; font-family:'Inter', sans-serif;">
-                        <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
-                        <div style="width:60px; height:4px; background:#3b82f6; margin:25px auto 0; border-radius:2px;"></div>
-                    </div>
+                    <h1 style="font-size:42px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
+                    <div style="width:70px; height:5px; background:#3b82f6; margin:25px auto 0; border-radius:3px;"></div>
                 `;
-                clonedTarget.insertBefore(header.firstElementChild, clonedTarget.firstChild);
+                clonedTarget.style.position = 'relative';
+                clonedTarget.appendChild(header);
                 
                 // Create an elegant footer
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                footer.innerHTML = `
-                    <div style="text-align:center; margin-top:60px; padding-top:20px; border-top:1px solid #e2e8f0; color:#94a3b8; font-size:12px; font-weight:500; font-family:'Inter', sans-serif;">
-                        ICCP — Generado el ${dateStr}
-                    </div>
-                `;
-                clonedTarget.appendChild(footer.firstElementChild);
+                footer.style.position = 'absolute';
+                footer.style.bottom = '-80px';
+                footer.style.left = '0';
+                footer.style.width = tWidth + 'px';
+                footer.style.textAlign = 'center';
+                footer.style.borderTop = '1px solid #e2e8f0';
+                footer.style.paddingTop = '20px';
+                footer.style.color = '#94a3b8';
+                footer.style.fontSize = '14px';
+                footer.style.fontWeight = '500';
+                footer.style.fontFamily = "'Inter', sans-serif";
+                footer.innerHTML = `ICCP — Generado el ${dateStr}`;
+                clonedTarget.appendChild(footer);
             }
         });
         
@@ -2489,13 +2522,71 @@ window.exportOrgChart = async () => {
         toast('Error al exportar la imagen', 'error');
         console.error(err);
     } finally {
-        target.style.width = originalWidth;
-        target.style.overflow = originalOverflow;
+        target.style.width = '';
+        target.style.overflow = '';
+        
+        // Restore filters
+        if(conf) {
+            target.querySelectorAll('.org-contact-info, .avatar, .org-member').forEach(e => e.style.display = '');
+        }
+
         if (wasTable) {
             document.getElementById('org-tree-view').style.display = 'none';
             document.getElementById('org-table-view').style.display = 'block';
         }
     }
+};
+
+window.openExportOptionsModal = () => {
+    let overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'export-options-modal';
+    overlay.innerHTML = `
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Formatos de Exportación Corporativa</h2>
+                <div class="modal-close" style="cursor:pointer;" onclick="this.closest('.modal-overlay').remove()">✕</div>
+            </div>
+            <div class="modal-body" style="padding:10px 24px 24px;">
+                <form id="export-options-form">
+                    <p style="font-size:13px; color:var(--gray-600); margin-bottom:20px; text-align:left;">
+                        Personaliza los datos que se mostrarán en la imagen. Desactivar opciones ayuda a crear un diseño ejecutivo más compacto y minimalista.
+                    </p>
+                    
+                    <div style="background:var(--gray-50); border:1px solid var(--gray-200); border-radius: var(--radius-md); padding:15px; margin-bottom:20px;">
+                        <label style="display:flex; align-items:center; gap:12px; margin-bottom:15px; cursor:pointer;">
+                            <input type="checkbox" name="show_contacts" checked style="width:16px; height:16px;">
+                            <span style="font-size:14px; font-weight:600; color:var(--primary-800);">Mostrar teléfonos y correos</span>
+                        </label>
+
+                        <label style="display:flex; align-items:center; gap:12px; margin-bottom:15px; cursor:pointer;">
+                            <input type="checkbox" name="show_avatars" checked style="width:16px; height:16px;">
+                            <span style="font-size:14px; font-weight:600; color:var(--primary-800);">Mostrar fotos (Avatares)</span>
+                        </label>
+                        
+                        <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
+                            <input type="checkbox" name="show_volunteers" checked style="width:16px; height:16px;">
+                            <span style="font-size:14px; font-weight:600; color:var(--primary-800);">Mostrar nivel Voluntarios</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🖼️ Documentar y Descargar PNG</button>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('export-options-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const conf = {
+            contacts: e.target.show_contacts.checked,
+            avatars: e.target.show_avatars.checked,
+            volunteers: e.target.show_volunteers.checked
+        };
+        overlay.remove();
+        exportOrgChart(conf);
+    });
 };
 
 // ==========================================
