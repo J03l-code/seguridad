@@ -2435,18 +2435,50 @@ window.exportOrgChart = async () => {
     target.style.overflow = 'visible';
 
     try {
-        toast('Generando imagen, por favor espera...');
+        toast('Generando reporte profesional, por favor espera...');
         // Need to ensure fonts and images resolve
         const canvas = await html2canvas(target, {
             scale: 2, // High resolution
             useCORS: true,
-            backgroundColor: '#f8fafc', // Gray-50 match
-            width: target.scrollWidth,
-            height: target.scrollHeight,
-            windowWidth: target.scrollWidth,
-            windowHeight: target.scrollHeight,
-            x: 0,
-            y: 0
+            backgroundColor: '#ffffff', // Clean white
+            onclone: (clonedDoc) => {
+                const clonedTarget = clonedDoc.getElementById('org-tree-view');
+                
+                // Hide interactive UI elements
+                clonedTarget.querySelectorAll('h3 span').forEach(el => el.style.display = 'none');
+                
+                // Add sophisticated styling to the container
+                clonedTarget.style.padding = '60px 50px';
+                clonedTarget.style.background = '#ffffff';
+                clonedTarget.style.width = (target.scrollWidth + 100) + 'px';
+                
+                // Enhance nodes specifically for print
+                clonedTarget.querySelectorAll('.org-node').forEach(n => {
+                    n.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)';
+                    n.style.border = '1px solid #e2e8f0';
+                });
+                
+                // Create a beautiful header
+                const header = clonedDoc.createElement('div');
+                header.innerHTML = `
+                    <div style="text-align:center; margin-bottom:50px; font-family:'Inter', sans-serif;">
+                        <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">ESTRUCTURA ADMINISTRATIVA</h1>
+                        <h2 style="font-size:16px; font-weight:600; color:#64748b; margin:10px 0 0 0; text-transform:uppercase; letter-spacing:1.5px;">Iglesia Cristiana Central Pentecostal (ICCP)</h2>
+                        <div style="width:60px; height:4px; background:#3b82f6; margin:25px auto 0; border-radius:2px;"></div>
+                    </div>
+                `;
+                clonedTarget.insertBefore(header.firstElementChild, clonedTarget.firstChild);
+                
+                // Create an elegant footer
+                const footer = clonedDoc.createElement('div');
+                const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+                footer.innerHTML = `
+                    <div style="text-align:center; margin-top:60px; padding-top:20px; border-top:1px solid #e2e8f0; color:#94a3b8; font-size:12px; font-weight:500; font-family:'Inter', sans-serif;">
+                        Documento Oficial ICCP — Generado e indexado el ${dateStr}
+                    </div>
+                `;
+                clonedTarget.appendChild(footer.firstElementChild);
+            }
         });
         
         const link = document.createElement('a');
