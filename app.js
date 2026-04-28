@@ -804,7 +804,7 @@ async function renderDepartments(wrapper) {
                   <span class="role">${roleText}</span>
                   ${u.meeting_day ? `<div style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
                   ${u.phone ? `<div style="font-size:10px; color:var(--gray-600); margin-top:2px; font-weight:500;"><span style="margin-right:2px">📞</span> ${u.phone}</div>` : ''}
-                  ${u.email && u.is_external ? `<div style="font-size:10px; color:var(--gray-500); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">✉️</span> ${u.email}</div>` : ''}
+                  ${u.jwpub_email ? `<div style="font-size:10px; color:var(--primary-600); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">📘</span> ${u.jwpub_email}</div>` : ''}
               </div>
           </div>
         `;
@@ -905,8 +905,7 @@ async function renderDepartments(wrapper) {
                             <td>${(u.user_group||'').replace(/_/g, ' ').toUpperCase()}</td>
                             <td>${u.phone || '-'}</td>
                             <td>
-                                ${u.email ? `<div style="font-size:11px; color:var(--gray-600)">✉️ ${u.email}</div>` : ''}
-                                ${u.jwpub_email ? `<div style="font-size:11px; color:var(--primary-600)">📘 ${u.jwpub_email}</div>` : ''}
+                                ${u.jwpub_email ? `<div style="font-size:11px; color:var(--primary-600)">📘 ${u.jwpub_email}</div>` : '-'}
                             </td>
                         </tr>`;
                     }).join('')}
@@ -925,8 +924,8 @@ async function renderDepartments(wrapper) {
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <div style="display:flex; background:var(--gray-200); padding:3px; border-radius:var(--radius-md);">
-                    <button class="btn btn-sm" style="background:${state.orgViewMode==='tree'?'#fff':'transparent'}; color:${state.orgViewMode==='tree'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='tree'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('tree')">🌳 Árbol</button>
-                    <button class="btn btn-sm" style="background:${state.orgViewMode==='table'?'#fff':'transparent'}; color:${state.orgViewMode==='table'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='table'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('table')">📋 Tabla</button>
+                    <button id="btn-view-tree" class="btn btn-sm" style="background:${state.orgViewMode==='tree'?'#fff':'transparent'}; color:${state.orgViewMode==='tree'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='tree'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('tree')">🌳 Árbol</button>
+                    <button id="btn-view-table" class="btn btn-sm" style="background:${state.orgViewMode==='table'?'#fff':'transparent'}; color:${state.orgViewMode==='table'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='table'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('table')">📋 Tabla</button>
                 </div>
                 <button class="btn btn-sm" style="background:var(--primary-100); color:var(--primary-700);" onclick="exportOrgChart()" title="Exportar a Imagen PNG">🖼️ Exportar</button>
                 ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Miembro Externo</button>` : ''}
@@ -2330,7 +2329,24 @@ window.openEditOrgUser = (id, isExternal) => {
 
 window.toggleOrgView = (mode) => {
     state.orgViewMode = mode;
-    navigate('departments'); // Re-renders cleanly maintaining state
+    const treeView = document.getElementById('org-tree-view');
+    const tableView = document.getElementById('org-table-view');
+    const btnTree = document.getElementById('btn-view-tree');
+    const btnTable = document.getElementById('btn-view-table');
+
+    if (treeView) treeView.style.display = mode === 'tree' ? 'flex' : 'none';
+    if (tableView) tableView.style.display = mode === 'table' ? 'block' : 'none';
+
+    if (btnTree) {
+        btnTree.style.background = mode === 'tree' ? '#fff' : 'transparent';
+        btnTree.style.color = mode === 'tree' ? 'var(--primary-700)' : 'var(--gray-600)';
+        btnTree.style.boxShadow = mode === 'tree' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+    }
+    if (btnTable) {
+        btnTable.style.background = mode === 'table' ? '#fff' : 'transparent';
+        btnTable.style.color = mode === 'table' ? 'var(--primary-700)' : 'var(--gray-600)';
+        btnTable.style.boxShadow = mode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+    }
 };
 
 window.filterOrg = (term) => {
@@ -2372,13 +2388,24 @@ window.exportOrgChart = async () => {
         document.getElementById('org-table-view').style.display = 'none';
     }
 
+    const originalWidth = target.style.width;
+    const originalOverflow = target.style.overflow;
+    target.style.width = target.scrollWidth + 'px';
+    target.style.overflow = 'visible';
+
     try {
         toast('Generando imagen, por favor espera...');
         // Need to ensure fonts and images resolve
         const canvas = await html2canvas(target, {
             scale: 2, // High resolution
             useCORS: true,
-            backgroundColor: '#f8fafc' // Gray-50 match
+            backgroundColor: '#f8fafc', // Gray-50 match
+            width: target.scrollWidth,
+            height: target.scrollHeight,
+            windowWidth: target.scrollWidth,
+            windowHeight: target.scrollHeight,
+            x: 0,
+            y: 0
         });
         
         const link = document.createElement('a');
@@ -2390,6 +2417,8 @@ window.exportOrgChart = async () => {
         toast('Error al exportar la imagen', 'error');
         console.error(err);
     } finally {
+        target.style.width = originalWidth;
+        target.style.overflow = originalOverflow;
         if (wasTable) {
             document.getElementById('org-tree-view').style.display = 'none';
             document.getElementById('org-table-view').style.display = 'block';
