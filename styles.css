@@ -1250,8 +1250,11 @@ textarea.form-input {
     justify-content: center;
     gap: 30px;
     padding-top: 30px;
-    width: 100%;
-    flex-wrap: wrap;
+    width: max-content;
+    min-width: 100%;
+    flex-wrap: nowrap;
+    flex-direction: row !important;
+    align-items: flex-start;
 }
 
 .org-level-2 .org-node::before {
