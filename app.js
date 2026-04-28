@@ -852,12 +852,34 @@ async function renderDepartments(wrapper) {
       
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
-      let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+      let subBoxes = '';
       if (deptId === 'emergencias') {
-          subBoxes += renderTree('soporte_oficina', 'Soporte de Oficina', BASE_COLORS['soporte_oficina'], true);
-      }
-      if (bottomUsers.length > 0) {
-         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
+          const soporteBox = renderTree('soporte_oficina', 'Soporte de Oficina', BASE_COLORS['soporte_oficina'], true);
+          const cBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+          
+          if (bottomUsers.length > 0) {
+             const emergenciasBox = renderOrgNode(deptName, deptId, bottomUsers, color, true);
+             subBoxes = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    ${emergenciasBox}
+                    <div style="width:1px; height:20px; border-left:1px solid #ccc;"></div>
+                    ${soporteBox}
+                </div>
+                ${cBoxes}
+             `;
+          } else {
+             subBoxes = `
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                    ${soporteBox}
+                </div>
+                ${cBoxes}
+             `;
+          }
+      } else {
+          subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+          if (bottomUsers.length > 0) {
+             subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
+          }
       }
 
       return `
