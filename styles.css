@@ -2289,6 +2289,12 @@ textarea.form-input {
         width: 100%;
     }
 
+    /* Remove the 800px hard-min so grid can lay out naturally */
+    .org-card-inner {
+        min-width: 0 !important;
+        width: 100%;
+    }
+
     /* Nodo más compacto */
     .org-node {
         width: 210px;
@@ -2330,6 +2336,26 @@ textarea.form-input {
     /* Líneas de conexión más pequeñas */
     .org-lines {
         height: 16px;
+    }
+
+    /* GRID de 2 columnas para los departamentos del nivel 2 */
+    .org-level-2 {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding-top: 20px;
+        justify-items: center;
+        align-items: start;
+    }
+
+    /* Ocultar las líneas de conexión horizontales en móvil */
+    .org-horizontal-line {
+        display: none;
+    }
+
+    /* Ocultar pseudo-elemento de rama vertical en móvil */
+    .org-level-2 .org-node::before {
+        display: none;
     }
 
     /* Información de contacto más pequeña */
