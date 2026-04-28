@@ -952,8 +952,8 @@ async function renderDepartments(wrapper) {
                     <div class="org-horizontal-line"></div>
                     <div class="org-level-2"style="align-items:flex-start">
                         ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
-                        ${renderTree('emergencias', 'Emergencias', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
+                        ${renderTree('emergencias', 'Emergencias', null, false)}
                         ${renderTree('otros_eventos', 'Otros Eventos', null, false)}
                         ${depts.filter(d => !d.parent_id || d.parent_id === 'null' || d.parent_id === '').map(d => renderTree(d.id, d.name, d.color, false)).join('')}
                     </div>
