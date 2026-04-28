@@ -939,7 +939,7 @@ async function renderDepartments(wrapper) {
                     <button id="btn-view-table" class="btn btn-sm" style="background:${state.orgViewMode==='table'?'#fff':'transparent'}; color:${state.orgViewMode==='table'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='table'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('table')">📋 Tabla</button>
                 </div>
                 <button class="btn btn-sm" style="background:var(--primary-100); color:var(--primary-700);" onclick="exportOrgChart()" title="Exportar a Imagen PNG">🖼️ Exportar</button>
-                ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Miembro Externo</button>` : ''}
+                ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Agregar Miembro</button>` : ''}
             </div>
         </div>
         <div class="card-body"style="min-width: 800px; padding:0;">
@@ -2164,7 +2164,7 @@ window.openQuickExtMember = (deptId, deptName) => {
     });
 };
 
-window.openCreateExtMember = () => {
+window.openCreateExtMember = (prefillDept = '') => {
     let overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'ext-user-modal';
