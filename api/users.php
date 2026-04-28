@@ -29,6 +29,13 @@ try {
     try { $pdo->exec("ALTER TABLE users ADD COLUMN jwpub_email VARCHAR(150) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate meeting_day for users
+try {
+    $pdo->query("SELECT meeting_day FROM users LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN meeting_day VARCHAR(100) DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listUsers();
@@ -84,7 +91,7 @@ function getOrgChart()
     } catch (PDOException $e) {
         $pdo->exec('ALTER TABLE users ADD COLUMN hierarchy_map TEXT DEFAULT NULL');
     }
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, jwpub_email FROM users ORDER BY hierarchy_level ASC, name ASC');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, jwpub_email, meeting_day FROM users ORDER BY hierarchy_level ASC, name ASC');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -162,7 +169,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.jwpub_email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.phone, u.created_at,
+        SELECT u.id, u.name, u.email, u.jwpub_email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.phone, u.meeting_day, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -176,7 +183,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, jwpub_email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, jwpub_email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, meeting_day, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -256,6 +263,10 @@ function updateUser($id, $auth)
     if (array_key_exists('hierarchy_map', $data)) {
         $fields[] = 'hierarchy_map = ?';
         $values[] = is_array($data['hierarchy_map']) ? json_encode($data['hierarchy_map']) : $data['hierarchy_map'];
+    }
+    if (array_key_exists('meeting_day', $data)) {
+        $fields[] = 'meeting_day = ?';
+        $values[] = trim($data['meeting_day']) === '' ? null : trim($data['meeting_day']);
     }
 
     if (empty($fields))

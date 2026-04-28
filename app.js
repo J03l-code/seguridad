@@ -795,7 +795,7 @@ async function renderDepartments(wrapper) {
         const avatarContent = u.avatar ? `<img src="api/uploads/${u.avatar}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
-          <div class="org-member org-interactive-card" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
+          <div class="org-member org-interactive-card" data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
               <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -939,6 +939,16 @@ async function renderDepartments(wrapper) {
                     <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="chk-live-avatars" ${window._orgFilters?.avatars !== false ? 'checked' : ''} onchange="toggleViewFilter('avatars', this.checked)"> Fotos</label>
                     <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="chk-live-vols" ${window._orgFilters?.volunteers !== false ? 'checked' : ''} onchange="toggleViewFilter('volunteers', this.checked)"> Voluntarios</label>
                 </div>
+                <select id="org-meeting-filter" class="form-select" style="width:auto; padding:5px 30px 5px 10px; font-size:12px; border-radius:50px; background:var(--warning-100); border:1px solid var(--warning-500);" onchange="filterByMeetingDay(this.value)">
+                    <option value="">📅 Todas las reuniones</option>
+                    <option value="Lunes">Lunes</option>
+                    <option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <div style="display:flex; background:var(--gray-200); padding:3px; border-radius:var(--radius-md);">
@@ -2332,9 +2342,14 @@ window.openEditOrgUser = (id, isExternal) => {
                     ${isExternal ? `
                     <div class="form-group">
                         <label>Día / Hora de Reunión</label>
-                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input">
+                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input" placeholder="Ej. Lunes 19:30">
                     </div>
-                    ` : ''}
+                    ` : `
+                    <div class="form-group">
+                        <label>Día / Hora de Reunión</label>
+                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input" placeholder="Ej. Lunes 19:30">
+                    </div>
+                    `}
                     
                     <div style="display:flex; justify-content:space-between; margin-top:20px;">
                         ${isExternal ? `<button type="button" class="btn" style="background:var(--danger-100); color:var(--danger-700);" onclick="deleteExtMember('${u.id}'); this.closest('.modal-overlay').remove()">Borrar Miembro Externo</button>` : '<div></div>'}
@@ -2629,6 +2644,29 @@ window.applyViewFilters = () => {
     target.querySelectorAll('.org-member').forEach(e => {
         if(e.style.borderLeft && e.style.borderLeft.includes('success')) {
             e.style.display = window._orgFilters.volunteers ? '' : 'none';
+        }
+    });
+};
+
+window.filterByMeetingDay = (day) => {
+    const target = document.getElementById('org-tree-view');
+    if (!target) return;
+    
+    target.querySelectorAll('.org-member:not(.empty)').forEach(card => {
+        if (!day) {
+            // Show all when filter is cleared
+            card.style.display = '';
+            card.style.outline = '';
+            return;
+        }
+        const meetingData = (card.getAttribute('data-meeting') || '').toLowerCase();
+        if (meetingData.includes(day.toLowerCase())) {
+            card.style.display = '';
+            card.style.outline = '2px solid var(--warning-500)';
+            card.style.outlineOffset = '-2px';
+        } else {
+            card.style.display = 'none';
+            card.style.outline = '';
         }
     });
 };
