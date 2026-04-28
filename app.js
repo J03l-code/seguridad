@@ -2238,7 +2238,19 @@ window.openCreateExtMember = (prefillDept = '') => {
                     </div>
                     <div class="form-group">
                         <label>Día / Hora de Reunión (Opcional)</label>
-                        <input type="text" name="meeting_day" class="form-input" placeholder="Ej. Lunes 19:30">
+                        <div style="display:flex; gap:10px;">
+                            <select name="meeting_day_sel" class="form-select" style="flex:1;">
+                                <option value="">Sin reunión</option>
+                                <option value="Lunes">Lunes</option>
+                                <option value="Martes">Martes</option>
+                                <option value="Miércoles">Miércoles</option>
+                                <option value="Jueves">Jueves</option>
+                                <option value="Viernes">Viernes</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Domingo">Domingo</option>
+                            </select>
+                            <input type="time" name="meeting_time" class="form-input" style="flex:0.7;">
+                        </div>
                     </div>
                     <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
                 </form>
@@ -2250,6 +2262,12 @@ window.openCreateExtMember = (prefillDept = '') => {
     document.getElementById('create-ext-member-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target));
+        // Combine day + time into meeting_day
+        const d1 = data.meeting_day_sel || '';
+        const t1 = data.meeting_time || '';
+        data.meeting_day = d1 ? (d1 + (t1 ? ' ' + t1 : '')) : '';
+        delete data.meeting_day_sel;
+        delete data.meeting_time;
         try {
             await api('external_members.php?action=create', {
                 method: 'POST',
@@ -2342,12 +2360,24 @@ window.openEditOrgUser = (id, isExternal) => {
                     ${isExternal ? `
                     <div class="form-group">
                         <label>Día / Hora de Reunión</label>
-                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input" placeholder="Ej. Lunes 19:30">
+                        <div style="display:flex; gap:10px;">
+                            <select name="meeting_day_sel" class="form-select" style="flex:1;">
+                                <option value="">Sin reunión</option>
+                                ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => `<option value="${d}" ${(u.meeting_day||'').startsWith(d)?'selected':''}>${d}</option>`).join('')}
+                            </select>
+                            <input type="time" name="meeting_time" value="${(u.meeting_day||'').split(' ')[1] || ''}" class="form-input" style="flex:0.7;">
+                        </div>
                     </div>
                     ` : `
                     <div class="form-group">
                         <label>Día / Hora de Reunión</label>
-                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input" placeholder="Ej. Lunes 19:30">
+                        <div style="display:flex; gap:10px;">
+                            <select name="meeting_day_sel" class="form-select" style="flex:1;">
+                                <option value="">Sin reunión</option>
+                                ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => `<option value="${d}" ${(u.meeting_day||'').startsWith(d)?'selected':''}>${d}</option>`).join('')}
+                            </select>
+                            <input type="time" name="meeting_time" value="${(u.meeting_day||'').split(' ')[1] || ''}" class="form-input" style="flex:0.7;">
+                        </div>
                     </div>
                     `}
                     
@@ -2364,6 +2394,12 @@ window.openEditOrgUser = (id, isExternal) => {
     document.getElementById('edit-org-user-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target));
+        // Combine day + time into meeting_day
+        const d2 = data.meeting_day_sel || '';
+        const t2 = data.meeting_time || '';
+        data.meeting_day = d2 ? (d2 + (t2 ? ' ' + t2 : '')) : '';
+        delete data.meeting_day_sel;
+        delete data.meeting_time;
         const fileInput = document.getElementById('avatarUpload');
         
         try {
