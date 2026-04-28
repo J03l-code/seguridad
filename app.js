@@ -813,10 +813,11 @@ async function renderDepartments(wrapper) {
       const nodeClass = !isSub && BASE_COLORS[key] ? `target-${key}` : '';
       const inlineBox = isSub && color ? `border-top: 4px solid ${color}; background: ${color}15;` : '';
       const inlineHeader = isSub && color ? `background: ${color}35; color: #1e293b;` : '';
+      const onClickDept = isAdmin ? `onclick="openCreateExtMember('${key}')" style="cursor:pointer;" title="Añadir miembro a ${gName}"` : '';
 
       return `
         <div class="org-node ${nodeClass}"style="${inlineBox}">
-            <h3 style="${inlineHeader}">${gName}</h3>
+            <h3 style="${inlineHeader}; ${isAdmin ? 'cursor:pointer;' : ''}" ${onClickDept}>${gName} ${isAdmin ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</h3>
             <div class="org-members">${mappedUsers}</div>
         </div>
       `;
@@ -848,6 +849,8 @@ async function renderDepartments(wrapper) {
           topUsers = grpUsers;
       }
 
+      if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
+      
       const html = renderOrgNode(deptName, deptId, topUsers, color, isSub);
       
       if (children.length === 0 && bottomUsers.length === 0) return html;
@@ -2103,7 +2106,7 @@ window.exportTasksCSV = async function () {
 // ==========================================
 // External Members UI Handlers
 // ==========================================
-window.openCreateExtMember = () => {
+window.openCreateExtMember = (prefillDept = '') => {
     let overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = 'ext-user-modal';
@@ -2147,10 +2150,10 @@ window.openCreateExtMember = () => {
                     <div class="form-group">
                         <label>Departamento Principal *</label>
                         <select name="user_group" class="form-select" required>
-                            <option value="emergencias">Emergencias</option>
-                            <option value="actividades">Actividades</option>
-                            <option value="soporte_oficina">Soporte de Oficina</option>
-                            <option value="otros_eventos">Otros Eventos</option>
+                            <option value="emergencias" ${prefillDept === 'emergencias' ? 'selected' : ''}>Emergencias</option>
+                            <option value="actividades" ${prefillDept === 'actividades' ? 'selected' : ''}>Actividades</option>
+                            <option value="soporte_oficina" ${prefillDept === 'soporte_oficina' ? 'selected' : ''}>Soporte de Oficina</option>
+                            <option value="otros_eventos" ${prefillDept === 'otros_eventos' ? 'selected' : ''}>Otros Eventos</option>
                         </select>
                     </div>
                     <div class="form-group">
