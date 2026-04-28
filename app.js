@@ -928,7 +928,7 @@ async function renderDepartments(wrapper) {
 
     const orgChartHTML = `
       <div class="card"style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
-        <div class="card-header"style="background:#fff; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center;">
+        <div class="card-header" style="background:#fff; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; padding:14px 18px;">
             <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                 <h3 style="margin:0">Organigrama de Personal</h3>
                 <input type="text" id="org-search-input" class="form-input" placeholder="🔍 Buscar nombre o cargo..." style="width:250px; padding:6px 12px;" onkeyup="filterOrg(this.value)">
@@ -949,7 +949,8 @@ async function renderDepartments(wrapper) {
                 ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Agregar Miembro</button>` : ''}
             </div>
         </div>
-        <div class="card-body"style="min-width: 800px; padding:0;">
+        <div class="org-card-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+            <div class="org-card-inner" style="min-width:800px; padding:0;">
             <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px;">
                 <div class="org-level">
                     ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
@@ -967,6 +968,7 @@ async function renderDepartments(wrapper) {
                 </div>
             </div>
             ${generateTableView()}
+            </div>
         </div>
       </div>
     `;
