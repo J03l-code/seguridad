@@ -15,6 +15,13 @@ try {
 } catch (Exception $e) {
 }
 
+// Auto-migrate phone
+try {
+    $pdo->query("SELECT phone FROM users LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(50) DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listUsers();
@@ -148,7 +155,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.created_at,
+        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.phone, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -162,7 +169,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -230,6 +237,10 @@ function updateUser($id, $auth)
     if (array_key_exists('job_title', $data)) {
         $fields[] = 'job_title = ?';
         $values[] = trim($data['job_title']) === '' ? null : trim($data['job_title']);
+    }
+    if (array_key_exists('phone', $data)) {
+        $fields[] = 'phone = ?';
+        $values[] = trim($data['phone']) === '' ? null : trim($data['phone']);
     }
     if (array_key_exists('hierarchy_map', $data)) {
         $fields[] = 'hierarchy_map = ?';

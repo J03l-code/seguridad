@@ -802,6 +802,7 @@ async function renderDepartments(wrapper) {
                   </div>
                   <span class="role">${roleText}</span>
                   ${u.meeting_day ? `<div style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
+                  ${u.phone ? `<div style="font-size:10px; color:var(--gray-600); margin-top:2px; font-weight:500;"><span style="margin-right:2px">📞</span> ${u.phone}</div>` : ''}
                   ${u.email && u.is_external ? `<div style="font-size:10px; color:var(--gray-500); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">✉️</span> ${u.email}</div>` : ''}
               </div>
           </div>
@@ -2087,6 +2088,10 @@ window.openCreateExtMember = () => {
                         <input type="email"name="email">
                     </div>
                     <div class="form-group">
+                        <label>Teléfono (Opcional)</label>
+                        <input type="tel"name="phone">
+                    </div>
+                    <div class="form-group">
                         <label>Asignación (Opcional)</label>
                         <input type="text"name="job_title">
                     </div>
@@ -2184,6 +2189,10 @@ window.openEditOrgUser = (id, isExternal) => {
                     <div class="form-group">
                         <label>Correo Electrónico</label>
                         <input type="email" name="email" value="${u.email || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono (Opcional)</label>
+                        <input type="tel" name="phone" value="${u.phone || ''}">
                     </div>
                     <div class="form-group">
                         <label>Asignación / Título (Opcional)</label>
