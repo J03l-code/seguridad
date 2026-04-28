@@ -774,7 +774,10 @@ async function renderDepartments(wrapper) {
     };
 
     const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false, isBottomNode = false) => {
-      const mappedUsers = grpUsers.map(u => {
+      const textUsers = grpUsers.filter(u => u.hierarchy_level === 'support_text_only');
+      const supportAssignedText = textUsers.length > 0 ? `<div style="font-size:11px; font-weight:600; color:${color || 'var(--primary-700)'}; text-align:center; padding-bottom:5px; margin-top:-5px; border-bottom:1px solid ${color||'#ccc'}40; margin-bottom:8px; text-transform:uppercase;">Asignado: ${textUsers[textUsers.length-1].name}</div>` : '';
+
+      const mappedUsers = grpUsers.filter(u => u.hierarchy_level !== 'support_text_only').map(u => {
         // Per-group hierarchy: check hierarchy_map[key] first, fallback to global hierarchy_level
         let hMap = {};
         try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
@@ -819,6 +822,7 @@ async function renderDepartments(wrapper) {
       return `
         <div class="org-node ${nodeClass}"style="${inlineBox}">
             <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}" ${onClickDept}>${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</h3>
+            ${supportAssignedText}
             <div class="org-members">${mappedUsers}</div>
         </div>
       `;
@@ -2122,7 +2126,7 @@ window.openQuickExtMember = (deptId, deptName) => {
             <div class="modal-body" style="text-align:left;">
                 <form id="quick-ext-member-form">
                     <input type="hidden" name="user_group" value="${deptId}">
-                    <input type="hidden" name="hierarchy_level" value="auxiliar">
+                    <input type="hidden" name="hierarchy_level" value="support_text_only">
                     <div class="form-group">
                         <label>Ingresa Nombre y Apellido *</label>
                         <input type="text" name="name" class="form-input" required autofocus placeholder="Ej. Juan Pérez">
@@ -2138,12 +2142,19 @@ window.openQuickExtMember = (deptId, deptName) => {
     document.getElementById('quick-ext-member-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target));
+        
         try {
+            // Delete old support bindings for this department to keep list clean
+            const existing = (window._allUsers || []).filter(u => u.user_group === deptId && u.hierarchy_level === 'support_text_only');
+            for(let ex of existing) {
+                await api('external_members.php?action=delete&id=' + ex.id, {method: 'DELETE'}).catch(()=>{});
+            }
+            
             await api('external_members.php?action=create', {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
-            toast('Miembro añadido rápidamente');
+            toast('Encargado asignado correctamente');
             overlay.remove();
             navigate('departments');
         } catch(err) {
