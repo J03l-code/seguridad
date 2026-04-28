@@ -932,6 +932,13 @@ async function renderDepartments(wrapper) {
             <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
                 <h3 style="margin:0">Organigrama de Personal</h3>
                 <input type="text" id="org-search-input" class="form-input" placeholder="🔍 Buscar nombre o cargo..." style="width:250px; padding:6px 12px;" onkeyup="filterOrg(this.value)">
+                
+                <div style="display:flex; gap:12px; margin-left:10px; font-size:13px; align-items:center; background:var(--primary-50); padding:5px 12px; border-radius:50px;">
+                    <span style="font-weight:600; color:var(--primary-700); margin-right:5px;">👁️ Ver:</span>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="chk-live-contacts" ${window._orgFilters?.contacts !== false ? 'checked' : ''} onchange="toggleViewFilter('contacts', this.checked)"> Contactos</label>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="chk-live-avatars" ${window._orgFilters?.avatars !== false ? 'checked' : ''} onchange="toggleViewFilter('avatars', this.checked)"> Fotos</label>
+                    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="checkbox" id="chk-live-vols" ${window._orgFilters?.volunteers !== false ? 'checked' : ''} onchange="toggleViewFilter('volunteers', this.checked)"> Voluntarios</label>
+                </div>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <div style="display:flex; background:var(--gray-200); padding:3px; border-radius:var(--radius-md);">
@@ -972,6 +979,9 @@ async function renderDepartments(wrapper) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+    
+    // Default structure applies the active filters back when page rerenders
+    if(window.applyViewFilters) window.applyViewFilters();
 
     window._allUsers = users;
 
@@ -2586,6 +2596,38 @@ window.openExportOptionsModal = () => {
         };
         overlay.remove();
         exportOrgChart(conf);
+    });
+};
+
+// ==========================================
+// View Filters (Live Organogram)
+// ==========================================
+window._orgFilters = window._orgFilters || { contacts: true, avatars: true, volunteers: true };
+
+window.toggleViewFilter = (type, isChecked) => {
+    window._orgFilters[type] = isChecked;
+    window.applyViewFilters();
+};
+
+window.applyViewFilters = () => {
+    const target = document.getElementById('org-tree-view');
+    if (!target) return;
+    
+    // Esconder/mostrar detalles de contacto
+    target.querySelectorAll('.org-contact-info').forEach(e => {
+        e.style.display = window._orgFilters.contacts ? '' : 'none';
+    });
+    
+    // Esconder/mostrar las fotos avatar
+    target.querySelectorAll('.avatar:not(.topbar-avatar)').forEach(e => {
+        e.style.display = window._orgFilters.avatars ? '' : 'none';
+    });
+    
+    // Esconder/mostrar Voluntarios basado en su indicador de éxito (borde verde)
+    target.querySelectorAll('.org-member').forEach(e => {
+        if(e.style.borderLeft && e.style.borderLeft.includes('success')) {
+            e.style.display = window._orgFilters.volunteers ? '' : 'none';
+        }
     });
 };
 
