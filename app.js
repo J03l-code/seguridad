@@ -2462,8 +2462,7 @@ window.exportOrgChart = async () => {
                 const header = clonedDoc.createElement('div');
                 header.innerHTML = `
                     <div style="text-align:center; margin-bottom:50px; font-family:'Inter', sans-serif;">
-                        <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">ESTRUCTURA ADMINISTRATIVA</h1>
-                        <h2 style="font-size:16px; font-weight:600; color:#64748b; margin:10px 0 0 0; text-transform:uppercase; letter-spacing:1.5px;">Iglesia Cristiana Central Pentecostal (ICCP)</h2>
+                        <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
                         <div style="width:60px; height:4px; background:#3b82f6; margin:25px auto 0; border-radius:2px;"></div>
                     </div>
                 `;
@@ -2474,7 +2473,7 @@ window.exportOrgChart = async () => {
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 footer.innerHTML = `
                     <div style="text-align:center; margin-top:60px; padding-top:20px; border-top:1px solid #e2e8f0; color:#94a3b8; font-size:12px; font-weight:500; font-family:'Inter', sans-serif;">
-                        Documento Oficial ICCP — Generado e indexado el ${dateStr}
+                        ICCP — Generado el ${dateStr}
                     </div>
                 `;
                 clonedTarget.appendChild(footer.firstElementChild);
