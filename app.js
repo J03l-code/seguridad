@@ -2132,7 +2132,7 @@ window.openQuickExtMember = (deptId, deptName) => {
                         <label>Ingresa Nombre y Apellido *</label>
                         <input type="text" name="name" class="form-input" required autofocus placeholder="Ej. Juan Pérez">
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:20px">Agregar Rápido y Limpio</button>
+                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:20px">Agregar</button>
                     <div style="font-size:11px; color:var(--gray-500); margin-top:10px; text-align:center;">Para más detalles ve a ➕ Miembro Externo.</div>
                 </form>
             </div>
