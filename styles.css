@@ -2282,88 +2282,20 @@ textarea.form-input {
    ========================================== */
 @media (max-width: 768px) {
 
-    /* org scroll wrapper keeps the 800px content scrollable */
+    /* Contenedor principal: scroll horizontal completo */
     .org-card-scroll-wrapper {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         width: 100%;
     }
 
-    /* Remove the 800px hard-min so grid can lay out naturally */
+    /* Restablecer el inner al ancho natural del desktop */
     .org-card-inner {
-        min-width: 0 !important;
-        width: 100%;
+        min-width: 800px;
+        width: max-content;
     }
 
-    /* Nodo más compacto */
-    .org-node {
-        width: 210px;
-        min-width: 210px;
-    }
-
-    /* Encabezados de nodo más compactos */
-    .org-node h3 {
-        font-size: 12px;
-        padding: 8px 10px;
-    }
-
-    /* Tarjetas de miembros más compactas */
-    .org-member {
-        padding: 6px;
-        gap: 7px;
-    }
-
-    .org-member .name {
-        font-size: 12px;
-    }
-
-    .org-member .role {
-        font-size: 10px;
-    }
-
-    .org-member .avatar {
-        width: 26px;
-        height: 26px;
-        font-size: 10px;
-        flex-shrink: 0;
-    }
-
-    .org-members {
-        padding: 8px;
-        gap: 6px;
-    }
-
-    /* Líneas de conexión más pequeñas */
-    .org-lines {
-        height: 16px;
-    }
-
-    /* GRID de 2 columnas para los departamentos del nivel 2 */
-    .org-level-2 {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-        padding-top: 20px;
-        justify-items: center;
-        align-items: start;
-    }
-
-    /* Ocultar las líneas de conexión horizontales en móvil */
-    .org-horizontal-line {
-        display: none;
-    }
-
-    /* Ocultar pseudo-elemento de rama vertical en móvil */
-    .org-level-2 .org-node::before {
-        display: none;
-    }
-
-    /* Información de contacto más pequeña */
-    .org-contact-info {
-        font-size: 9px !important;
-    }
-
-    /* Card header del organigrama: apilar verticalmente en móvil */
+    /* Card header: apilar controles en vertical en móvil */
     .card-header > div:first-child {
         flex-direction: column;
         align-items: flex-start;
@@ -2371,7 +2303,7 @@ textarea.form-input {
         width: 100%;
     }
 
-    /* Búsqueda a ancho completo en móvil */
+    /* Búsqueda a ancho completo */
     #org-search-input {
         width: 100% !important;
         max-width: 100% !important;
@@ -2384,7 +2316,7 @@ textarea.form-input {
         width: 100%;
     }
 
-    /* Botones de vista y exportar también en wrap */
+    /* Botones en wrap */
     .card-header > div:last-child {
         flex-wrap: wrap;
         gap: 6px;
