@@ -804,7 +804,7 @@ async function renderDepartments(wrapper) {
                       </span>
                   </div>
                   <span class="role">${roleText}</span>
-                  ${u.meeting_day ? `<div class="org-contact-info" style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${u.meeting_day}</div>` : ''}
+                  ${u.meeting_day ? u.meeting_day.split(' | ').map(m => `<div class="org-contact-info" style="font-size:10px; color:var(--primary-600); margin-top:4px; font-weight:600;"><span style="margin-right:2px">📅</span> ${m}</div>`).join('') : ''}
                   ${u.phone ? `<div class="org-contact-info" style="font-size:10px; color:var(--gray-600); margin-top:2px; font-weight:500;"><span style="margin-right:2px">📞</span> ${u.phone}</div>` : ''}
                   ${u.jwpub_email ? `<div class="org-contact-info" style="font-size:10px; color:var(--primary-600); margin-top:2px; word-break:break-all;"><span style="margin-right:2px">📘</span> ${u.jwpub_email}</div>` : ''}
               </div>
@@ -2237,7 +2237,7 @@ window.openCreateExtMember = (prefillDept = '') => {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Día / Hora de Reunión (Opcional)</label>
+                        <label>📅 Reunión entre semana (Opcional)</label>
                         <div style="display:flex; gap:10px;">
                             <select name="meeting_day_sel" class="form-select" style="flex:1;">
                                 <option value="">Sin reunión</option>
@@ -2246,10 +2246,19 @@ window.openCreateExtMember = (prefillDept = '') => {
                                 <option value="Miércoles">Miércoles</option>
                                 <option value="Jueves">Jueves</option>
                                 <option value="Viernes">Viernes</option>
+                            </select>
+                            <input type="time" name="meeting_time" class="form-input" style="flex:0.7;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>🌟 Reunión fin de semana (Opcional)</label>
+                        <div style="display:flex; gap:10px;">
+                            <select name="meeting_day_sel2" class="form-select" style="flex:1;">
+                                <option value="">Sin reunión</option>
                                 <option value="Sábado">Sábado</option>
                                 <option value="Domingo">Domingo</option>
                             </select>
-                            <input type="time" name="meeting_time" class="form-input" style="flex:0.7;">
+                            <input type="time" name="meeting_time2" class="form-input" style="flex:0.7;">
                         </div>
                     </div>
                     <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
@@ -2265,9 +2274,13 @@ window.openCreateExtMember = (prefillDept = '') => {
         // Combine day + time into meeting_day
         const d1 = data.meeting_day_sel || '';
         const t1 = data.meeting_time || '';
-        data.meeting_day = d1 ? (d1 + (t1 ? ' ' + t1 : '')) : '';
-        delete data.meeting_day_sel;
-        delete data.meeting_time;
+        const m1 = d1 ? (d1 + (t1 ? ' ' + t1 : '')) : '';
+        const d1w = data.meeting_day_sel2 || '';
+        const t1w = data.meeting_time2 || '';
+        const m1w = d1w ? (d1w + (t1w ? ' ' + t1w : '')) : '';
+        data.meeting_day = [m1, m1w].filter(Boolean).join(' | ');
+        delete data.meeting_day_sel; delete data.meeting_time;
+        delete data.meeting_day_sel2; delete data.meeting_time2;
         try {
             await api('external_members.php?action=create', {
                 method: 'POST',
@@ -2357,29 +2370,37 @@ window.openEditOrgUser = (id, isExternal) => {
                         <input type="text" name="user_group" value="${u.user_group || ''}" class="form-input" required>
                         <small style="color:var(--gray-500); font-size:11px;">Escribe el código interno (ej. emergencias, otros_eventos). Usa comas para múltiples.</small>
                     </div>
-                    ${isExternal ? `
+                    ${(() => {
+                        const parts = (u.meeting_day || '').split(' | ');
+                        const p1 = parts[0] || '';
+                        const p2 = parts[1] || '';
+                        const p1Day = p1.split(' ')[0] || '';
+                        const p1Time = p1.split(' ')[1] || '';
+                        const p2Day = p2.split(' ')[0] || '';
+                        const p2Time = p2.split(' ')[1] || '';
+                        return `
                     <div class="form-group">
-                        <label>Día / Hora de Reunión</label>
+                        <label>\ud83d\udcc5 Reuni\u00f3n entre semana</label>
                         <div style="display:flex; gap:10px;">
                             <select name="meeting_day_sel" class="form-select" style="flex:1;">
-                                <option value="">Sin reunión</option>
-                                ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => `<option value="${d}" ${(u.meeting_day||'').startsWith(d)?'selected':''}>${d}</option>`).join('')}
+                                <option value="">Sin reuni\u00f3n</option>
+                                ${['Lunes','Martes','Mi\u00e9rcoles','Jueves','Viernes'].map(d => '<option value="'+d+'" '+(p1Day===d?'selected':'')+'>'+d+'</option>').join('')}
                             </select>
-                            <input type="time" name="meeting_time" value="${(u.meeting_day||'').split(' ')[1] || ''}" class="form-input" style="flex:0.7;">
+                            <input type="time" name="meeting_time" value="${p1Time}" class="form-input" style="flex:0.7;">
                         </div>
                     </div>
-                    ` : `
                     <div class="form-group">
-                        <label>Día / Hora de Reunión</label>
+                        <label>\ud83c\udf1f Reuni\u00f3n fin de semana</label>
                         <div style="display:flex; gap:10px;">
-                            <select name="meeting_day_sel" class="form-select" style="flex:1;">
-                                <option value="">Sin reunión</option>
-                                ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => `<option value="${d}" ${(u.meeting_day||'').startsWith(d)?'selected':''}>${d}</option>`).join('')}
+                            <select name="meeting_day_sel2" class="form-select" style="flex:1;">
+                                <option value="">Sin reuni\u00f3n</option>
+                                ${['S\u00e1bado','Domingo'].map(d => '<option value="'+d+'" '+(p2Day===d?'selected':'')+'>'+d+'</option>').join('')}
                             </select>
-                            <input type="time" name="meeting_time" value="${(u.meeting_day||'').split(' ')[1] || ''}" class="form-input" style="flex:0.7;">
+                            <input type="time" name="meeting_time2" value="${p2Time}" class="form-input" style="flex:0.7;">
                         </div>
                     </div>
-                    `}
+                        `;
+                    })()}
                     
                     <div style="display:flex; justify-content:space-between; margin-top:20px;">
                         ${isExternal ? `<button type="button" class="btn" style="background:var(--danger-100); color:var(--danger-700);" onclick="deleteExtMember('${u.id}'); this.closest('.modal-overlay').remove()">Borrar Miembro Externo</button>` : '<div></div>'}
@@ -2397,9 +2418,13 @@ window.openEditOrgUser = (id, isExternal) => {
         // Combine day + time into meeting_day
         const d2 = data.meeting_day_sel || '';
         const t2 = data.meeting_time || '';
-        data.meeting_day = d2 ? (d2 + (t2 ? ' ' + t2 : '')) : '';
-        delete data.meeting_day_sel;
-        delete data.meeting_time;
+        const m2 = d2 ? (d2 + (t2 ? ' ' + t2 : '')) : '';
+        const d2w = data.meeting_day_sel2 || '';
+        const t2w = data.meeting_time2 || '';
+        const m2w = d2w ? (d2w + (t2w ? ' ' + t2w : '')) : '';
+        data.meeting_day = [m2, m2w].filter(Boolean).join(' | ');
+        delete data.meeting_day_sel; delete data.meeting_time;
+        delete data.meeting_day_sel2; delete data.meeting_time2;
         const fileInput = document.getElementById('avatarUpload');
         
         try {
