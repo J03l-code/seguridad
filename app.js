@@ -753,6 +753,7 @@ async function renderDepartments(wrapper) {
     const orgUsers = [...orgRes.users, ...(extRes?.members || [])];
     window.currentOrgUsers = orgUsers;
     const isAdmin = state.user?.role === 'admin';
+    state.orgViewMode = state.orgViewMode || 'tree';
 
     const groups = { superintendencia: [], actividades: [], emergencias: [], soporte_oficina: [], otros_eventos: [] };
     depts.forEach(d => groups[d.id] = []);
@@ -870,14 +871,69 @@ async function renderDepartments(wrapper) {
       `;
     };
 
+    const generateTableView = () => {
+       return `
+          <div class="org-table-container" id="org-table-view" style="display:${state.orgViewMode === 'table' ? 'block' : 'none'}; overflow-x: auto; padding: 20px;">
+              <table class="data-table" style="width: 100%;">
+                 <thead>
+                    <tr>
+                       <th>Avatar</th>
+                       <th>Nombre</th>
+                       <th>Asignación / Puesto</th>
+                       <th>Jerarquía</th>
+                       <th>Dpto.</th>
+                       <th>Teléfono</th>
+                       <th>Correo / JWPub</th>
+                    </tr>
+                 </thead>
+                 <tbody id="org-table-body">
+                    ${orgUsers.map(u => {
+                        let roleText = (u.hierarchy_level||'').replace('_', ' ').toUpperCase();
+                        const isJefe = u.hierarchy_level === 'superintendente';
+                        const isVol = u.hierarchy_level === 'voluntario_clave';
+                        const badgeStyle = isJefe ? 'background:var(--danger-100);color:var(--danger-700)' : isVol ? 'background:var(--success-100);color:var(--success-700)' : 'background:var(--primary-100);color:var(--primary-700)';
+
+                        const avatarContent = u.avatar ? `<img src="api/uploads/${u.avatar}" alt="" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : `<span style="color:var(--gray-500)">${initials(u.name)}</span>`;
+                        const hoverCursor = isAdmin ? 'cursor:pointer; transition:background 0.2s;' : '';
+                        const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
+                        
+                        return `<tr class="table-member-row" ${onClickAction} style="${hoverCursor}" onmouseover="if(${isAdmin}) this.style.background='var(--primary-50)';" onmouseout="if(${isAdmin}) this.style.background='transparent';">
+                            <td><div style="width:30px; height:30px; border-radius:50%; background:var(--gray-200); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:12px; font-weight:bold;">${avatarContent}</div></td>
+                            <td><strong class="searchable-name">${u.name}</strong></td>
+                            <td class="searchable-title">${u.job_title || '-'}</td>
+                            <td><span style="font-size:11px; padding:2px 6px; border-radius:10px; font-weight:bold; ${badgeStyle}">${roleText}</span></td>
+                            <td>${(u.user_group||'').replace(/_/g, ' ').toUpperCase()}</td>
+                            <td>${u.phone || '-'}</td>
+                            <td>
+                                ${u.email ? `<div style="font-size:11px; color:var(--gray-600)">✉️ ${u.email}</div>` : ''}
+                                ${u.jwpub_email ? `<div style="font-size:11px; color:var(--primary-600)">📘 ${u.jwpub_email}</div>` : ''}
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                 </tbody>
+              </table>
+          </div>
+       `;
+    };
+
     const orgChartHTML = `
       <div class="card"style="margin-bottom: 30px; background:var(--gray-50); overflow-x:auto;">
-        <div class="card-header"style="background:#fff; display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0">Organigrama del Personal (Por Dependencias)</h3>
-            ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Añadir Miembro Externo</button>` : ''}
+        <div class="card-header"style="background:#fff; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                <h3 style="margin:0">Organigrama de Personal</h3>
+                <input type="text" id="org-search-input" class="form-input" placeholder="🔍 Buscar nombre o cargo..." style="width:250px; padding:6px 12px;" onkeyup="filterOrg(this.value)">
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div style="display:flex; background:var(--gray-200); padding:3px; border-radius:var(--radius-md);">
+                    <button class="btn btn-sm" style="background:${state.orgViewMode==='tree'?'#fff':'transparent'}; color:${state.orgViewMode==='tree'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='tree'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('tree')">🌳 Árbol</button>
+                    <button class="btn btn-sm" style="background:${state.orgViewMode==='table'?'#fff':'transparent'}; color:${state.orgViewMode==='table'?'var(--primary-700)':'var(--gray-600)'}; box-shadow:${state.orgViewMode==='table'?'0 1px 3px rgba(0,0,0,0.1)':'none'}" onclick="toggleOrgView('table')">📋 Tabla</button>
+                </div>
+                <button class="btn btn-sm" style="background:var(--primary-100); color:var(--primary-700);" onclick="exportOrgChart()" title="Exportar a Imagen PNG">🖼️ Exportar</button>
+                ${isAdmin ? `<button class="btn btn-sm btn-primary" onclick="openCreateExtMember()">➕ Miembro Externo</button>` : ''}
+            </div>
         </div>
-        <div class="card-body"style="min-width: 800px">
-            <div class="org-chart-container">
+        <div class="card-body"style="min-width: 800px; padding:0;">
+            <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px;">
                 <div class="org-level">
                     ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
                 </div>
@@ -893,6 +949,7 @@ async function renderDepartments(wrapper) {
                     </div>
                 </div>
             </div>
+            ${generateTableView()}
         </div>
       </div>
     `;
@@ -2269,6 +2326,75 @@ window.openEditOrgUser = (id, isExternal) => {
             toast('Error: ' + err.message, 'error');
         }
     });
+};
+
+window.toggleOrgView = (mode) => {
+    state.orgViewMode = mode;
+    navigate('departments'); // Re-renders cleanly maintaining state
+};
+
+window.filterOrg = (term) => {
+    const s = term.toLowerCase().trim();
+    
+    // Filter Tree View
+    document.querySelectorAll('.org-interactive-card').forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(s) || s === '') {
+            card.style.display = 'flex';
+            if (s !== '') card.style.boxShadow = '0 0 0 3px var(--warning-400)';
+            else card.style.boxShadow = 'none';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Filter Table View
+    document.querySelectorAll('.table-member-row').forEach(row => {
+        const text = row.innerText.toLowerCase();
+        if (text.includes(s) || s === '') {
+            row.style.display = '';
+            if (s !== '') row.style.background = 'var(--warning-50)';
+            else row.style.background = 'transparent';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+};
+
+window.exportOrgChart = async () => {
+    const target = document.getElementById('org-tree-view');
+    if (!target) return;
+    
+    // Switch to tree view temporarily if in table mode
+    const wasTable = state.orgViewMode === 'table';
+    if (wasTable) {
+        document.getElementById('org-tree-view').style.display = 'flex';
+        document.getElementById('org-table-view').style.display = 'none';
+    }
+
+    try {
+        toast('Generando imagen, por favor espera...');
+        // Need to ensure fonts and images resolve
+        const canvas = await html2canvas(target, {
+            scale: 2, // High resolution
+            useCORS: true,
+            backgroundColor: '#f8fafc' // Gray-50 match
+        });
+        
+        const link = document.createElement('a');
+        link.download = `Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        toast('Imagen exportada exitosamente');
+    } catch (err) {
+        toast('Error al exportar la imagen', 'error');
+        console.error(err);
+    } finally {
+        if (wasTable) {
+            document.getElementById('org-tree-view').style.display = 'none';
+            document.getElementById('org-table-view').style.display = 'block';
+        }
+    }
 };
 
 // ==========================================
