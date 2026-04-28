@@ -775,7 +775,6 @@ async function renderDepartments(wrapper) {
 
     const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false, isBottomNode = false) => {
       const textUsers = grpUsers.filter(u => u.hierarchy_level === 'support_text_only');
-      const supportAssignedText = textUsers.length > 0 ? `<div style="font-size:11px; font-weight:600; color:${color || 'var(--primary-700)'}; text-align:center; padding-bottom:5px; margin-top:-5px; border-bottom:1px solid ${color||'#ccc'}40; margin-bottom:8px; text-transform:uppercase;">Asignado: ${textUsers[textUsers.length-1].name}</div>` : '';
 
       const mappedUsers = grpUsers.filter(u => u.hierarchy_level !== 'support_text_only').map(u => {
         // Per-group hierarchy: check hierarchy_map[key] first, fallback to global hierarchy_level
@@ -821,8 +820,10 @@ async function renderDepartments(wrapper) {
 
       return `
         <div class="org-node ${nodeClass}"style="${inlineBox}">
-            <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}" ${onClickDept}>${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</h3>
-            ${supportAssignedText}
+            <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}; ${textUsers.length > 0 ? 'padding-bottom:10px;' : ''}" ${onClickDept}>
+                <div style="font-weight:700;">${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</div>
+                ${textUsers.length > 0 ? `<div style="font-size:10px; font-weight:500; margin-top:4px; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px;">Asignado: ${textUsers[textUsers.length-1].name}</div>` : ''}
+            </h3>
             <div class="org-members">${mappedUsers}</div>
         </div>
       `;
