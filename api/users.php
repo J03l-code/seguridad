@@ -84,7 +84,7 @@ function getOrgChart()
     } catch (PDOException $e) {
         $pdo->exec('ALTER TABLE users ADD COLUMN hierarchy_map TEXT DEFAULT NULL');
     }
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title FROM users ORDER BY hierarchy_level ASC, name ASC');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, jwpub_email FROM users ORDER BY hierarchy_level ASC, name ASC');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
