@@ -1244,24 +1244,6 @@ textarea.form-input {
     top: 0;
 }
 
-@media (max-width: 1024px) {
-    .org-horizontal-line {
-        display: none;
-    }
-
-    .org-level-2-wrapper::before {
-        display: none;
-    }
-
-    .org-level-2 {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .org-level-2 .org-node::before {
-        display: none;
-    }
-}
 
 .org-level-2 {
     display: flex;
