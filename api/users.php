@@ -22,6 +22,13 @@ try {
     try { $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(50) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate jwpub_email
+try {
+    $pdo->query("SELECT jwpub_email FROM users LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN jwpub_email VARCHAR(150) DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listUsers();
@@ -155,7 +162,7 @@ function listUsers()
 {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT u.id, u.name, u.email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.phone, u.created_at,
+        SELECT u.id, u.name, u.email, u.jwpub_email, u.role, u.user_group, u.hierarchy_level, u.hierarchy_map, u.job_title, u.avatar, u.phone, u.created_at,
             (SELECT GROUP_CONCAT(d.name SEPARATOR ', ') FROM department_members dm
              JOIN departments d ON dm.department_id = d.id WHERE dm.user_id = u.id) as departments
         FROM users u ORDER BY u.created_at DESC
@@ -169,7 +176,7 @@ function getUser($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, created_at FROM users WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT id, name, email, jwpub_email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, created_at FROM users WHERE id = ?');
     $stmt->execute([$id]);
     $user = $stmt->fetch();
     if (!$user)
@@ -208,6 +215,10 @@ function updateUser($id, $auth)
             jsonResponse(['error' => 'Email ya en uso.'], 409);
         $fields[] = 'email = ?';
         $values[] = $data['email'];
+    }
+    if (array_key_exists('jwpub_email', $data)) {
+        $fields[] = 'jwpub_email = ?';
+        $values[] = trim($data['jwpub_email']) === '' ? null : trim($data['jwpub_email']);
     }
     if (!empty($data['password'])) {
         if (strlen($data['password']) < 6)

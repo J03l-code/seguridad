@@ -2081,23 +2081,27 @@ window.openCreateExtMember = () => {
                 <form id="create-ext-member-form">
                     <div class="form-group">
                         <label>Nombre Completo *</label>
-                        <input type="text"name="name"required>
+                        <input type="text" name="name" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Correo Electrónico</label>
-                        <input type="email"name="email">
+                        <input type="email" name="email" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo JWPub (Opcional)</label>
+                        <input type="email" name="jwpub_email" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Teléfono (Opcional)</label>
-                        <input type="tel"name="phone">
+                        <input type="tel" name="phone" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Asignación (Opcional)</label>
-                        <input type="text"name="job_title">
+                        <input type="text" name="job_title" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Nivel Jerárquico *</label>
-                        <select name="hierarchy_level"required>
+                        <select name="hierarchy_level" class="form-select" required>
                             <option value="voluntario_clave">Voluntario Clave</option>
                             <option value="auxiliar">Auxiliar</option>
                             <option value="superintendente">Superintendente</option>
@@ -2106,7 +2110,7 @@ window.openCreateExtMember = () => {
                     </div>
                     <div class="form-group">
                         <label>Departamento Principal *</label>
-                        <select name="user_group"required>
+                        <select name="user_group" class="form-select" required>
                             <option value="emergencias">Emergencias</option>
                             <option value="actividades">Actividades</option>
                             <option value="soporte_oficina">Soporte de Oficina</option>
@@ -2115,7 +2119,7 @@ window.openCreateExtMember = () => {
                     </div>
                     <div class="form-group">
                         <label>Día / Hora de Reunión (Opcional)</label>
-                        <input type="text"name="meeting_day"placeholder="Ej. Lunes 19:30">
+                        <input type="text" name="meeting_day" class="form-input" placeholder="Ej. Lunes 19:30">
                     </div>
                     <button type="submit"class="btn btn-primary"style="width:100%; justify-content:center; margin-top:20px">Guardar Miembro</button>
                 </form>
@@ -2184,23 +2188,27 @@ window.openEditOrgUser = (id, isExternal) => {
 
                     <div class="form-group">
                         <label>Nombre Completo *</label>
-                        <input type="text" name="name" value="${u.name}" required>
+                        <input type="text" name="name" value="${u.name}" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Correo Electrónico</label>
-                        <input type="email" name="email" value="${u.email || ''}">
+                        <input type="email" name="email" value="${u.email || ''}" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo JWPub (Opcional)</label>
+                        <input type="email" name="jwpub_email" value="${u.jwpub_email || ''}" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Teléfono (Opcional)</label>
-                        <input type="tel" name="phone" value="${u.phone || ''}">
+                        <input type="tel" name="phone" value="${u.phone || ''}" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Asignación / Título (Opcional)</label>
-                        <input type="text" name="job_title" value="${u.job_title || ''}">
+                        <input type="text" name="job_title" value="${u.job_title || ''}" class="form-input">
                     </div>
                     <div class="form-group">
                         <label>Nivel Jerárquico *</label>
-                        <select name="hierarchy_level" required>
+                        <select name="hierarchy_level" class="form-select" required>
                             <option value="auxiliar" ${u.hierarchy_level === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
                             <option value="voluntario_clave" ${u.hierarchy_level === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
                             <option value="superintendente" ${u.hierarchy_level === 'superintendente' ? 'selected' : ''}>Superintendente</option>
@@ -2209,13 +2217,13 @@ window.openEditOrgUser = (id, isExternal) => {
                     </div>
                     <div class="form-group">
                         <label>Departamento Principal *</label>
-                        <input type="text" name="user_group" value="${u.user_group || ''}" required>
+                        <input type="text" name="user_group" value="${u.user_group || ''}" class="form-input" required>
                         <small style="color:var(--gray-500); font-size:11px;">Escribe el código interno (ej. emergencias, otros_eventos). Usa comas para múltiples.</small>
                     </div>
                     ${isExternal ? `
                     <div class="form-group">
                         <label>Día / Hora de Reunión</label>
-                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}">
+                        <input type="text" name="meeting_day" value="${u.meeting_day || ''}" class="form-input">
                     </div>
                     ` : ''}
                     

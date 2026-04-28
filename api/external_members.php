@@ -45,6 +45,13 @@ try {
     try { $pdo->exec("ALTER TABLE external_members ADD COLUMN phone VARCHAR(50) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate jwpub_email
+try {
+    $pdo->query("SELECT jwpub_email FROM external_members LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE external_members ADD COLUMN jwpub_email VARCHAR(150) DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listExternalMembers();
@@ -68,7 +75,7 @@ switch ($action) {
 function listExternalMembers() {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT id, name, email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, created_at, 'external' as is_external 
+        SELECT id, name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, created_at, 'external' as is_external 
         FROM external_members 
         ORDER BY name ASC
     ");
@@ -108,8 +115,8 @@ function createExternalMember($auth) {
         jsonResponse(['error' => 'El nombre y el departamento son obligatorios.'], 400);
     }
 
-    $stmt = $pdo->prepare('INSERT INTO external_members (name, email, phone, hierarchy_level, job_title, user_group, meeting_day) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([$name, $email, $phone, $hierarchy_level, $job_title, $group, $meeting_day]);
+    $stmt = $pdo->prepare('INSERT INTO external_members (name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$name, $email, $data['jwpub_email'] ?? null, $phone, $hierarchy_level, $job_title, $group, $meeting_day]);
 
     jsonResponse(['message' => 'Miembro añadido exitosamente.'], 201);
 }
@@ -139,6 +146,7 @@ function updateExternalMember($id, $auth) {
     $values = [];
     if (array_key_exists('name', $data)) { $fields[] = 'name = ?'; $values[] = $data['name']; }
     if (array_key_exists('email', $data)) { $fields[] = 'email = ?'; $values[] = $data['email']; }
+    if (array_key_exists('jwpub_email', $data)) { $fields[] = 'jwpub_email = ?'; $values[] = $data['jwpub_email']; }
     if (array_key_exists('phone', $data)) { $fields[] = 'phone = ?'; $values[] = $data['phone']; }
     if (array_key_exists('job_title', $data)) { $fields[] = 'job_title = ?'; $values[] = $data['job_title']; }
     if (array_key_exists('hierarchy_level', $data)) { $fields[] = 'hierarchy_level = ?'; $values[] = $data['hierarchy_level']; }
