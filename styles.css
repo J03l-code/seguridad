@@ -2276,3 +2276,111 @@ textarea.form-input {
         font-size: 22px
     }
 }
+
+/* ==========================================
+   Organogram Mobile Responsive
+   ========================================== */
+@media (max-width: 768px) {
+
+    /* Scroll horizontal en lugar de cortar el árbol */
+    .org-chart-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px 8px;
+    }
+
+    /* Nodo más compacto */
+    .org-node {
+        width: 200px;
+        min-width: 200px;
+    }
+
+    /* Encabezados de nodo más compactos */
+    .org-node h3 {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    /* Tarjetas de miembros más compactas */
+    .org-member {
+        padding: 6px;
+        gap: 7px;
+    }
+
+    .org-member .name {
+        font-size: 12px;
+    }
+
+    .org-member .role {
+        font-size: 10px;
+    }
+
+    .org-member .avatar {
+        width: 26px;
+        height: 26px;
+        font-size: 10px;
+        flex-shrink: 0;
+    }
+
+    .org-members {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    /* Los nodos del nivel 2 se organizan en columnas verticales */
+    .org-level-2 {
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding-top: 16px;
+    }
+
+    /* Ocultar líneas de conexión en móvil */
+    .org-horizontal-line {
+        display: none;
+    }
+
+    .org-level-2 .org-node::before {
+        display: none;
+    }
+
+    .org-lines {
+        height: 16px;
+    }
+
+    /* Header de la barra del organigrama: wrap vertical en móvil */
+    .card-header[style*="flex-wrap"] {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    /* Hacer input de búsqueda más ancho en móvil */
+    #org-search-input {
+        width: 100% !important;
+    }
+
+    /* Pill de filtros wrapping */
+    #org-search-input + div {
+        flex-wrap: wrap;
+        margin-left: 0 !important;
+    }
+
+    /* Hacer que el card del organigrama haga scroll horizontal */
+    .card-body[style*="min-width"] {
+        min-width: 0 !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Nodo de superintendencia se centra bien */
+    .org-level {
+        justify-content: flex-start;
+        padding-left: 10px;
+    }
+
+    /* Información de contacto más pequeña */
+    .org-contact-info {
+        font-size: 9px !important;
+    }
+}
