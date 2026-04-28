@@ -954,29 +954,9 @@ async function renderDepartments(wrapper) {
     `;
 
     wrapper.innerHTML = `
-      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary"onclick="openCreateDept()">＋ Nuevo Dpto. (Tareas)</button></div>' : ''}</div>
+      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary"onclick="openCreateDept()">＋ Nuevo Dpto. Organizacional</button></div>' : ''}</div>
       
       ${orgChartHTML}
-
-      <div style="margin-bottom:16px"><h3>Departamentos de Tareas (Kanban)</h3></div>
-      ${depts.length === 0 ? '<div class="card"><div class="empty-state"><div class="empty-state-icon">🏢</div><h3>Sin departamentos</h3><p>Crea tu primer departamento.</p></div></div>' :
-        '<div class="dept-grid">' + depts.map(d => {
-          const comp = d.task_count > 0 ? Math.round((d.completed_count / d.task_count) * 100) : 0;
-          return `<div class="dept-card"onclick="openDeptDetail(${d.id})">
-            <div class="dept-card-accent"style="background:${d.color}"></div>
-            <div class="dept-card-body">
-              <h3 class="dept-card-name">${d.name}</h3>
-              <p class="dept-card-desc">${d.description || 'Sin descripción'}</p>
-              <div style="margin-bottom:12px"><div class="flex-between"style="font-size:12px;margin-bottom:4px"><span style="color:var(--gray-500)">Progreso</span><span style="font-weight:600;color:var(--primary-800)">${comp}%</span></div>
-              <div class="progress-bar-bg"><div class="progress-bar-fill"style="width:${comp}%;background:linear-gradient(90deg,${d.color},var(--success-400))"></div></div></div>
-              <div class="dept-card-stats">
-                <div><span class="dept-stat-value">${d.task_count || 0}</span><br><span class="dept-stat-label">Tareas</span></div>
-                <div><span class="dept-stat-value">${d.member_count || 0}</span><br><span class="dept-stat-label">Miembros</span></div>
-                <div><span class="dept-stat-value">${d.completed_count || 0}</span><br><span class="dept-stat-label">Hechas</span></div>
-              </div>
-            </div>
-          </div>`;
-        }).join('') + '</div>'}
     `;
 
     document.getElementById('page-content').innerHTML = '';
