@@ -852,34 +852,9 @@ async function renderDepartments(wrapper) {
       
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
-      let subBoxes = '';
-      if (deptId === 'emergencias') {
-          const soporteBox = renderTree('soporte_oficina', 'Soporte de Oficina', BASE_COLORS['soporte_oficina'], true);
-          const cBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
-          
-          if (bottomUsers.length > 0) {
-             const emergenciasBox = renderOrgNode(deptName, deptId, bottomUsers, color, true);
-             subBoxes = `
-                <div style="display:flex; flex-direction:column; align-items:center;">
-                    ${emergenciasBox}
-                    <div style="width:1px; height:20px; border-left:1px solid #ccc;"></div>
-                    ${soporteBox}
-                </div>
-                ${cBoxes}
-             `;
-          } else {
-             subBoxes = `
-                <div style="display:flex; flex-direction:column; align-items:center;">
-                    ${soporteBox}
-                </div>
-                ${cBoxes}
-             `;
-          }
-      } else {
-          subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
-          if (bottomUsers.length > 0) {
-             subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
-          }
+      let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+      if (bottomUsers.length > 0) {
+         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true) + subBoxes;
       }
 
       return `
@@ -965,6 +940,7 @@ async function renderDepartments(wrapper) {
                 <div class="org-level-2-wrapper">
                     <div class="org-horizontal-line"></div>
                     <div class="org-level-2"style="align-items:flex-start">
+                        ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
                         ${renderTree('emergencias', 'Emergencias', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
                         ${renderTree('otros_eventos', 'Otros Eventos', null, false)}
