@@ -80,6 +80,32 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
+// Compress image file to a small JPEG base64 data URI
+function compressImageToBase64(file, maxSize = 150, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Error leyendo archivo'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Error cargando imagen'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        // Scale down to maxSize maintaining aspect ratio
+        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+        else { w = Math.round(w * maxSize / h); h = maxSize; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function formatDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -792,7 +818,8 @@ async function renderDepartments(wrapper) {
 
         const hoverCursor = isAdmin ? 'cursor:pointer; transition: transform 0.2s;' : '';
         const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
-        const avatarContent = u.avatar ? `<img src="api/uploads/${u.avatar}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
+        const avatarSrc = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null);
+        const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
           <div class="org-member org-interactive-card" data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
@@ -2327,12 +2354,13 @@ window.openEditOrgUser = (id, isExternal) => {
                     <input type="hidden" name="id" value="${realId}">
                     
                     <div style="display:flex; gap:15px; align-items:center;">
-                        <div style="width:60px; height:60px; border-radius:50%; background:var(--gray-200); overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                            ${u.avatar ? `<img src="api/uploads/${u.avatar}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:24px; color:var(--gray-500); font-weight:bold;">${u.name.substring(0,2).toUpperCase()}</span>`}
+                        <div id="avatar-preview" style="width:60px; height:60px; border-radius:50%; background:var(--gray-200); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                            ${(() => { const src = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null); return src ? `<img src="${src}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:24px; color:var(--gray-500); font-weight:bold;">${u.name.substring(0,2).toUpperCase()}</span>`; })()}
                         </div>
                         <div class="form-group" style="flex:1;">
                             <label>Actualizar Foto de Perfil (Opcional)</label>
                             <input type="file" id="avatarUpload" accept="image/png, image/jpeg, image/webp" style="font-size:13px;">
+                            <small style="color:var(--gray-500); font-size:11px;">Se comprimirá automáticamente a 150x150px</small>
                         </div>
                     </div>
 
@@ -2412,6 +2440,17 @@ window.openEditOrgUser = (id, isExternal) => {
     `;
     document.body.appendChild(overlay);
 
+    // Preview avatar on file select
+    document.getElementById('avatarUpload').addEventListener('change', (ev) => {
+        const file = ev.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('avatar-preview').innerHTML = `<img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover;">`;
+        };
+        reader.readAsDataURL(file);
+    });
+
     document.getElementById('edit-org-user-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target));
@@ -2428,23 +2467,20 @@ window.openEditOrgUser = (id, isExternal) => {
         const fileInput = document.getElementById('avatarUpload');
         
         try {
+            // Remove avatar field from JSON update (handled separately)
+            delete data.avatar;
             await api(endpoint + '?action=update&id=' + realId, {
                 method: 'PUT',
                 body: JSON.stringify(data)
             });
 
+            // Upload avatar as compressed base64
             if (fileInput.files.length > 0) {
-                const formData = new FormData();
-                formData.append('avatar', fileInput.files[0]);
-                
-                const token = localStorage.getItem('iccp_token');
-                const uploadRes = await fetch('api/' + endpoint + '?action=upload_avatar&id=' + realId, {
+                const base64 = await compressImageToBase64(fileInput.files[0], 150, 0.7);
+                await api(endpoint + '?action=upload_avatar_base64&id=' + realId, {
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + token },
-                    body: formData
+                    body: JSON.stringify({ avatar_base64: base64 })
                 });
-                const uploadJson = await uploadRes.json();
-                if (!uploadRes.ok) throw new Error(uploadJson.error || 'Error al subir foto');
             }
 
             toast('Usuario actualizado exitosamente');

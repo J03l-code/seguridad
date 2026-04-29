@@ -52,6 +52,13 @@ try {
     try { $pdo->exec("ALTER TABLE external_members ADD COLUMN jwpub_email VARCHAR(150) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate avatar_base64
+try {
+    $pdo->query("SELECT avatar_base64 FROM external_members LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE external_members ADD COLUMN avatar_base64 MEDIUMTEXT DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listExternalMembers();
@@ -68,6 +75,9 @@ switch ($action) {
     case 'upload_avatar':
         uploadAvatarExt($id, $auth);
         break;
+    case 'upload_avatar_base64':
+        uploadAvatarBase64Ext($id, $auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -75,7 +85,7 @@ switch ($action) {
 function listExternalMembers() {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT id, name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, created_at, 'external' as is_external 
+        SELECT id, name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, avatar_base64, created_at, 'external' as is_external 
         FROM external_members 
         ORDER BY name ASC
     ");
@@ -181,7 +191,6 @@ function uploadAvatarExt($id, $auth) {
     $filename = 'ext_avatar_' . $extId . '_' . time() . '.' . $ext;
     $targetPath = $UPLOAD_DIR . $filename;
     
-    // Select old avatar to delete it if exists
     $stmt = $pdo->prepare('SELECT avatar FROM external_members WHERE id = ?');
     $stmt->execute([$extId]);
     $old = $stmt->fetchColumn();
@@ -195,4 +204,17 @@ function uploadAvatarExt($id, $auth) {
     } else {
         jsonResponse(['error' => 'Hubo un error al guardar el archivo.'], 500);
     }
+}
+
+function uploadAvatarBase64Ext($id, $auth) {
+    global $pdo;
+    if (getMethod() !== 'POST') jsonResponse(['error' => 'Método no permitido.'], 405);
+    requireAdmin($auth);
+    $extId = str_replace('ext_', '', $id);
+    $data = getJsonBody();
+    $base64 = $data['avatar_base64'] ?? '';
+    if (!$base64) jsonResponse(['error' => 'No se recibió imagen.'], 400);
+    if (strlen($base64) > 500000) jsonResponse(['error' => 'Imagen demasiado grande.'], 400);
+    $pdo->prepare('UPDATE external_members SET avatar_base64 = ? WHERE id = ?')->execute([$base64, $extId]);
+    jsonResponse(['message' => 'Avatar actualizado.']);
 }

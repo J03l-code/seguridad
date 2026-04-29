@@ -36,6 +36,13 @@ try {
     try { $pdo->exec("ALTER TABLE users ADD COLUMN meeting_day VARCHAR(100) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate avatar_base64 for users
+try {
+    $pdo->query("SELECT avatar_base64 FROM users LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN avatar_base64 MEDIUMTEXT DEFAULT NULL"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listUsers();
@@ -60,6 +67,9 @@ switch ($action) {
         break;
     case 'upload_avatar':
         uploadAvatarUser($id, $auth);
+        break;
+    case 'upload_avatar_base64':
+        uploadAvatarBase64User($id, $auth);
         break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
@@ -91,7 +101,7 @@ function getOrgChart()
     } catch (PDOException $e) {
         $pdo->exec('ALTER TABLE users ADD COLUMN hierarchy_map TEXT DEFAULT NULL');
     }
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, phone, jwpub_email, meeting_day FROM users ORDER BY hierarchy_level ASC, name ASC');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, avatar_base64, phone, jwpub_email, meeting_day FROM users ORDER BY hierarchy_level ASC, name ASC');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -336,4 +346,20 @@ function uploadAvatarUser($id, $auth) {
     } else {
         jsonResponse(['error' => 'Hubo un error al guardar el archivo.'], 500);
     }
+}
+
+function uploadAvatarBase64User($id, $auth) {
+    global $pdo;
+    if (getMethod() !== 'POST') jsonResponse(['error' => 'Método no permitido.'], 405);
+    if (!$id) jsonResponse(['error' => 'ID requerido.'], 400);
+    if ($auth['id'] != $id && $auth['role'] !== 'admin') {
+        jsonResponse(['error' => 'No tienes permiso.'], 403);
+    }
+    $data = getJsonBody();
+    $base64 = $data['avatar_base64'] ?? '';
+    if (!$base64) jsonResponse(['error' => 'No se recibió imagen.'], 400);
+    // Limit to ~500KB base64 string
+    if (strlen($base64) > 500000) jsonResponse(['error' => 'Imagen demasiado grande.'], 400);
+    $pdo->prepare('UPDATE users SET avatar_base64 = ? WHERE id = ?')->execute([$base64, $id]);
+    jsonResponse(['message' => 'Avatar actualizado.']);
 }
