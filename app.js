@@ -2726,7 +2726,7 @@ window.exportOrgChart = async (conf) => {
                 const header = clonedDoc.createElement('div');
                 header.style.cssText = `position:absolute; top:-${padY - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; font-family:'Inter',sans-serif;`;
                 header.innerHTML = `
-                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del departamento</h1>
+                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del Departamento de Seguridad</h1>
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
                     <p style="font-size:13px; color:#94a3b8; margin-top:8px; font-weight:500;">Departamento de Seguridad HC3</p>
                 `;
