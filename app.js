@@ -891,6 +891,8 @@ async function renderDepartments(wrapper) {
       
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
+      const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
+
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
       if (bottomUsers.length > 0) {
          let nodeHtml = renderOrgNode(deptName, deptId, bottomUsers, color, true, true);
@@ -900,8 +902,6 @@ async function renderDepartments(wrapper) {
          }
          subBoxes = nodeHtml + subBoxes;
       }
-
-      const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
