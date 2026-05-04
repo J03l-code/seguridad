@@ -2711,20 +2711,13 @@ window.exportOrgChart = async (conf) => {
                     m.style.gap = '10px';
                 });
 
-                // ─── SCALE UP CONNECTION LINES ───
-                clonedTarget.querySelectorAll('.org-lines').forEach(l => {
-                    l.style.width = '3px';
-                    l.style.height = '35px';
-                });
-
-                clonedTarget.querySelectorAll('.org-horizontal-line').forEach(l => {
-                    l.style.height = '3px';
-                });
-
-                // ─── HEADER ───
+                // ─── CENTERED HEADER CON LOGO ───
                 const header = clonedDoc.createElement('div');
                 header.style.cssText = `position:absolute; top:-${padY - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; font-family:'Inter',sans-serif;`;
                 header.innerHTML = `
+                    <div style="position:absolute; left:40px; top:0; width:100px; height:100px;">
+                        <img src="logo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'" alt="Logo">
+                    </div>
                     <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del Departamento de Seguridad</h1>
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
                     <p style="font-size:13px; color:#94a3b8; margin-top:8px; font-weight:500;">Departamento de Seguridad HC3</p>
@@ -2732,11 +2725,11 @@ window.exportOrgChart = async (conf) => {
                 clonedTarget.style.position = 'relative';
                 clonedTarget.appendChild(header);
                 
-                // ─── FOOTER ───
+                // ─── CENTERED FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 footer.style.cssText = `position:absolute; bottom:-${(canvasH - contentH) / 2 + footerH - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
-                footer.innerHTML = `ICCP — Generado el ${dateStr}`;
+                footer.innerHTML = `ICCP — Fecha de actualización: ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
         });
