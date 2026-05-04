@@ -2588,39 +2588,35 @@ window.exportOrgChart = async (conf) => {
         }
     }
 
+    // Fetch logo as base64 to bypass html2canvas CORS/local file issues
+    let logoDataUrl = '';
+    try {
+        const logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
+        const response = await fetch(logoUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            logoDataUrl = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+    } catch (e) {
+        console.error('No se pudo cargar el logo', e);
+    }
+
     const tWidth = target.scrollWidth;
     const tHeight = target.scrollHeight;
     
     // Detect if it's a minimal export (photos + names only)
     const isMinimalMode = conf && !conf.contacts;
 
-    // Smart page-ratio canvas: match content to a standard page aspect ratio
-    // so when printed, it fills the entire page
-    const headerH = 120;
-    const footerH = 60;
-    const contentW = tWidth;
-    const contentH = tHeight + headerH + footerH;
-    
-    // Page aspect ratios: Letter landscape = 11/8.5 ≈ 1.294, Portrait = 8.5/11 ≈ 0.773
-    // A4 landscape = 297/210 ≈ 1.414, Portrait = 210/297 ≈ 0.707
-    const contentRatio = contentW / contentH;
-    const useLandscape = contentRatio > 1; // org charts are usually wider than tall
-    const pageRatio = useLandscape ? (11 / 8.5) : (8.5 / 11);
-    
-    let canvasW, canvasH;
-    if (contentRatio > pageRatio) {
-        // Content is wider than page ratio → fit width, expand height
-        canvasW = contentW + 80;
-        canvasH = Math.round(canvasW / pageRatio);
-    } else {
-        // Content is taller than page ratio → fit height, expand width
-        canvasH = contentH + 40;
-        canvasW = Math.round(canvasH * pageRatio);
-    }
-    
-    // Center content within canvas
-    const padX = Math.round((canvasW - contentW) / 2);
-    const padY = Math.round((canvasH - contentH) / 2) + headerH;
+    // Tight fit canvas without aspect ratio padding
+    const padX = 40;
+    const headerH = 140; // Space above chart
+    const footerH = 80;  // Space below chart
+    const canvasW = tWidth + (padX * 2);
+    const canvasH = tHeight + headerH + footerH;
     
     // Hard lock dimensions to avoid jumps
     target.style.width = tWidth + 'px';
@@ -2636,7 +2632,7 @@ window.exportOrgChart = async (conf) => {
             height: canvasH,
             windowWidth: canvasW,
             x: -padX,
-            y: -padY,
+            y: -headerH,
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
@@ -2715,16 +2711,16 @@ window.exportOrgChart = async (conf) => {
 
                 // ─── CENTERED HEADER CON LOGO ───
                 const header = clonedDoc.createElement('div');
-                // Colocar el header inmediatamente encima del organigrama (top: -headerH) en vez de en el borde superior del canvas
-                header.style.cssText = `position:absolute; top:-${headerH - 20}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif;`;
-                const logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
+                // Colocar el header inmediatamente encima del organigrama (top: -headerH)
+                header.style.cssText = `position:absolute; top:-${headerH}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif; height:${headerH}px; display:flex; flex-direction:column; justify-content:center; align-items:center;`;
+                
+                const logoHtml = logoDataUrl ? `<div style="position:absolute; left:40px; top:20px; width:100px; height:100px;"><img src="${logoDataUrl}" style="width:100%; height:100%; object-fit:contain;"></div>` : '';
+                
                 header.innerHTML = `
-                    <div style="position:absolute; left:40px; top:0; width:100px; height:100px;">
-                        <img src="${logoUrl}" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'" alt="Logo">
-                    </div>
-                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del Departamento de Seguridad</h1>
-                    <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
-                    <p style="font-size:13px; color:#94a3b8; margin-top:8px; font-weight:500;">Departamento de Seguridad HC3</p>
+                    ${logoHtml}
+                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">Organigrama del Departamento de Seguridad</h1>
+                    <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:12px auto; border-radius:3px;"></div>
+                    <p style="font-size:14px; color:#94a3b8; margin:0; font-weight:500;">Departamento de Seguridad HC3</p>
                 `;
                 clonedTarget.style.position = 'relative';
                 clonedTarget.appendChild(header);
@@ -2733,7 +2729,7 @@ window.exportOrgChart = async (conf) => {
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 // Colocar el footer inmediatamente debajo del organigrama (bottom: -footerH)
-                footer.style.cssText = `position:absolute; bottom:-${footerH - 10}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
+                footer.style.cssText = `position:absolute; bottom:-${footerH}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:20px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
                 footer.innerHTML = `ICCP — Fecha de actualización: ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
