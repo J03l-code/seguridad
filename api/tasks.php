@@ -277,8 +277,11 @@ function updateTask($id, $auth)
 
     if (isset($data['status'])) {
         $newStatus = $data['status'];
-        if (($newStatus === 'review' || $newStatus === 'done') && !$isSuper && !$canManageTasks) {
-            jsonResponse(['error' => 'Solo miembros de Superintendencia pueden enviar a revisión o completar tareas.'], 403);
+        if ($newStatus === 'done' && !$isSuper && !$canManageTasks) {
+            jsonResponse(['error' => 'Solo miembros de Superintendencia pueden completar tareas.'], 403);
+        }
+        if ($newStatus === 'in_progress' && $old['status'] === 'review' && !$isSuper && !$canManageTasks) {
+            jsonResponse(['error' => 'Solo miembros de Superintendencia pueden devolver tareas.'], 403);
         }
     }
 
