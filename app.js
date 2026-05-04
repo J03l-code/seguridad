@@ -907,7 +907,7 @@ async function renderDepartments(wrapper) {
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
           ${numChildren === 1 
-              ? `<div style="width:2px; height:60px; background:#94a3b8; margin-bottom:-60px; z-index:0; flex-shrink:0;"></div>` 
+              ? `<div style="width:2px; height:90px; background:#94a3b8; margin-bottom:-90px; z-index:0; flex-shrink:0;"></div>` 
               : `<div style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:0; flex-shrink:0;"></div>`}
           <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
              ${numChildren > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
