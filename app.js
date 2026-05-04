@@ -892,24 +892,18 @@ async function renderDepartments(wrapper) {
       if (children.length === 0 && bottomUsers.length === 0) return html;
 
       const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
-
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
       if (bottomUsers.length > 0) {
-         let nodeHtml = renderOrgNode(deptName, deptId, bottomUsers, color, true, true);
-         if (numChildren === 1) {
-            // Hide the redundant rising line because parent draws a 60px continuous line
-            nodeHtml = nodeHtml.replace('org-connector-up"', 'org-connector-up" style="display:none;"');
-         }
-         subBoxes = nodeHtml + subBoxes;
+         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true, true) + subBoxes;
       }
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
-          <div style="width:2px; height:61px; background:#94a3b8; margin-bottom:-61px; z-index:-1; flex-shrink:0;"></div>
+          <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:1; flex-shrink:0;"></div>
           <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
              ${numChildren > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
-             <div class="org-level-2 ${numChildren === 1 ? 'single-child' : ''}" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
+             <div class="org-level-2" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
                  ${subBoxes}
              </div>
           </div>
@@ -998,7 +992,7 @@ async function renderDepartments(wrapper) {
             <div class="org-card-inner" style="min-width:800px; padding:0;">
             <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px; flex-direction:column; align-items:center;">
                 ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
-                <div style="width:2px; height:61px; background:#94a3b8; margin-bottom:-61px; z-index:-1; flex-shrink:0;"></div>
+                <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:1; flex-shrink:0;"></div>
                 <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
                     <div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>
                     <div class="org-level-2" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
