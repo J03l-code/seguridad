@@ -899,15 +899,13 @@ async function renderDepartments(wrapper) {
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
-          <div style="position:relative; width:100%; display:flex; justify-content:center;">
-             ${html}
-             ${numChildren === 1 
-                 ? `<div style="position:absolute; bottom:-60px; left:calc(50% - 1px); width:2px; height:60px; background:#94a3b8; z-index:0;"></div>` 
-                 : `<div style="position:absolute; bottom:-30px; left:calc(50% - 1px); width:2px; height:30px; background:#94a3b8; z-index:0;"></div>`}
-          </div>
-          <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; position:relative;">
-             ${numChildren > 1 ? `<div class="org-horizontal-line" style="position:absolute; top:0; left:50%; transform:translateX(-50%); height:2px; background:#94a3b8; width:calc(100% - 260px); z-index:0;"></div>` : ''}
-             <div class="org-level-2 ${numChildren === 1 ? 'single-child' : ''}" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
+          ${html}
+          ${numChildren === 1 
+              ? `<div style="width:2px; height:60px; background:#94a3b8; margin-bottom:-60px; z-index:0; flex-shrink:0;"></div>` 
+              : `<div style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:0; flex-shrink:0;"></div>`}
+          <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
+             ${numChildren > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
+             <div class="org-level-2 ${numChildren === 1 ? 'single-child' : ''}" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
                  ${subBoxes}
              </div>
           </div>
@@ -995,13 +993,11 @@ async function renderDepartments(wrapper) {
         <div class="org-card-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
             <div class="org-card-inner" style="min-width:800px; padding:0;">
             <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px; flex-direction:column; align-items:center;">
-                <div style="position:relative; width:100%; display:flex; justify-content:center;">
-                    ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
-                    <div style="position:absolute; bottom:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>
-                </div>
-                <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; position:relative;">
-                    <div class="org-horizontal-line" style="position:absolute; top:0; left:50%; transform:translateX(-50%); height:2px; background:#94a3b8; width:calc(100% - 260px); z-index:0;"></div>
-                    <div class="org-level-2" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
+                ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
+                <div style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:0; flex-shrink:0;"></div>
+                <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
+                    <div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>
+                    <div class="org-level-2" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
                         ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
                         ${renderTree('emergencias', 'Emergencias', null, false)}
