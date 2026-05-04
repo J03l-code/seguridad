@@ -544,10 +544,10 @@ async function renderTasks(wrapper) {
       const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
 
       const cols = [
-        { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar', canMove: true },
-        { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'review', btnLabel: '⟳ Revisar', canMove: isSuper },
-        { key: 'review', title: 'En Revisión', tasks: inReview, next: 'done', btnLabel: '✓ Completar', canMove: isSuper },
-        { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null, canMove: false }
+        { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar' },
+        { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'review', btnLabel: '⟳ Revisar' },
+        { key: 'review', title: 'En Revisión', tasks: inReview, next: 'done', btnLabel: '✓ Aprobar' },
+        { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null }
       ];
 
       return `<div class="kanban-board">${cols.map(c => `
@@ -571,10 +571,25 @@ async function renderTasks(wrapper) {
                     <div class="task-card-meta">
                       ${t.due_date ? `<span class="${isOverdue(t.due_date) && t.status !== 'done' ? 'task-due-overdue' : ''}">📅 ${formatDate(t.due_date)}</span>` : ''}
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
-                      ${t.target_group ? `<span class="dept-tag"style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
-                    </div>
-                  </div>
-                  ${c.next && (canManage || (t.target_group === myGroup)) && c.canMove ? `<div class="task-actions"><button class="btn btn-sm btn-outline"onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
+                  ${(() => {
+                    const isMyTask = (t.target_group === myGroup || state.user?.role === 'admin');
+                    const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
+                    
+                    let actions = '';
+                    if (c.key === 'todo' && isMyTask) {
+                        actions = `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'in_progress')">▶ Iniciar</button>`;
+                    } else if (c.key === 'in-progress' && isMyTask) {
+                        actions = `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();changeTaskStatus(${t.id},'review')">⟳ Revisar</button>`;
+                    } else if (c.key === 'review' && isSuper) {
+                        actions = `
+                          <div style="display:flex;gap:4px;width:100%">
+                            <button class="btn btn-sm btn-success" style="flex:1" onclick="event.stopPropagation();changeTaskStatus(${t.id},'done')">✓ Aprobar</button>
+                            <button class="btn btn-sm btn-danger" style="flex:1" onclick="event.stopPropagation();changeTaskStatus(${t.id},'in_progress')">↩ Corregir</button>
+                          </div>
+                        `;
+                    }
+                    return actions ? `<div class="task-actions">${actions}</div>` : '';
+                  })()}
                 </div>
               `;
           }).join('')}
@@ -614,11 +629,23 @@ async function renderTasks(wrapper) {
 
     window.changeTaskStatus = async function (id, status) {
       try {
-        await api(`tasks.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        const t = window._tasks.find(t => t.id == id);
+        let comment = null;
+        
+        // If moving back from review to in_progress, ask for reason
+        if (t && t.status === 'review' && status === 'in_progress') {
+            comment = prompt("Explique los cambios necesarios para devolver la tarea a 'En Progreso':");
+            if (comment === null) return; // Cancelled
+            if (!comment.trim()) return toast("Debe proporcionar una razón para la corrección", "error");
+        }
+
+        await api(`tasks.php?action=update&id=${id}`, { 
+            method: 'PUT', 
+            body: JSON.stringify({ status, comment }) 
+        });
+        
         toast('Estado actualizado');
         renderTasks(document.createElement('div')).then(() => { });
-        // Quick refresh
-        const t = window._tasks.find(t => t.id == id);
         if (t) t.status = status;
         window.filterTasks();
       } catch (err) { toast(err.message, 'error'); }
@@ -648,9 +675,21 @@ async function renderTasks(wrapper) {
             ${(canManage || (t.target_group === myGroup)) ? `
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
               ${['todo', 'in_progress', 'review', 'done'].map(s => {
+                const isMyTask = (t.target_group === myGroup || state.user?.role === 'admin');
                 const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
-                const canChangeToThis = (s === 'todo' || s === 'in_progress' || isSuper);
-                return `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" ${!canChangeToThis ? 'disabled title="Solo Superintendencia"' : ''} onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`;
+                
+                let canChange = false;
+                if (s === 'todo' || s === 'in_progress') {
+                    // Moving TO todo/in_progress from review requires Super
+                    if (t.status === 'review') canChange = isSuper;
+                    else canChange = isMyTask;
+                } else if (s === 'review') {
+                    canChange = isMyTask;
+                } else if (s === 'done') {
+                    canChange = isSuper;
+                }
+
+                return `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" ${!canChange ? 'disabled title="Permisos insuficientes"' : ''} onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`;
               }).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}"target="_blank"style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
