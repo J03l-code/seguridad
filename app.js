@@ -895,12 +895,14 @@ async function renderDepartments(wrapper) {
          subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true, true) + subBoxes;
       }
 
+      const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
+
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
           <div class="org-lines"></div>
           <div class="org-level-2-wrapper"style="margin-top:-20px; width:100%">
-             <div class="org-horizontal-line"style="width: 80%; left: 10%"></div>
+             ${numChildren > 1 ? `<div class="org-horizontal-line"style="width: 80%; left: 10%"></div>` : ''}
              <div class="org-level-2"style="gap:20px; align-items:flex-start">
                  ${subBoxes}
              </div>
@@ -2713,10 +2715,12 @@ window.exportOrgChart = async (conf) => {
 
                 // ─── CENTERED HEADER CON LOGO ───
                 const header = clonedDoc.createElement('div');
-                header.style.cssText = `position:absolute; top:-${padY - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; font-family:'Inter',sans-serif;`;
+                // Colocar el header inmediatamente encima del organigrama (top: -headerH) en vez de en el borde superior del canvas
+                header.style.cssText = `position:absolute; top:-${headerH - 20}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif;`;
+                const logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
                 header.innerHTML = `
                     <div style="position:absolute; left:40px; top:0; width:100px; height:100px;">
-                        <img src="logo.png" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'" alt="Logo">
+                        <img src="${logoUrl}" style="width:100%; height:100%; object-fit:contain;" onerror="this.style.display='none'" alt="Logo">
                     </div>
                     <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del Departamento de Seguridad</h1>
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
@@ -2728,7 +2732,8 @@ window.exportOrgChart = async (conf) => {
                 // ─── CENTERED FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                footer.style.cssText = `position:absolute; bottom:-${(canvasH - contentH) / 2 + footerH - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
+                // Colocar el footer inmediatamente debajo del organigrama (bottom: -footerH)
+                footer.style.cssText = `position:absolute; bottom:-${footerH - 10}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
                 footer.innerHTML = `ICCP — Fecha de actualización: ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
