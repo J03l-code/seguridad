@@ -994,14 +994,14 @@ async function renderDepartments(wrapper) {
         </div>
         <div class="org-card-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
             <div class="org-card-inner" style="min-width:800px; padding:0;">
-            <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px;">
-                <div class="org-level">
+            <div id="org-tree-view" class="org-chart-container" style="display:${state.orgViewMode === 'tree' ? 'flex' : 'none'}; padding:20px; flex-direction:column; align-items:center;">
+                <div style="position:relative; width:100%; display:flex; justify-content:center;">
                     ${renderOrgNode('Superintendencia', 'superintendencia', groups.superintendencia)}
+                    <div style="position:absolute; bottom:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>
                 </div>
-                <div class="org-lines"></div>
-                <div class="org-level-2-wrapper">
-                    <div class="org-horizontal-line"></div>
-                    <div class="org-level-2"style="align-items:flex-start">
+                <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; position:relative;">
+                    <div class="org-horizontal-line" style="position:absolute; top:0; left:50%; transform:translateX(-50%); height:2px; background:#94a3b8; width:calc(100% - 260px); z-index:0;"></div>
+                    <div class="org-level-2" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
                         ${renderTree('soporte_oficina', 'Soporte de Oficina', null, false)}
                         ${renderTree('actividades', 'Actividades', null, false)}
                         ${renderTree('emergencias', 'Emergencias', null, false)}
