@@ -2591,7 +2591,21 @@ window.exportOrgChart = async (conf) => {
     // Fetch logo as base64 to bypass html2canvas CORS/local file issues
     let logoDataUrl = '';
     try {
-        const logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
+        let logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
+        
+        // Use the Office Support avatar as the logo if available in the DOM
+        const allNames = Array.from(target.querySelectorAll('.org-member .name'));
+        const officeSupportNode = allNames.find(n => n.innerText.toLowerCase().includes('office support'));
+        if (officeSupportNode) {
+            const memberCard = officeSupportNode.closest('.org-member');
+            if (memberCard) {
+                const imgEl = memberCard.querySelector('img');
+                if (imgEl && imgEl.src && !imgEl.src.includes('default')) {
+                    logoUrl = imgEl.src;
+                }
+            }
+        }
+
         const response = await fetch(logoUrl);
         if (response.ok) {
             const blob = await response.blob();
