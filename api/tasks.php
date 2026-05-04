@@ -285,7 +285,7 @@ function updateTask($id, $auth)
         if ($newStatus === 'done' && !$isSuper) {
             jsonResponse(['error' => 'Estrictamente solo los miembros de Superintendencia pueden completar tareas.'], 403);
         }
-        if ($newStatus === 'in_progress' && $old['status'] === 'review' && !$isSuper) {
+        if (($newStatus === 'in_progress' || $newStatus === 'todo') && $old['status'] === 'review' && !$isSuper) {
             jsonResponse(['error' => 'Estrictamente solo los miembros de Superintendencia pueden devolver tareas.'], 403);
         }
     }
@@ -295,6 +295,8 @@ function updateTask($id, $auth)
         $allowed = [];
         if (isset($data['status']))
             $allowed['status'] = $data['status'];
+        if (isset($data['comment']))
+            $allowed['comment'] = $data['comment'];
         $data = $allowed;
         if (empty($data))
             jsonResponse(['error' => 'Solo puedes cambiar el estado de la tarea de tu departamento.'], 403);
