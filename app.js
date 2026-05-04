@@ -2644,7 +2644,7 @@ window.exportOrgChart = async (conf) => {
                     n.style.width = nodeWidth + 'px';
                     n.style.maxWidth = nodeWidth + 'px';
                     n.style.flexShrink = '0';
-                    n.style.overflow = 'hidden';
+                    n.style.overflow = 'visible'; // ALLOW CONNECTORS TO SHOW OUTSIDE
                 });
 
                 // Correct horizontal lines width to match the new scaled node width
