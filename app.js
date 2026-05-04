@@ -812,7 +812,6 @@ async function renderDepartments(wrapper) {
         const isVol = effectiveHierarchy === 'voluntario_clave';
 
         let roleText = effectiveHierarchy.replace('_', ' ').toUpperCase();
-        if (u.role === 'admin' && !hMap[key]) roleText = 'ADMIN';
 
         if (u.job_title) roleText += ` (${u.job_title})`;
 
