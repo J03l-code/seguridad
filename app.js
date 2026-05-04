@@ -900,10 +900,10 @@ async function renderDepartments(wrapper) {
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
-          <div class="org-lines"></div>
-          <div class="org-level-2-wrapper"style="margin-top:-20px; width:100%">
-             ${numChildren > 1 ? `<div class="org-horizontal-line"style="width: 80%; left: 10%"></div>` : ''}
-             <div class="org-level-2"style="gap:20px; align-items:flex-start">
+          <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; position:relative;">
+             <div style="position:absolute; top:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>
+             ${numChildren > 1 ? `<div class="org-horizontal-line" style="position:absolute; top:0; left:50%; transform:translateX(-50%); height:2px; background:#94a3b8; width:calc(100% - 260px); z-index:0;"></div>` : ''}
+             <div class="org-level-2" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
                  ${subBoxes}
              </div>
           </div>
