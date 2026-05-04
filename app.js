@@ -1845,8 +1845,23 @@ async function renderCalendar(wrapper) {
     };
 
     window.showEventDetails = function (id) {
-      const e = window._calEventsObj.find(x => x.id == id);
-      if (!e) return;
+      console.log('showEventDetails called with id:', id, 'type:', typeof id);
+      console.log('_calEventsObj ids:', window._calEventsObj.map(x => x.id));
+      // Try exact match first, then loose match, then base ID match
+      let e = window._calEventsObj.find(x => x.id == id);
+      if (!e) {
+        // Try matching by string comparison
+        e = window._calEventsObj.find(x => String(x.id) === String(id));
+      }
+      if (!e) {
+        // Try matching base ID (for recurring events)
+        const baseId = String(id).split('_')[0];
+        e = window._calEventsObj.find(x => String(x.id).split('_')[0] === baseId);
+      }
+      if (!e) {
+        toast('No se encontró el evento (ID: ' + id + '). Intenta recargar la página.', 'error');
+        return;
+      }
       const canDelete = isAdmin || e.created_by == state.user.id;
 
       showModal(`
@@ -1865,7 +1880,7 @@ async function renderCalendar(wrapper) {
         </div>
             <div class="modal-footer"style="display:flex; justify-content:space-between">
                 <div style="display:flex;gap:8px">
-                    ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${e.id.toString().split('_')[0]}')">🗑 Eliminar</button>` : '<div></div>'}
+                    ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${String(e.id).split('_')[0]}')">🗑 Eliminar</button>` : '<div></div>'}
                     ${canDelete ? `<button class="btn btn-outline"onclick="openEditEvent('${e.id}')">✏️ Editar</button>` : ''}
                 </div>
                 <button type="button"class="btn btn-primary"onclick="closeModal()">Cerrar</button>
