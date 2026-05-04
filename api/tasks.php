@@ -18,6 +18,11 @@ try {
     }
 }
 
+// Auto-migrate status enum to include 'review'
+try {
+    $pdo->exec("ALTER TABLE tasks MODIFY status ENUM('todo', 'in_progress', 'review', 'done') DEFAULT 'todo'");
+} catch (Exception $ex) {}
+
 switch ($action) {
     case 'list':
         listTasks();

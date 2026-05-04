@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
     description TEXT DEFAULT NULL,
-    status ENUM('todo', 'in_progress', 'done') DEFAULT 'todo',
+    status ENUM('todo', 'in_progress', 'review', 'done') DEFAULT 'todo',
     priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
     department_id INT NOT NULL,
     created_by INT NOT NULL,
