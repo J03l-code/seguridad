@@ -2582,7 +2582,6 @@ window.exportOrgChart = async (conf) => {
         }
         if (!conf.volunteers) {
             target.querySelectorAll('.org-member').forEach(e => {
-                 // Check if it's a volunteer (using the success color border logic)
                  if(e.style.borderLeft.includes('success')) { e.style.display = 'none'; }
             });
         }
@@ -2591,61 +2590,140 @@ window.exportOrgChart = async (conf) => {
     const tWidth = target.scrollWidth;
     const tHeight = target.scrollHeight;
     
+    // Calculate print dimensions (Letter: 2550x3300 at 300dpi, A4: 2480x3508)
+    // We want landscape for org chart: wider than tall
+    const printWidth = Math.max(tWidth + 200, 3300); // At least letter landscape width
+    const printHeight = tHeight + 350; // Extra for header + footer
+    
     // Hard lock dimensions to avoid jumps
     target.style.width = tWidth + 'px';
     target.style.overflow = 'visible';
 
+    // Detect if it's a minimal export (photos + names only)
+    const isMinimalMode = conf && !conf.contacts;
+
     try {
-        toast('Generando reporte corporativo, por favor espera...');
+        toast('Generando reporte de alta calidad para impresión...');
         const canvas = await html2canvas(target, {
-            scale: 2, // High resolution
+            scale: 3, // Ultra high resolution for print
             useCORS: true,
-            backgroundColor: '#ffffff', // Clean white
-            width: tWidth + 120, // Add padding margin bounds
-            height: tHeight + 250, // Add header and footer bounds
-            windowWidth: tWidth + 120,
-            x: -60, // Shift x-axis back to center the node inside the new padded canvas
-            y: -140, // Shift y-axis down significantly so the header fits above
+            backgroundColor: '#ffffff',
+            width: printWidth,
+            height: printHeight,
+            windowWidth: printWidth,
+            x: -(printWidth - tWidth) / 2,
+            y: -180,
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
-                // Hide interactive UI elements safely
+                // Hide interactive UI elements (+ icons)
                 clonedTarget.querySelectorAll('h3 span').forEach(el => el.style.display = 'none');
                 
-                // Eliminate the top padding completely to force the header upwards
+                // Reset padding/background
                 clonedTarget.style.padding = '0';
                 clonedTarget.style.background = 'transparent';
-                
-                // Enhance nodes specifically for print
+
+                // ─── SCALE UP ALL ORG NODES FOR PRINT ───
                 clonedTarget.querySelectorAll('.org-node').forEach(n => {
-                    n.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)';
-                    n.style.border = '1px solid #e2e8f0';
+                    n.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                    n.style.border = '2px solid #e2e8f0';
+                    n.style.borderRadius = '12px';
+                    n.style.minWidth = isMinimalMode ? '280px' : '300px';
+                });
+
+                // ─── SCALE UP DEPARTMENT HEADERS ───
+                clonedTarget.querySelectorAll('.org-node h3').forEach(h => {
+                    h.style.fontSize = '16px';
+                    h.style.padding = '14px 16px';
+                    h.style.letterSpacing = '0.5px';
                 });
                 
-                // Create a beautiful header injected directly into the body OUTSIDE the tree so it spans across
+                // ─── SCALE UP MEMBER CARDS ───
+                clonedTarget.querySelectorAll('.org-member').forEach(m => {
+                    m.style.padding = isMinimalMode ? '12px' : '10px 12px';
+                    m.style.gap = '14px';
+                    m.style.borderRadius = '8px';
+                    m.style.border = '1px solid #e2e8f0';
+                });
+
+                // ─── SCALE UP AVATARS FOR PRINT ───
+                const avatarSize = isMinimalMode ? '90px' : '72px';
+                clonedTarget.querySelectorAll('.avatar:not(.topbar-avatar)').forEach(a => {
+                    if (a.style.display === 'none') return;
+                    a.style.width = avatarSize;
+                    a.style.height = avatarSize;
+                    a.style.minWidth = avatarSize;
+                    a.style.fontSize = isMinimalMode ? '22px' : '18px';
+                    a.style.border = '3px solid #e2e8f0';
+                    const img = a.querySelector('img');
+                    if (img) {
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                    }
+                });
+
+                // ─── SCALE UP NAMES ───
+                clonedTarget.querySelectorAll('.org-member .name').forEach(n => {
+                    n.style.fontSize = isMinimalMode ? '15px' : '14px';
+                    n.style.fontWeight = '700';
+                    n.style.lineHeight = '1.3';
+                });
+                
+                // ─── SCALE UP ROLES ───
+                clonedTarget.querySelectorAll('.org-member .role').forEach(r => {
+                    r.style.fontSize = isMinimalMode ? '12px' : '11px';
+                    r.style.fontWeight = '600';
+                    r.style.marginTop = '3px';
+                });
+
+                // ─── SCALE UP CONTACT INFO ───
+                clonedTarget.querySelectorAll('.org-contact-info').forEach(c => {
+                    if (c.style.display === 'none') return;
+                    c.style.fontSize = '11px';
+                    c.style.marginTop = '4px';
+                });
+
+                // ─── SCALE UP ORG MEMBERS CONTAINER SPACING ───
+                clonedTarget.querySelectorAll('.org-members').forEach(m => {
+                    m.style.padding = '14px';
+                    m.style.gap = '10px';
+                });
+
+                // ─── SCALE UP CONNECTION LINES ───
+                clonedTarget.querySelectorAll('.org-lines').forEach(l => {
+                    l.style.width = '3px';
+                    l.style.height = '35px';
+                });
+
+                clonedTarget.querySelectorAll('.org-horizontal-line').forEach(l => {
+                    l.style.height = '3px';
+                });
+
+                // ─── HEADER ───
                 const header = clonedDoc.createElement('div');
                 header.style.position = 'absolute';
-                header.style.top = '-110px';
+                header.style.top = '-150px';
                 header.style.left = '0';
                 header.style.width = tWidth + 'px';
                 header.style.textAlign = 'center';
                 header.style.fontFamily = "'Inter', sans-serif";
                 header.innerHTML = `
-                    <h1 style="font-size:42px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
-                    <div style="width:70px; height:5px; background:#3b82f6; margin:25px auto 0; border-radius:3px;"></div>
+                    <h1 style="font-size:48px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
+                    <div style="width:80px; height:5px; background:linear-gradient(90deg, #3b82f6, #6366f1); margin:20px auto 0; border-radius:3px;"></div>
+                    <p style="font-size:14px; color:#94a3b8; margin-top:12px; font-weight:500;">Departamento de Seguridad HC3</p>
                 `;
                 clonedTarget.style.position = 'relative';
                 clonedTarget.appendChild(header);
                 
-                // Create an elegant footer
+                // ─── FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 footer.style.position = 'absolute';
-                footer.style.bottom = '-80px';
+                footer.style.bottom = '-100px';
                 footer.style.left = '0';
                 footer.style.width = tWidth + 'px';
                 footer.style.textAlign = 'center';
-                footer.style.borderTop = '1px solid #e2e8f0';
+                footer.style.borderTop = '2px solid #e2e8f0';
                 footer.style.paddingTop = '20px';
                 footer.style.color = '#94a3b8';
                 footer.style.fontSize = '14px';
@@ -2660,7 +2738,7 @@ window.exportOrgChart = async (conf) => {
         link.download = `Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        toast('Imagen exportada exitosamente');
+        toast('Imagen de alta calidad exportada exitosamente');
     } catch (err) {
         toast('Error al exportar la imagen', 'error');
         console.error(err);
