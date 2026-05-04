@@ -1025,7 +1025,9 @@ textarea.form-input {
 }
 
 .calendar-event-chip.target-todos {
-    background: var(--gray-700);
+    background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+    box-shadow: 0 1px 4px rgba(99, 102, 241, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .calendar-task-dot {
@@ -1058,7 +1060,7 @@ textarea.form-input {
 }
 
 .calendar-task-dot.target-todos {
-    background: var(--gray-700);
+    background: linear-gradient(135deg, #6366f1, #ec4899);
 }
 
 .calendar-top-controls {

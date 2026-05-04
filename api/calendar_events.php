@@ -125,7 +125,7 @@ function createEvent($auth)
         try {
             require_once 'google_calendar_helper.php';
             // Map group to Google Calendar color ID
-            $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
+            $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10, 'todos' => 9];
             $googleColorId = $colorMap[$targetGroupStr] ?? 5;
             // Extract just the date part (eventDate may contain time after space)
             $datePart = explode(' ', $eventDate)[0];
@@ -225,7 +225,7 @@ function updateEvent($auth)
 
     // Re-push to Google Calendar globally
     try {
-        $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10];
+        $colorMap = ['emergencias' => 11, 'actividades' => 7, 'otros_eventos' => 5, 'soporte_oficina' => 3, 'superintendencia' => 10, 'todos' => 9];
         $googleColorId = $colorMap[$targetGroupStr] ?? 5;
         $datePart = explode(' ', $eventDate)[0];
         $start = $datePart . 'T00:00:00';

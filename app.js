@@ -136,7 +136,7 @@ function isOverdue(d) { return d && new Date(d) < new Date(); }
 const priorityLabel = { low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
 const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', done: 'Completada' };
 const activityIcon = { task_created: '📋', status_changed: '🔄', assigned: '👤', file_uploaded: '📎', calendar_synced: '📅', department_created: '🏢' };
-const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia' };
+const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia', todos: 'Todos los Departamentos' };
 
 // ==========================================
 // Router
@@ -585,7 +585,7 @@ async function renderTasks(wrapper) {
     wrapper.innerHTML = `
       <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary"onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
       <div class="filters-bar">
-        <select class="form-select"id="filter-dept"onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select>
+        <select class="form-select"id="filter-dept"onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option><option value="todos">🌐 Todos los Departamentos</option></select>
         <select class="form-select"id="filter-priority"onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>
       </div>
       <div id="kanban-container">${buildBoard(tasks)}</div>
@@ -717,7 +717,7 @@ async function renderTasks(wrapper) {
             <div class="form-group"><label class="form-label">Título *</label><input class="form-input"id="ct-title"placeholder="Nombre de la tarea"required></div>
             <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="ct-desc"placeholder="Describe la tarea..."></textarea></div>
             <div class="grid-2">
-              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select"id="ct-target_group"required><option value="">Seleccionar...</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option></select></div>
+              <div class="form-group"><label class="form-label">Departamento *</label><select class="form-select"id="ct-target_group"required><option value="">Seleccionar...</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option><option value="todos">🌐 Todos los Departamentos</option></select></div>
               <div class="form-group"><label class="form-label">Prioridad</label><select class="form-select"id="ct-pri"><option value="low">Baja</option><option value="medium"selected>Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></div>
             </div>
             <div class="grid-2">
@@ -1282,7 +1282,7 @@ async function renderUsers(wrapper) {
       let hMap = {};
       try { hMap = JSON.parse(hierarchyMapStr || '{}'); } catch (e) { }
       const userGroups = (userGroup || 'otros_eventos').split(',').map(g => g.trim());
-      const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte de Oficina', superintendencia: 'Superintendencia' };
+      const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte de Oficina', superintendencia: 'Superintendencia', todos: 'Todos los Departamentos' };
 
       const perGroupHTML = userGroups.map(g => {
         const effectiveH = hMap[g] || currentHierarchy || 'auxiliar';
@@ -1901,6 +1901,7 @@ async function renderCalendar(wrapper) {
             <option value="otros_eventos"${e.target_group === 'otros_eventos' ? 'selected' : ''}>🟢 Otros Eventos</option>
             <option value="soporte_oficina"${e.target_group === 'soporte_oficina' ? 'selected' : ''}>🔵 Soporte de Oficina</option>
             <option value="superintendencia"${e.target_group === 'superintendencia' ? 'selected' : ''}>🟣 Superintendencia</option>
+            <option value="todos"${e.target_group === 'todos' ? 'selected' : ''}>🌐 Todos los Departamentos</option>
           </select>
         </div> ` : '';
 
@@ -1985,6 +1986,7 @@ async function renderCalendar(wrapper) {
             <option value="otros_eventos"selected>🟢 Otros Eventos</option>
             <option value="soporte_oficina">🔵 Soporte de Oficina</option>
             <option value="superintendencia">🟣 Superintendencia</option>
+            <option value="todos">🌐 Todos los Departamentos</option>
           </select>
         </div> ` : '';
 
