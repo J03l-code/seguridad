@@ -819,11 +819,12 @@ async function renderDepartments(wrapper) {
         const hoverCursor = isAdmin ? 'cursor:pointer; transition: transform 0.2s;' : '';
         const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
         const avatarSrc = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null);
+        const avatarClick = avatarSrc ? `onclick="event.stopPropagation(); openPhotoLightbox('${avatarSrc.replace(/'/g, "\\'")}', '${u.name.replace(/'/g, "\\'")}')"` : '';
         const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
           <div class="org-member org-interactive-card" data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
-              <div class="avatar"style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
+              <div class="avatar" ${avatarClick} style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                       <span class="name"style="${isJefe ? 'font-weight:700;color:var(--primary-900)' : isVol ? 'font-weight:600;color:var(--success-900)' : ''}; margin-bottom:2px;">
@@ -2784,6 +2785,36 @@ window.filterByMeetingDay = (day) => {
             card.style.outline = '';
         }
     });
+};
+
+// ==========================================
+// Photo Lightbox
+// ==========================================
+window.openPhotoLightbox = function (src, name) {
+  // Close any existing lightbox
+  const existing = document.querySelector('.photo-lightbox');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'photo-lightbox';
+  overlay.innerHTML = `
+    <div class="lightbox-close" onclick="event.stopPropagation(); this.parentElement.remove();">✕</div>
+    <img src="${src}" alt="${name || ''}">
+    ${name ? `<div class="lightbox-name">${name}</div>` : ''}
+  `;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+
+  // Close on Escape key
+  const handler = (e) => {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', handler);
+    }
+  };
+  document.addEventListener('keydown', handler);
 };
 
 // ==========================================
