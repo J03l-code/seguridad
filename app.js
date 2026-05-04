@@ -2729,8 +2729,7 @@ window.exportOrgChart = async (conf) => {
                 header.innerHTML = `
                     ${logoHtml}
                     <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">Organigrama del Departamento de Seguridad</h1>
-                    <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:12px auto; border-radius:3px;"></div>
-                    <p style="font-size:18px; color:#000000; margin:0; font-weight:700; text-transform: capitalize;">Fecha de actualización: ${dateStr}</p>
+                    <p style="font-size:18px; color:#000000; margin-top:12px; font-weight:700;">Fecha de actualización: ${dateStr}</p>
                 `;
                 clonedTarget.appendChild(header);
                 
