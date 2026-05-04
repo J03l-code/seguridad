@@ -901,11 +901,13 @@ async function renderDepartments(wrapper) {
         <div style="display:flex; flex-direction:column; align-items:center;">
           <div style="position:relative; width:100%; display:flex; justify-content:center;">
              ${html}
-             <div style="position:absolute; bottom:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>
+             ${numChildren === 1 
+                 ? `<div style="position:absolute; bottom:-60px; left:calc(50% - 1px); width:2px; height:60px; background:#94a3b8; z-index:0;"></div>` 
+                 : `<div style="position:absolute; bottom:-30px; left:calc(50% - 1px); width:2px; height:30px; background:#94a3b8; z-index:0;"></div>`}
           </div>
           <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; position:relative;">
              ${numChildren > 1 ? `<div class="org-horizontal-line" style="position:absolute; top:0; left:50%; transform:translateX(-50%); height:2px; background:#94a3b8; width:calc(100% - 260px); z-index:0;"></div>` : ''}
-             <div class="org-level-2" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
+             <div class="org-level-2 ${numChildren === 1 ? 'single-child' : ''}" style="gap:20px; align-items:flex-start; position:relative; padding-top:30px;">
                  ${subBoxes}
              </div>
           </div>
