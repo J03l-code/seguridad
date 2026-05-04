@@ -1113,6 +1113,7 @@ textarea.form-input {
     width: 260px;
     box-shadow: var(--shadow-md);
     position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
 }
