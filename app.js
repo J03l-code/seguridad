@@ -2590,19 +2590,40 @@ window.exportOrgChart = async (conf) => {
     const tWidth = target.scrollWidth;
     const tHeight = target.scrollHeight;
     
-    // Canvas = content + tight padding. NO forced minimum width.
-    const padX = 50;
-    const headerH = 140;
-    const footerH = 80;
-    const canvasW = tWidth + (padX * 2);
-    const canvasH = tHeight + headerH + footerH;
+    // Detect if it's a minimal export (photos + names only)
+    const isMinimalMode = conf && !conf.contacts;
+
+    // Smart page-ratio canvas: match content to a standard page aspect ratio
+    // so when printed, it fills the entire page
+    const headerH = 120;
+    const footerH = 60;
+    const contentW = tWidth;
+    const contentH = tHeight + headerH + footerH;
+    
+    // Page aspect ratios: Letter landscape = 11/8.5 ≈ 1.294, Portrait = 8.5/11 ≈ 0.773
+    // A4 landscape = 297/210 ≈ 1.414, Portrait = 210/297 ≈ 0.707
+    const contentRatio = contentW / contentH;
+    const useLandscape = contentRatio > 1; // org charts are usually wider than tall
+    const pageRatio = useLandscape ? (11 / 8.5) : (8.5 / 11);
+    
+    let canvasW, canvasH;
+    if (contentRatio > pageRatio) {
+        // Content is wider than page ratio → fit width, expand height
+        canvasW = contentW + 80;
+        canvasH = Math.round(canvasW / pageRatio);
+    } else {
+        // Content is taller than page ratio → fit height, expand width
+        canvasH = contentH + 40;
+        canvasW = Math.round(canvasH * pageRatio);
+    }
+    
+    // Center content within canvas
+    const padX = Math.round((canvasW - contentW) / 2);
+    const padY = Math.round((canvasH - contentH) / 2) + headerH;
     
     // Hard lock dimensions to avoid jumps
     target.style.width = tWidth + 'px';
     target.style.overflow = 'visible';
-
-    // Detect if it's a minimal export (photos + names only)
-    const isMinimalMode = conf && !conf.contacts;
 
     try {
         toast('Generando imagen para impresión...');
@@ -2614,7 +2635,7 @@ window.exportOrgChart = async (conf) => {
             height: canvasH,
             windowWidth: canvasW,
             x: -padX,
-            y: -headerH,
+            y: -padY,
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
@@ -2703,7 +2724,7 @@ window.exportOrgChart = async (conf) => {
 
                 // ─── HEADER ───
                 const header = clonedDoc.createElement('div');
-                header.style.cssText = `position:absolute; top:-${headerH - 10}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif;`;
+                header.style.cssText = `position:absolute; top:-${padY - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; font-family:'Inter',sans-serif;`;
                 header.innerHTML = `
                     <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del departamento</h1>
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
@@ -2715,7 +2736,7 @@ window.exportOrgChart = async (conf) => {
                 // ─── FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                footer.style.cssText = `position:absolute; bottom:-${footerH - 10}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
+                footer.style.cssText = `position:absolute; bottom:-${(canvasH - contentH) / 2 + footerH - 20}px; left:-${padX}px; width:${canvasW}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
                 footer.innerHTML = `ICCP — Generado el ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
