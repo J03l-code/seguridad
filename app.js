@@ -2605,22 +2605,8 @@ window.exportOrgChart = async (conf) => {
         console.error('No se pudo cargar el logo', e);
     }
 
-    const tWidth = target.scrollWidth;
-    const tHeight = target.scrollHeight;
-    
     // Detect if it's a minimal export (photos + names only)
     const isMinimalMode = conf && !conf.contacts;
-
-    // Tight fit canvas without aspect ratio padding
-    const padX = 40;
-    const headerH = 140; // Space above chart
-    const footerH = 80;  // Space below chart
-    const canvasW = tWidth + (padX * 2);
-    const canvasH = tHeight + headerH + footerH;
-    
-    // Hard lock dimensions to avoid jumps
-    target.style.width = tWidth + 'px';
-    target.style.overflow = 'visible';
 
     try {
         toast('Generando imagen para impresión...');
@@ -2628,27 +2614,27 @@ window.exportOrgChart = async (conf) => {
             scale: 2,
             useCORS: true,
             backgroundColor: '#ffffff',
-            width: canvasW,
-            height: canvasH,
-            windowWidth: canvasW,
-            x: -padX,
-            y: -headerH,
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
                 // Hide interactive UI elements (+ icons)
                 clonedTarget.querySelectorAll('h3 span').forEach(el => el.style.display = 'none');
                 
-                // Reset padding/background
-                clonedTarget.style.padding = '0';
-                clonedTarget.style.background = 'transparent';
+                // Ensure position relative so absolute headers stick to it
+                clonedTarget.style.position = 'relative';
 
                 // ─── SCALE UP ALL ORG NODES FOR PRINT ───
+                const nodeWidth = isMinimalMode ? 280 : 300;
                 clonedTarget.querySelectorAll('.org-node').forEach(n => {
                     n.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
                     n.style.border = '2px solid #e2e8f0';
                     n.style.borderRadius = '12px';
-                    n.style.minWidth = isMinimalMode ? '280px' : '300px';
+                    n.style.minWidth = nodeWidth + 'px';
+                });
+
+                // Correct horizontal lines width to match the new scaled node width
+                clonedTarget.querySelectorAll('.org-horizontal-line').forEach(l => {
+                    l.style.width = `calc(100% - ${nodeWidth}px)`;
                 });
 
                 // ─── SCALE UP DEPARTMENT HEADERS ───
@@ -2709,12 +2695,20 @@ window.exportOrgChart = async (conf) => {
                     m.style.gap = '10px';
                 });
 
+                // Expand padding to make room for header and footer physically within the capture bounds
+                clonedTarget.style.paddingTop = '180px';
+                clonedTarget.style.paddingBottom = '100px';
+                // Add some side padding so nodes don't touch the image edges
+                clonedTarget.style.paddingLeft = '60px';
+                clonedTarget.style.paddingRight = '60px';
+                clonedTarget.style.background = '#ffffff';
+
                 // ─── CENTERED HEADER CON LOGO ───
                 const header = clonedDoc.createElement('div');
-                // Colocar el header inmediatamente encima del organigrama (top: -headerH)
-                header.style.cssText = `position:absolute; top:-${headerH}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif; height:${headerH}px; display:flex; flex-direction:column; justify-content:center; align-items:center;`;
+                // Colocar el header dentro del padding top
+                header.style.cssText = `position:absolute; top:40px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
                 
-                const logoHtml = logoDataUrl ? `<div style="position:absolute; left:40px; top:20px; width:100px; height:100px;"><img src="${logoDataUrl}" style="width:100%; height:100%; object-fit:contain;"></div>` : '';
+                const logoHtml = logoDataUrl ? `<div style="position:absolute; left:60px; top:0; width:100px; height:100px;"><img src="${logoDataUrl}" style="width:100%; height:100%; object-fit:contain;"></div>` : '';
                 
                 header.innerHTML = `
                     ${logoHtml}
@@ -2722,14 +2716,13 @@ window.exportOrgChart = async (conf) => {
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:12px auto; border-radius:3px;"></div>
                     <p style="font-size:14px; color:#94a3b8; margin:0; font-weight:500;">Departamento de Seguridad HC3</p>
                 `;
-                clonedTarget.style.position = 'relative';
                 clonedTarget.appendChild(header);
                 
                 // ─── CENTERED FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                // Colocar el footer inmediatamente debajo del organigrama (bottom: -footerH)
-                footer.style.cssText = `position:absolute; bottom:-${footerH}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:20px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
+                // Colocar el footer dentro del padding bottom
+                footer.style.cssText = `position:absolute; bottom:20px; left:60px; right:60px; text-align:center; border-top:2px solid #e2e8f0; padding-top:20px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
                 footer.innerHTML = `ICCP — Fecha de actualización: ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
