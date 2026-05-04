@@ -713,24 +713,20 @@ textarea.form-input {
 
 /* Kanban */
 .kanban-board {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 20px;
-    min-height: 600px;
-    overflow-x: auto;
-    padding-bottom: 20px;
-    align-items: flex-start;
+    min-height: 500px
 }
 
 .kanban-column {
     background: var(--gray-100);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--gray-200);
     display: flex;
     flex-direction: column;
-    min-width: 320px;
-    max-width: 320px;
-    flex-shrink: 0;
-    min-height: 500px;
+    min-height: 400px;
+    min-width: 0;
 }
 
 .kanban-header {

@@ -571,6 +571,9 @@ async function renderTasks(wrapper) {
                     <div class="task-card-meta">
                       ${t.due_date ? `<span class="${isOverdue(t.due_date) && t.status !== 'done' ? 'task-due-overdue' : ''}">📅 ${formatDate(t.due_date)}</span>` : ''}
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
+                      ${t.target_group ? `<span class="dept-tag"style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
+                    </div>
+                  </div>
                   ${(() => {
                     const isMyTask = (t.target_group === myGroup || state.user?.role === 'admin');
                     const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
