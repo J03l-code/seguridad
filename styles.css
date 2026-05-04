@@ -714,7 +714,7 @@ textarea.form-input {
 /* Kanban */
 .kanban-board {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 20px;
     min-height: 500px
 }
@@ -758,6 +758,10 @@ textarea.form-input {
 
 .kanban-dot.in-progress {
     background: var(--info-500)
+}
+
+.kanban-dot.review {
+    background: var(--warning-500)
 }
 
 .kanban-dot.done {

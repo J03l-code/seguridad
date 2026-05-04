@@ -258,13 +258,28 @@ function updateTask($id, $auth)
 
     $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
-    $uGroup = $uStmt->fetchColumn() ?? '';
-    $canManageTasks = ($auth['role'] === 'admin'); // user requested: "tambien permite que todo usuario que tenga el permiso de admin pueda crear una tarea" - let's keep only admin as super bypass, or if they are in the exact target group
+    $uGroupStr = $uStmt->fetchColumn() ?? '';
+    $uGroups = array_map('trim', explode(',', $uGroupStr));
+    $isSuper = in_array('superintendencia', $uGroups);
+    $canManageTasks = ($auth['role'] === 'admin');
 
-    $isInDept = ($old['target_group'] === $uGroup);
+    $isInDept = false;
+    foreach ($uGroups as $g) {
+        if ($old['target_group'] === $g) {
+            $isInDept = true;
+            break;
+        }
+    }
 
     if (!$canManageTasks && !$isInDept) {
         jsonResponse(['error' => 'No tienes permisos sobre esta tarea del organigrama.'], 403);
+    }
+
+    if (isset($data['status'])) {
+        $newStatus = $data['status'];
+        if (($newStatus === 'review' || $newStatus === 'done') && !$isSuper && !$canManageTasks) {
+            jsonResponse(['error' => 'Solo miembros de Superintendencia pueden enviar a revisión o completar tareas.'], 403);
+        }
     }
 
     if (!$canManageTasks && $isInDept) {

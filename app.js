@@ -134,7 +134,7 @@ function timeAgo(d) {
 function isOverdue(d) { return d && new Date(d) < new Date(); }
 
 const priorityLabel = { low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
-const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', done: 'Completada' };
+const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', review: 'En revisión', done: 'Completada' };
 const activityIcon = { task_created: '📋', status_changed: '🔄', assigned: '👤', file_uploaded: '📎', calendar_synced: '📅', department_created: '🏢' };
 const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte Oficina', superintendencia: 'Superintendencia', todos: 'Todos los Departamentos' };
 
@@ -538,12 +538,16 @@ async function renderTasks(wrapper) {
     function buildBoard(filtered) {
       const todo = filtered.filter(t => t.status === 'todo');
       const inProg = filtered.filter(t => t.status === 'in_progress');
+      const inReview = filtered.filter(t => t.status === 'review');
       const done = filtered.filter(t => t.status === 'done');
 
+      const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
+
       const cols = [
-        { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar' },
-        { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'done', btnLabel: '✓ Completar' },
-        { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null }
+        { key: 'todo', title: 'Por Hacer', tasks: todo, next: 'in_progress', btnLabel: '▶ Iniciar', canMove: true },
+        { key: 'in-progress', title: 'En Progreso', tasks: inProg, next: 'review', btnLabel: '⟳ Revisar', canMove: isSuper },
+        { key: 'review', title: 'En Revisión', tasks: inReview, next: 'done', btnLabel: '✓ Completar', canMove: isSuper },
+        { key: 'done', title: 'Completadas', tasks: done, next: null, btnLabel: null, canMove: false }
       ];
 
       return `<div class="kanban-board">${cols.map(c => `
@@ -570,7 +574,7 @@ async function renderTasks(wrapper) {
                       ${t.target_group ? `<span class="dept-tag"style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
                     </div>
                   </div>
-                  ${c.next && (canManage || (t.target_group === myGroup)) ? `<div class="task-actions"><button class="btn btn-sm btn-outline"onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
+                  ${c.next && (canManage || (t.target_group === myGroup)) && c.canMove ? `<div class="task-actions"><button class="btn btn-sm btn-outline"onclick="event.stopPropagation();changeTaskStatus(${t.id},'${c.next}')">${c.btnLabel}</button></div>` : ''}
                 </div>
               `;
           }).join('')}
@@ -643,7 +647,11 @@ async function renderTasks(wrapper) {
             </div>
             ${(canManage || (t.target_group === myGroup)) ? `
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
-              ${['todo', 'in_progress', 'done'].map(s => `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}"onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`).join('')}
+              ${['todo', 'in_progress', 'review', 'done'].map(s => {
+                const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
+                const canChangeToThis = (s === 'todo' || s === 'in_progress' || isSuper);
+                return `<button class="btn btn-sm ${t.status === s ? 'btn-primary' : 'btn-outline'}" ${!canChangeToThis ? 'disabled title="Solo Superintendencia"' : ''} onclick="changeTaskStatusModal(${t.id},'${s}')">${statusLabel[s]}</button>`;
+              }).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}"target="_blank"style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
             ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar"style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text"style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800)">${a.details}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
@@ -1397,8 +1405,8 @@ async function renderMyTasks(wrapper) {
 
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     const priorityLabel = { high: '🔴 Alta', medium: '🟡 Media', low: '🟢 Baja' };
-    const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', done: 'Completada' };
-    const statusBadge = { todo: 'badge-outline', in_progress: 'badge-warning', done: 'badge-success' };
+    const statusLabel = { todo: 'Por hacer', in_progress: 'En progreso', review: 'En revisión', done: 'Completada' };
+    const statusBadge = { todo: 'badge-outline', in_progress: 'badge-warning', review: 'badge-warning', done: 'badge-success' };
 
     const sortedPending = [...pending].sort((a, b) => (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2));
 
