@@ -315,6 +315,11 @@ function updateTask($id, $auth)
     if (!empty($data['status']) && $data['status'] !== $old['status']) {
         $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
             ->execute([$id, $auth['id'], 'status_changed', "Estado: \"{$old['status']}\" → \"{$data['status']}\""]);
+            
+        if (!empty($data['comment'])) {
+            $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
+                ->execute([$id, $auth['id'], 'commented', $data['comment']]);
+        }
     }
 
     jsonResponse(['message' => 'Tarea actualizada.']);

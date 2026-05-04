@@ -635,11 +635,22 @@ async function renderTasks(wrapper) {
         const t = window._tasks.find(t => t.id == id);
         let comment = null;
         
+        // If moving to review, ask for SharePoint link
+        if (t && status === 'review') {
+            const spLink = prompt("Ingrese el enlace de SharePoint del entregable a revisar:");
+            if (spLink === null) return; // Cancelled
+            if (spLink.trim() !== '') {
+                comment = "📁 Documento de SharePoint listo para revisión:\n" + spLink.trim();
+            } else {
+                comment = "Enviado a revisión sin enlace de SharePoint.";
+            }
+        } 
         // If moving back from review to in_progress, ask for reason
-        if (t && t.status === 'review' && status === 'in_progress') {
-            comment = prompt("Explique los cambios necesarios para devolver la tarea a 'En Progreso':");
-            if (comment === null) return; // Cancelled
-            if (!comment.trim()) return toast("Debe proporcionar una razón para la corrección", "error");
+        else if (t && t.status === 'review' && status === 'in_progress') {
+            const reason = prompt("Explique los cambios necesarios para devolver la tarea a 'En Progreso':");
+            if (reason === null) return; // Cancelled
+            if (!reason.trim()) return toast("Debe proporcionar una razón para la corrección", "error");
+            comment = "❌ Correcciones requeridas:\n" + reason.trim();
         }
 
         await api(`tasks.php?action=update&id=${id}`, { 
@@ -696,7 +707,7 @@ async function renderTasks(wrapper) {
               }).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}"target="_blank"style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
-            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar"style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text"style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800)">${a.details}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
+            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar"style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text"style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800);white-space:pre-wrap;word-break:break-all">${a.details.replace(/(https?:\\/\\/[^\\s]+)/g, '<a href="$1" target="_blank" style="color:var(--primary-600);text-decoration:underline">$1</a>')}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
             
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-200)">
               <label class="form-label">Añadir Comentario</label>
