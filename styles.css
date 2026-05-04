@@ -1326,21 +1326,6 @@ textarea.form-input {
     align-items: flex-start;
 }
 
-.org-level-2 .org-node::before {
-    content: '';
-    position: absolute;
-    top: -30px;
-    left: 50%;
-    width: 2px;
-    height: 30px;
-    background: var(--gray-400);
-    transform: translateX(-50%);
-}
-
-.org-level-2.single-child > .org-node::before {
-    display: none !important;
-}
-
 /* Modal */
 .modal-overlay {
     position: fixed;

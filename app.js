@@ -847,6 +847,7 @@ async function renderDepartments(wrapper) {
 
       return `
         <div class="org-node ${nodeClass}"style="${inlineBox}">
+            ${isSub ? '<div class="org-connector-up" style="position:absolute; top:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>' : ''}
             <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}; ${textUsers.length > 0 ? 'padding-bottom:10px;' : ''}" ${onClickDept}>
                 <div style="font-weight:700;">${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</div>
                 ${textUsers.length > 0 ? `<div style="font-size:10px; font-weight:500; margin-top:4px; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px;">Asignado: ${textUsers[textUsers.length-1].name}</div>` : ''}
@@ -892,7 +893,12 @@ async function renderDepartments(wrapper) {
 
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
       if (bottomUsers.length > 0) {
-         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true, true) + subBoxes;
+         let nodeHtml = renderOrgNode(deptName, deptId, bottomUsers, color, true, true);
+         if (numChildren === 1) {
+            // Hide the redundant rising line because parent draws a 60px continuous line
+            nodeHtml = nodeHtml.replace('org-connector-up"', 'org-connector-up" style="display:none;"');
+         }
+         subBoxes = nodeHtml + subBoxes;
       }
 
       const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
@@ -2643,7 +2649,10 @@ window.exportOrgChart = async (conf) => {
                     n.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
                     n.style.border = '2px solid #e2e8f0';
                     n.style.borderRadius = '12px';
-                    n.style.minWidth = nodeWidth + 'px';
+                    n.style.width = nodeWidth + 'px';
+                    n.style.maxWidth = nodeWidth + 'px';
+                    n.style.flexShrink = '0';
+                    n.style.overflow = 'hidden';
                 });
 
                 // Correct horizontal lines width to match the new scaled node width
