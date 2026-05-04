@@ -1718,7 +1718,7 @@ async function renderCalendar(wrapper) {
       const eventsHTML = dayEvents.map(e => {
         const primaryGroup = e.target_group ? e.target_group.split(',')[0] : 'todos';
         return `
-            <div class="calendar-event-chip target-${primaryGroup}"onclick="showEventDetails(${e.id})"title="${e.title}">
+            <div class="calendar-event-chip target-${primaryGroup}"onclick="showEventDetails('${e.id}')"title="${e.title}">
                 ${e.event_date.split(' ')[1].slice(0, 5)} - ${e.title}
             </div>
             `;
@@ -1766,7 +1766,7 @@ async function renderCalendar(wrapper) {
           </div>`;
         } else {
           const recurBadge = i.recurrence ? '<span title="Evento recurrente"style="margin-left:4px;font-size:12px">🔄</span>' : '';
-          return `<div class="activity-item"style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          return `<div class="activity-item"style="padding:16px; border:1px solid var(--gray-200); border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; cursor:pointer;"onclick="showEventDetails('${i.id}')">
             <div style="flex:1">
               <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
                 <span class="badge badge-primary">📅 ${i.event_date.split(' ')[0]} ${i.event_date.split(' ')[1].slice(0, 5)}</span>
@@ -1775,7 +1775,7 @@ async function renderCalendar(wrapper) {
               <h3 style="font-size:16px; margin:0; color:var(--gray-800)">${i.title} ${recurBadge}</h3>
               <p style="font-size:14px; color:var(--gray-600); margin:4px 0 0 0">${i.description || 'Sin descripción'}</p>
             </div>
-            ${(isAdmin || i.created_by == state.user.id) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"style="padding:6px; background:#fff"onclick="openEditEvent('${i.id}')">✏️</button><button class="btn btn-sm btn-outline"style="padding:6px; color:var(--danger-600); border-color:var(--danger-200); background:#fff"onclick="deleteEvent(${parseInt(i.id, 10)})">🗑</button></div>` : ''}
+            ${(isAdmin || i.created_by == state.user.id) ? `<div style="display:flex;gap:6px"><button class="btn btn-sm btn-outline"style="padding:6px; background:#fff"onclick="event.stopPropagation();openEditEvent('${i.id}')">✏️</button><button class="btn btn-sm btn-outline"style="padding:6px; color:var(--danger-600); border-color:var(--danger-200); background:#fff"onclick="event.stopPropagation();deleteEvent('${i.id}')">🗑</button></div>` : ''}
           </div>`;
         }
       }).join('') + '</div>';
@@ -1865,7 +1865,7 @@ async function renderCalendar(wrapper) {
         </div>
             <div class="modal-footer"style="display:flex; justify-content:space-between">
                 <div style="display:flex;gap:8px">
-                    ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${e.id}')">🗑 Eliminar</button>` : '<div></div>'}
+                    ${canDelete ? `<button class="btn btn-outline"style="color:var(--danger-500); border-color:var(--danger-300)"onclick="deleteEvent('${e.id.toString().split('_')[0]}')">🗑 Eliminar</button>` : '<div></div>'}
                     ${canDelete ? `<button class="btn btn-outline"onclick="openEditEvent('${e.id}')">✏️ Editar</button>` : ''}
                 </div>
                 <button type="button"class="btn btn-primary"onclick="closeModal()">Cerrar</button>
@@ -2032,10 +2032,11 @@ async function renderCalendar(wrapper) {
 
     window.deleteEvent = async function (id) {
       if (!confirm('¿Estás seguro de eliminar este evento?')) return;
+      const baseId = parseInt(String(id).split('_')[0], 10);
       try {
         await api('calendar_events.php?action=delete', {
           method: 'POST',
-          body: JSON.stringify({ id: id })
+          body: JSON.stringify({ id: baseId })
         });
         toast('Evento eliminado');
         closeModal();
