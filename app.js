@@ -2590,10 +2590,12 @@ window.exportOrgChart = async (conf) => {
     const tWidth = target.scrollWidth;
     const tHeight = target.scrollHeight;
     
-    // Calculate print dimensions (Letter: 2550x3300 at 300dpi, A4: 2480x3508)
-    // We want landscape for org chart: wider than tall
-    const printWidth = Math.max(tWidth + 200, 3300); // At least letter landscape width
-    const printHeight = tHeight + 350; // Extra for header + footer
+    // Canvas = content + tight padding. NO forced minimum width.
+    const padX = 50;
+    const headerH = 140;
+    const footerH = 80;
+    const canvasW = tWidth + (padX * 2);
+    const canvasH = tHeight + headerH + footerH;
     
     // Hard lock dimensions to avoid jumps
     target.style.width = tWidth + 'px';
@@ -2603,16 +2605,16 @@ window.exportOrgChart = async (conf) => {
     const isMinimalMode = conf && !conf.contacts;
 
     try {
-        toast('Generando reporte de alta calidad para impresión...');
+        toast('Generando imagen para impresión...');
         const canvas = await html2canvas(target, {
-            scale: 3, // Ultra high resolution for print
+            scale: 2,
             useCORS: true,
             backgroundColor: '#ffffff',
-            width: printWidth,
-            height: printHeight,
-            windowWidth: printWidth,
-            x: -(printWidth - tWidth) / 2,
-            y: -180,
+            width: canvasW,
+            height: canvasH,
+            windowWidth: canvasW,
+            x: -padX,
+            y: -headerH,
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('org-tree-view');
                 
@@ -2701,16 +2703,11 @@ window.exportOrgChart = async (conf) => {
 
                 // ─── HEADER ───
                 const header = clonedDoc.createElement('div');
-                header.style.position = 'absolute';
-                header.style.top = '-150px';
-                header.style.left = '0';
-                header.style.width = tWidth + 'px';
-                header.style.textAlign = 'center';
-                header.style.fontFamily = "'Inter', sans-serif";
+                header.style.cssText = `position:absolute; top:-${headerH - 10}px; left:0; width:${tWidth}px; text-align:center; font-family:'Inter',sans-serif;`;
                 header.innerHTML = `
-                    <h1 style="font-size:48px; font-weight:800; color:#1e293b; margin:0; letter-spacing:-0.5px;">Organigrama del departamento</h1>
-                    <div style="width:80px; height:5px; background:linear-gradient(90deg, #3b82f6, #6366f1); margin:20px auto 0; border-radius:3px;"></div>
-                    <p style="font-size:14px; color:#94a3b8; margin-top:12px; font-weight:500;">Departamento de Seguridad HC3</p>
+                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0;">Organigrama del departamento</h1>
+                    <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:14px auto 0; border-radius:3px;"></div>
+                    <p style="font-size:13px; color:#94a3b8; margin-top:8px; font-weight:500;">Departamento de Seguridad HC3</p>
                 `;
                 clonedTarget.style.position = 'relative';
                 clonedTarget.appendChild(header);
@@ -2718,17 +2715,7 @@ window.exportOrgChart = async (conf) => {
                 // ─── FOOTER ───
                 const footer = clonedDoc.createElement('div');
                 const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                footer.style.position = 'absolute';
-                footer.style.bottom = '-100px';
-                footer.style.left = '0';
-                footer.style.width = tWidth + 'px';
-                footer.style.textAlign = 'center';
-                footer.style.borderTop = '2px solid #e2e8f0';
-                footer.style.paddingTop = '20px';
-                footer.style.color = '#94a3b8';
-                footer.style.fontSize = '14px';
-                footer.style.fontWeight = '500';
-                footer.style.fontFamily = "'Inter', sans-serif";
+                footer.style.cssText = `position:absolute; bottom:-${footerH - 10}px; left:0; width:${tWidth}px; text-align:center; border-top:2px solid #e2e8f0; padding-top:16px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
                 footer.innerHTML = `ICCP — Generado el ${dateStr}`;
                 clonedTarget.appendChild(footer);
             }
@@ -2738,7 +2725,7 @@ window.exportOrgChart = async (conf) => {
         link.download = `Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        toast('Imagen de alta calidad exportada exitosamente');
+        toast('Organigrama exportado exitosamente');
     } catch (err) {
         toast('Error al exportar la imagen', 'error');
         console.error(err);
