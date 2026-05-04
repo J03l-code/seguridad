@@ -576,7 +576,7 @@ async function renderTasks(wrapper) {
                   </div>
                   ${(() => {
                     const isMyTask = (t.target_group === myGroup || state.user?.role === 'admin');
-                    const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
+                    const isSuper = (myGroup === 'superintendencia');
                     
                     let actions = '';
                     if (c.key === 'todo' && isMyTask) {
@@ -690,7 +690,7 @@ async function renderTasks(wrapper) {
             <div style="margin-bottom:20px"><label class="form-label">Cambiar estado</label><div style="display:flex;gap:8px">
               ${['todo', 'in_progress', 'review', 'done'].map(s => {
                 const isMyTask = (t.target_group === myGroup || state.user?.role === 'admin');
-                const isSuper = (myGroup === 'superintendencia' || state.user?.role === 'admin');
+                const isSuper = (myGroup === 'superintendencia');
                 
                 let canChange = false;
                 if (s === 'todo' || s === 'in_progress') {
