@@ -2720,6 +2720,7 @@ window.exportOrgChart = async (conf) => {
 
                 // ─── CENTERED HEADER CON LOGO ───
                 const header = clonedDoc.createElement('div');
+                const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 // Colocar el header dentro del padding top
                 header.style.cssText = `position:absolute; top:40px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
                 
@@ -2729,16 +2730,15 @@ window.exportOrgChart = async (conf) => {
                     ${logoHtml}
                     <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">Organigrama del Departamento de Seguridad</h1>
                     <div style="width:60px; height:4px; background:linear-gradient(90deg,#3b82f6,#6366f1); margin:12px auto; border-radius:3px;"></div>
-                    <p style="font-size:14px; color:#94a3b8; margin:0; font-weight:500;">Departamento de Seguridad HC3</p>
+                    <p style="font-size:18px; color:#000000; margin:0; font-weight:700; text-transform: capitalize;">Fecha de actualización: ${dateStr}</p>
                 `;
                 clonedTarget.appendChild(header);
                 
                 // ─── CENTERED FOOTER ───
                 const footer = clonedDoc.createElement('div');
-                const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 // Colocar el footer dentro del padding bottom
                 footer.style.cssText = `position:absolute; bottom:20px; left:60px; right:60px; text-align:center; border-top:2px solid #e2e8f0; padding-top:20px; color:#94a3b8; font-size:13px; font-weight:500; font-family:'Inter',sans-serif;`;
-                footer.innerHTML = `ICCP — Fecha de actualización: ${dateStr}`;
+                footer.innerHTML = `ICCP — Sistema de Gestión Organizacional`;
                 clonedTarget.appendChild(footer);
             }
         });
