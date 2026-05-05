@@ -867,7 +867,7 @@ async function renderDepartments(wrapper) {
         e.target.style.opacity = '0.5';
     };
 
-    window.handleOrgDrop = async (e, deptId, isBottomNode) => {
+    window.handleOrgDrop = async (e, deptId, isBottomNode, targetSortOrder = null) => {
         e.preventDefault();
         const userId = e.dataTransfer.getData('userId');
         const isExternal = e.dataTransfer.getData('isExternal') === 'true';
@@ -875,14 +875,23 @@ async function renderDepartments(wrapper) {
         try {
             const newHierarchy = isBottomNode ? 'voluntario_clave' : 'superintendente';
             const endpoint = isExternal ? 'external_members.php' : 'users.php';
+            
             const payload = { user_group: deptId, hierarchy_level: newHierarchy };
+            
+            // If dropping on a member, set sort_order to target - 1 to place before
+            if (targetSortOrder !== null) {
+                payload.sort_order = targetSortOrder - 1;
+            } else {
+                // If dropping on the box generally, just move to that dept/hierarchy
+                // sort_order will default to 0 or stay as is, but hierarchy changes
+            }
             
             await api(`${endpoint}?action=update&id=${userId}`, {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
             
-            toast('Miembro movido exitosamente');
+            toast('Miembro reorganizado exitosamente');
             renderDepartments(document.getElementById('org-wrapper') || document.createElement('div'));
         } catch (err) {
             toast(err.message, 'error');
@@ -907,13 +916,14 @@ async function renderDepartments(wrapper) {
         const hoverCursor = isAdmin ? 'cursor:grab; transition: transform 0.2s;' : '';
         const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
         const dragStart = isAdmin ? `draggable="true" ondragstart="handleOrgDragStart(event, '${u.id}', ${u.is_external ? 'true' : 'false'})" ondragend="this.style.opacity='1'"` : '';
-        
+        const memberDropZone = isAdmin ? `ondragover="event.preventDefault(); event.stopPropagation(); this.style.borderTop='3px solid '+color" ondragleave="this.style.borderTop='none'" ondrop="event.stopPropagation(); this.style.borderTop='none'; handleOrgDrop(event, '${key}', ${isBottomNode}, ${u.sort_order || 0})"` : '';
+
         const avatarSrc = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null);
         const avatarClick = avatarSrc ? `onclick="event.stopPropagation(); openPhotoLightbox('${avatarSrc.replace(/'/g, "\\'")}', '${u.name.replace(/'/g, "\\'")}')"` : '';
         const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" draggable="false" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
-          <div class="org-member org-interactive-card" ${dragStart} data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isAux ? 'border-left:3px solid var(--gray-400);background:var(--gray-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
+          <div class="org-member org-interactive-card" ${dragStart} ${memberDropZone} data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isAux ? 'border-left:3px solid var(--gray-400);background:var(--gray-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
               <div class="avatar" ${avatarClick} style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">

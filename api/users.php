@@ -43,6 +43,13 @@ try {
     try { $pdo->exec("ALTER TABLE users ADD COLUMN avatar_base64 MEDIUMTEXT DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate sort_order
+try {
+    $pdo->query("SELECT sort_order FROM users LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN sort_order INT DEFAULT 0"); } catch (Exception $e2) {}
+}
+
 switch ($action) {
     case 'list':
         listUsers();
@@ -101,7 +108,7 @@ function getOrgChart()
     } catch (PDOException $e) {
         $pdo->exec('ALTER TABLE users ADD COLUMN hierarchy_map TEXT DEFAULT NULL');
     }
-    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, avatar_base64, phone, jwpub_email, meeting_day FROM users ORDER BY hierarchy_level ASC, name ASC');
+    $stmt = $pdo->prepare('SELECT id, name, email, role, user_group, hierarchy_level, hierarchy_map, job_title, avatar, avatar_base64, phone, jwpub_email, meeting_day, sort_order FROM users ORDER BY sort_order ASC, hierarchy_level ASC, name ASC');
     $stmt->execute();
     jsonResponse(['users' => $stmt->fetchAll()]);
 }
@@ -277,6 +284,10 @@ function updateUser($id, $auth)
     if (array_key_exists('meeting_day', $data)) {
         $fields[] = 'meeting_day = ?';
         $values[] = trim($data['meeting_day']) === '' ? null : trim($data['meeting_day']);
+    }
+    if (array_key_exists('sort_order', $data)) {
+        $fields[] = 'sort_order = ?';
+        $values[] = (int)$data['sort_order'];
     }
 
     if (empty($fields))

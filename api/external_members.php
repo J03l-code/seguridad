@@ -52,6 +52,13 @@ try {
     try { $pdo->exec("ALTER TABLE external_members ADD COLUMN jwpub_email VARCHAR(150) DEFAULT NULL"); } catch (Exception $e2) {}
 }
 
+// Auto-migrate sort_order
+try {
+    $pdo->query("SELECT sort_order FROM external_members LIMIT 1");
+} catch (Exception $e) {
+    try { $pdo->exec("ALTER TABLE external_members ADD COLUMN sort_order INT DEFAULT 0"); } catch (Exception $e2) {}
+}
+
 // Auto-migrate avatar_base64
 try {
     $pdo->query("SELECT avatar_base64 FROM external_members LIMIT 1");
@@ -85,9 +92,9 @@ switch ($action) {
 function listExternalMembers() {
     global $pdo;
     $stmt = $pdo->query("
-        SELECT id, name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, avatar_base64, created_at, 'external' as is_external 
+        SELECT id, name, email, jwpub_email, phone, hierarchy_level, job_title, user_group, meeting_day, avatar, avatar_base64, created_at, sort_order, 'external' as is_external 
         FROM external_members 
-        ORDER BY name ASC
+        ORDER BY sort_order ASC, name ASC
     ");
     $members = $stmt->fetchAll();
     
@@ -162,6 +169,7 @@ function updateExternalMember($id, $auth) {
     if (array_key_exists('hierarchy_level', $data)) { $fields[] = 'hierarchy_level = ?'; $values[] = $data['hierarchy_level']; }
     if (array_key_exists('user_group', $data)) { $fields[] = 'user_group = ?'; $values[] = $data['user_group']; }
     if (array_key_exists('meeting_day', $data)) { $fields[] = 'meeting_day = ?'; $values[] = $data['meeting_day']; }
+    if (array_key_exists('sort_order', $data)) { $fields[] = 'sort_order = ?'; $values[] = (int)$data['sort_order']; }
 
     if (empty($fields)) jsonResponse(['error' => 'Nada que actualizar.'], 400);
 
