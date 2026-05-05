@@ -923,40 +923,34 @@ async function renderDepartments(wrapper) {
       const children = depts.filter(d => d.parent_id == deptId);
       
       let topUsers = [];
-      let bottomUsers = [];
+      const bottomUsers = []; // Kept empty to disable the splitting feature
       const grpUsers = groups[deptId] || [];
 
       if (!isSub) {
-          grpUsers.forEach(u => {
-            let hMap = {};
-            try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
-            const effectiveHierarchy = hMap[deptId] || u.hierarchy_level || 'auxiliar';
-            const isSup = effectiveHierarchy === 'superintendente';
-            const isAux = effectiveHierarchy === 'auxiliar';
-            
-            if (isSup || isAux) {
-               topUsers.push(u);
-            } else {
-               bottomUsers.push(u);
-            }
+          // Put all users in the main box, but sort them by hierarchy
+          topUsers = grpUsers.sort((a, b) => {
+              const getVal = (u) => {
+                  let hMap = {};
+                  try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+                  const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+                  if (h === 'superintendente') return 1;
+                  if (h === 'voluntario_clave') return 2;
+                  return 3; // auxiliar or admin
+              };
+              return getVal(a) - getVal(b);
           });
       } else {
           topUsers = grpUsers;
       }
 
-      if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
-      
-      if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
+      if (children.length === 0 && topUsers.length === 0) return '';
       
       const html = renderOrgNode(deptName, deptId, topUsers, color, isSub, false);
       
-      if (children.length === 0 && bottomUsers.length === 0) return html;
+      if (children.length === 0) return html;
 
-      const numChildren = children.length + (bottomUsers.length > 0 ? 1 : 0);
+      const numChildren = children.length;
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
-      if (bottomUsers.length > 0) {
-         subBoxes = renderOrgNode(deptName, deptId, bottomUsers, color, true, true) + subBoxes;
-      }
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
