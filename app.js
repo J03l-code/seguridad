@@ -923,40 +923,52 @@ async function renderDepartments(wrapper) {
       const children = depts.filter(d => d.parent_id == deptId);
       
       let topUsers = [];
+      let bottomUsers = [];
       const grpUsers = groups[deptId] || [];
 
-      // Always put all users in the main box, sorted by hierarchy
-      topUsers = grpUsers.sort((a, b) => {
-          const getVal = (u) => {
-              let hMap = {};
-              try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
-              const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
-              if (h === 'superintendente') return 1;
-              if (h === 'voluntario_clave') return 2;
-              return 3; // auxiliar or admin
-          };
-          return getVal(a) - getVal(b);
-      });
+      if (!isSub) {
+          grpUsers.forEach(u => {
+            let hMap = {};
+            try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+            const effectiveHierarchy = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+            
+            // Only Superintendents in the main top box
+            if (effectiveHierarchy === 'superintendente') {
+               topUsers.push(u);
+            } else {
+               bottomUsers.push(u);
+            }
+          });
+      } else {
+          topUsers = grpUsers;
+      }
 
-      if (children.length === 0 && topUsers.length === 0) return '';
+      if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
       
       const html = renderOrgNode(deptName, deptId, topUsers, color, isSub, false);
       
-      if (children.length === 0) return html;
+      if (children.length === 0 && bottomUsers.length === 0) return html;
 
-      const numChildren = children.length;
       let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
+      const bottomBoxHtml = bottomUsers.length > 0 ? renderOrgNode(deptName, deptId, bottomUsers, color, true, true) : '';
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
           ${html}
-          <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:1; flex-shrink:0;"></div>
-          <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
-             ${numChildren > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
-             <div class="org-level-2" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
-                 ${subBoxes}
-             </div>
-          </div>
+          ${bottomBoxHtml ? `
+            <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; z-index:1; flex-shrink:0;"></div>
+            ${bottomBoxHtml}
+          ` : ''}
+          
+          ${children.length > 0 ? `
+            <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:1; flex-shrink:0;"></div>
+            <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
+               ${children.length > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
+               <div class="org-level-2" style="display:flex; justify-content:center; gap:20px; padding-top:30px; width:100%;">
+                   ${subBoxes}
+               </div>
+            </div>
+          ` : ''}
         </div>
       `;
     };
