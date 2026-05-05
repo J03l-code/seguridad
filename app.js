@@ -853,6 +853,13 @@ async function renderDepartments(wrapper) {
       });
     });
 
+    const BASE_COLORS = {
+      emergencias: '#ef4444',     // danger-500
+      actividades: '#10b981',     // success-500
+      soporte_oficina: '#3b82f6', // primary-500
+      otros_eventos: '#f59e0b'    // warning-500
+    };
+
     // Drag & Drop Handlers for Organogram
     window.handleOrgDragStart = (e, userId, isExternal) => {
         e.dataTransfer.setData('userId', userId);
