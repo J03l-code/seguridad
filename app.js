@@ -931,21 +931,25 @@ async function renderDepartments(wrapper) {
 
       const canClick = isAdmin && !isBottomNode;
       const onClickDept = canClick ? `onclick="openQuickExtMember('${key}', '${gName}')" title="Añadir miembro rápido a ${gName}"` : '';
-      const dropZone = isAdmin ? `ondragover="event.preventDefault(); this.style.boxShadow='0 0 10px '+color" ondragleave="this.style.boxShadow='none'" ondrop="this.style.boxShadow='none'; handleOrgDrop(event, '${key}', ${isBottomNode})"` : '';
+      const dropZone = isAdmin ? `ondragover="event.preventDefault(); this.style.boxShadow='0 0 15px '+color" ondragleave="this.style.boxShadow='none'" ondrop="this.style.boxShadow='none'; handleOrgDrop(event, '${key}', ${isBottomNode})"` : '';
 
-      const nodeClass = isSub ? 'org-sub-node' : 'org-root-node';
-      const inlineBox = `border:2px solid ${color}; border-top:8px solid ${color}; width:280px; padding:15px; border-radius:12px; background:#fff; box-shadow:var(--shadow-lg); position:relative; z-index:2;`;
-      const inlineHeader = `margin-top:0; margin-bottom:15px; color:${color}; font-size:16px; border-bottom:1px solid #eee; padding-bottom:8px; display:flex; justify-content:space-between; align-items:center;`;
+      const inlineBox = isBottomNode 
+        ? `border:1px solid ${color}40; border-top:6px solid ${color}60; width:280px; padding:12px; border-radius:12px; background:${color}08; box-shadow:var(--shadow-sm); position:relative; z-index:2;`
+        : `border:2px solid ${color}; border-top:8px solid ${color}; width:280px; padding:15px; border-radius:12px; background:#fff; box-shadow:var(--shadow-lg); position:relative; z-index:2;`;
+      
+      const headerBg = isBottomNode ? `background:${color}15;` : '';
+      const headerPadding = isBottomNode ? 'padding:8px 10px; border-radius:8px 8px 0 0; margin:-12px -12px 10px -12px;' : 'border-bottom:1px solid #eee; padding-bottom:8px; margin-bottom:15px;';
+      const inlineHeader = `margin-top:0; color:${color}; font-size:16px; display:flex; flex-direction:column; align-items:center; ${headerBg} ${headerPadding}`;
 
       return `
-        <div class="org-node ${nodeClass}" style="${inlineBox}" ${dropZone}>
+        <div class="org-node" style="${inlineBox}" ${dropZone}>
             ${isSub ? '<div class="org-connector-up" style="position:absolute; top:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>' : ''}
-            <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}; ${textUsers.length > 0 ? 'padding-bottom:10px;' : ''}" ${onClickDept}>
-                <div style="font-weight:700;">${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</div>
-            </h3>
-            ${textUsers.length > 0 ? `<div style="font-size:10px; color:#64748b; font-weight:600; text-transform:uppercase; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:5px;">${textUsers.map(u => u.name).join(' | ')}</div>` : ''}
+            <div style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}" ${onClickDept}>
+                <div style="font-weight:700; text-align:center;">${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</div>
+                ${textUsers.length > 0 ? `<div style="font-size:9px; font-weight:700; margin-top:4px; opacity:0.8; text-transform:uppercase; letter-spacing:0.5px; text-align:center;">ASIGNADO: ${textUsers[textUsers.length-1].name.toUpperCase()}</div>` : ''}
+            </div>
             <div class="members" style="display:flex; flex-direction:column; gap:10px;">
-                ${mappedUsers}
+                ${mappedUsers || '<div style="font-size:12px; color:#94a3b8; text-align:center; padding:10px; font-style:italic;">Sin miembros</div>'}
             </div>
         </div>
       `;
