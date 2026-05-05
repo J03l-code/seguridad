@@ -932,8 +932,8 @@ async function renderDepartments(wrapper) {
             try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
             const effectiveHierarchy = hMap[deptId] || u.hierarchy_level || 'auxiliar';
             
-            // Only Superintendents in the main top box
-            if (effectiveHierarchy === 'superintendente') {
+            // Superintendents and Auxiliaries in the main top box
+            if (effectiveHierarchy === 'superintendente' || effectiveHierarchy === 'auxiliar') {
                topUsers.push(u);
             } else {
                bottomUsers.push(u);
