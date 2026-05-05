@@ -898,6 +898,7 @@ async function renderDepartments(wrapper) {
         const effectiveHierarchy = hMap[key] || u.hierarchy_level || 'auxiliar';
 
         const isJefe = effectiveHierarchy === 'superintendente';
+        const isAux = effectiveHierarchy === 'auxiliar';
         const isVol = effectiveHierarchy === 'voluntario_clave';
 
         let roleText = effectiveHierarchy.replace('_', ' ').toUpperCase();
@@ -909,10 +910,10 @@ async function renderDepartments(wrapper) {
         
         const avatarSrc = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null);
         const avatarClick = avatarSrc ? `onclick="event.stopPropagation(); openPhotoLightbox('${avatarSrc.replace(/'/g, "\\'")}', '${u.name.replace(/'/g, "\\'")}')"` : '';
-        const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
+        const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" draggable="false" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
-          <div class="org-member org-interactive-card" ${dragStart} data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
+          <div class="org-member org-interactive-card" ${dragStart} data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isAux ? 'border-left:3px solid var(--gray-400);background:var(--gray-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
               <div class="avatar" ${avatarClick} style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -963,13 +964,28 @@ async function renderDepartments(wrapper) {
       let bottomUsers = [];
       const grpUsers = groups[deptId] || [];
 
-      // Always perform hierarchical split for consistent vertical columns
+      // Sort logic: Super > Aux > Voluntario > Others
       grpUsers.forEach(u => {
         let hMap = {};
         try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
         const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
-        if (h === 'superintendente') topUsers.push(u);
-        else bottomUsers.push(u);
+        
+        if (h === 'superintendente' || h === 'auxiliar') {
+           topUsers.push(u);
+        } else {
+           bottomUsers.push(u);
+        }
+      });
+
+      // Internal sorting for top box: Superintendente first
+      topUsers.sort((a, b) => {
+          const getH = (u) => {
+              let hMap = {};
+              try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+              const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+              return h === 'superintendente' ? 1 : 2;
+          };
+          return getH(a) - getH(b);
       });
 
       if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
