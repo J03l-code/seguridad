@@ -853,18 +853,39 @@ async function renderDepartments(wrapper) {
       });
     });
 
-    const BASE_COLORS = {
-      emergencias: '#ef4444',     // danger-500
-      actividades: '#10b981',     // success-500
-      soporte_oficina: '#3b82f6', // primary-500
-      otros_eventos: '#f59e0b'    // warning-500
+    // Drag & Drop Handlers for Organogram
+    window.handleOrgDragStart = (e, userId, isExternal) => {
+        e.dataTransfer.setData('userId', userId);
+        e.dataTransfer.setData('isExternal', isExternal);
+        e.target.style.opacity = '0.5';
+    };
+
+    window.handleOrgDrop = async (e, deptId, isBottomNode) => {
+        e.preventDefault();
+        const userId = e.dataTransfer.getData('userId');
+        const isExternal = e.dataTransfer.getData('isExternal') === 'true';
+        
+        try {
+            const newHierarchy = isBottomNode ? 'voluntario_clave' : 'superintendente';
+            const endpoint = isExternal ? 'external_members.php' : 'users.php';
+            const payload = { user_group: deptId, hierarchy_level: newHierarchy };
+            
+            await api(`${endpoint}?action=update&id=${userId}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            
+            toast('Miembro movido exitosamente');
+            renderDepartments(document.getElementById('org-wrapper') || document.createElement('div'));
+        } catch (err) {
+            toast(err.message, 'error');
+        }
     };
 
     const renderOrgNode = (gName, key, grpUsers, color = null, isSub = false, isBottomNode = false) => {
       const textUsers = grpUsers.filter(u => u.hierarchy_level === 'support_text_only');
 
       const mappedUsers = grpUsers.filter(u => u.hierarchy_level !== 'support_text_only').map(u => {
-        // Per-group hierarchy: check hierarchy_map[key] first, fallback to global hierarchy_level
         let hMap = {};
         try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
         const effectiveHierarchy = hMap[key] || u.hierarchy_level || 'auxiliar';
@@ -873,17 +894,18 @@ async function renderDepartments(wrapper) {
         const isVol = effectiveHierarchy === 'voluntario_clave';
 
         let roleText = effectiveHierarchy.replace('_', ' ').toUpperCase();
-
         if (u.job_title) roleText += ` (${u.job_title})`;
 
-        const hoverCursor = isAdmin ? 'cursor:pointer; transition: transform 0.2s;' : '';
+        const hoverCursor = isAdmin ? 'cursor:grab; transition: transform 0.2s;' : '';
         const onClickAction = isAdmin ? `onclick="openEditOrgUser('${u.id}', ${u.is_external ? 'true' : 'false'})"` : '';
+        const dragStart = isAdmin ? `draggable="true" ondragstart="handleOrgDragStart(event, '${u.id}', ${u.is_external ? 'true' : 'false'})" ondragend="this.style.opacity='1'"` : '';
+        
         const avatarSrc = u.avatar_base64 ? u.avatar_base64 : (u.avatar ? `api/uploads/${u.avatar}` : null);
         const avatarClick = avatarSrc ? `onclick="event.stopPropagation(); openPhotoLightbox('${avatarSrc.replace(/'/g, "\\'")}', '${u.name.replace(/'/g, "\\'")}')"` : '';
         const avatarContent = avatarSrc ? `<img src="${avatarSrc}" alt="" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">` : initials(u.name);
 
         return `
-          <div class="org-member org-interactive-card" data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
+          <div class="org-member org-interactive-card" ${dragStart} data-meeting="${u.meeting_day || ''}" ${onClickAction} style="${hoverCursor} ${isJefe ? 'border-left:3px solid var(--primary-500);background:var(--primary-50)' : isVol ? 'border-left:3px solid var(--success-500);background:var(--success-50)' : ''}" onmouseover="if(${isAdmin}) this.style.transform='translateY(-2px)';" onmouseout="if(${isAdmin}) this.style.transform='translateY(0)';">
               <div class="avatar" ${avatarClick} style="${isJefe ? 'background:var(--primary-600)' : isVol ? 'background:var(--success-600)' : ''}; overflow:hidden;">${avatarContent}</div>
               <div class="info">
                   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -898,22 +920,26 @@ async function renderDepartments(wrapper) {
               </div>
           </div>
         `;
-      }).join('') || '<div class="org-member empty">Sin miembros</div>';
+      }).join('');
 
-      const nodeClass = !isSub && BASE_COLORS[key] ? `target-${key}` : '';
-      const inlineBox = isSub && color ? `border-top: 4px solid ${color}; background: ${color}15;` : '';
-      const inlineHeader = isSub && color ? `background: ${color}35; color: #1e293b;` : '';
       const canClick = isAdmin && !isBottomNode;
       const onClickDept = canClick ? `onclick="openQuickExtMember('${key}', '${gName}')" title="Añadir miembro rápido a ${gName}"` : '';
+      const dropZone = isAdmin ? `ondragover="event.preventDefault(); this.style.boxShadow='0 0 10px '+color" ondragleave="this.style.boxShadow='none'" ondrop="this.style.boxShadow='none'; handleOrgDrop(event, '${key}', ${isBottomNode})"` : '';
+
+      const nodeClass = isSub ? 'org-sub-node' : 'org-root-node';
+      const inlineBox = `border:2px solid ${color}; border-top:8px solid ${color}; width:280px; padding:15px; border-radius:12px; background:#fff; box-shadow:var(--shadow-lg); position:relative; z-index:2;`;
+      const inlineHeader = `margin-top:0; margin-bottom:15px; color:${color}; font-size:16px; border-bottom:1px solid #eee; padding-bottom:8px; display:flex; justify-content:space-between; align-items:center;`;
 
       return `
-        <div class="org-node ${nodeClass}"style="${inlineBox}">
+        <div class="org-node ${nodeClass}" style="${inlineBox}" ${dropZone}>
             ${isSub ? '<div class="org-connector-up" style="position:absolute; top:-30px; left:50%; width:2px; height:30px; background:#94a3b8; transform:translateX(-50%); z-index:0;"></div>' : ''}
             <h3 style="${inlineHeader}; ${canClick ? 'cursor:pointer;' : ''}; ${textUsers.length > 0 ? 'padding-bottom:10px;' : ''}" ${onClickDept}>
                 <div style="font-weight:700;">${gName} ${canClick ? '<span style="font-size:12px;opacity:0.5;margin-left:5px">➕</span>' : ''}</div>
-                ${textUsers.length > 0 ? `<div style="font-size:10px; font-weight:500; margin-top:4px; opacity:0.9; text-transform:uppercase; letter-spacing:0.5px;">Asignado: ${textUsers[textUsers.length-1].name}</div>` : ''}
             </h3>
-            <div class="org-members">${mappedUsers}</div>
+            ${textUsers.length > 0 ? `<div style="font-size:10px; color:#64748b; font-weight:600; text-transform:uppercase; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:5px;">${textUsers.map(u => u.name).join(' | ')}</div>` : ''}
+            <div class="members" style="display:flex; flex-direction:column; gap:10px;">
+                ${mappedUsers}
+            </div>
         </div>
       `;
     };
@@ -926,39 +952,29 @@ async function renderDepartments(wrapper) {
       let bottomUsers = [];
       const grpUsers = groups[deptId] || [];
 
-      // ALWAYS perform the hierarchical split for every department
+      // Always perform hierarchical split for consistent vertical columns
       grpUsers.forEach(u => {
         let hMap = {};
         try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
-        const effectiveHierarchy = hMap[deptId] || u.hierarchy_level || 'auxiliar';
-        
-        // Superintendents in the main top box
-        if (effectiveHierarchy === 'superintendente') {
-           topUsers.push(u);
-        } else {
-           // All others (Volunteers, Auxiliaries, etc.) in the bottom box
-           bottomUsers.push(u);
-        }
+        const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+        if (h === 'superintendente') topUsers.push(u);
+        else bottomUsers.push(u);
       });
 
       if (children.length === 0 && topUsers.length === 0 && bottomUsers.length === 0) return '';
       
-      const html = renderOrgNode(deptName, deptId, topUsers, color, isSub, false);
+      const htmlTop = topUsers.length > 0 ? renderOrgNode(deptName, deptId, topUsers, color, isSub, false) : '';
+      const htmlBottom = bottomUsers.length > 0 ? renderOrgNode(deptName, deptId, bottomUsers, color, isSub, true) : '';
       
-      if (children.length === 0 && bottomUsers.length === 0) return html;
-
-      let subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).join('');
-      const bottomBoxHtml = bottomUsers.length > 0 ? renderOrgNode(deptName, deptId, bottomUsers, color, true, true) : '';
+      const subBoxes = children.map(c => renderTree(c.id, c.name, color, true)).filter(b => b !== '').join('');
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center;">
-          ${html}
-          ${bottomBoxHtml ? `
-            <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; z-index:1; flex-shrink:0;"></div>
-            ${bottomBoxHtml}
-          ` : ''}
+          ${htmlTop}
+          ${htmlTop && htmlBottom ? `<div class="org-connector" style="width:2px; height:30px; background:#94a3b8;"></div>` : ''}
+          ${htmlBottom}
           
-          ${children.length > 0 ? `
+          ${subBoxes.length > 0 ? `
             <div class="org-dropping-line" style="width:2px; height:30px; background:#94a3b8; margin-bottom:-30px; z-index:1; flex-shrink:0;"></div>
             <div class="org-level-2-wrapper" style="margin-top:30px; width:100%; display:flex; flex-direction:column; align-items:center; position:relative;">
                ${children.length > 1 ? `<div class="org-horizontal-line" style="height:2px; background:#94a3b8; width:calc(100% - 300px); z-index:0; flex-shrink:0;"></div>` : ''}
