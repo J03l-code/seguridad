@@ -1342,6 +1342,11 @@ async function renderDepartments(wrapper) {
             onclone: (clonedDoc) => {
                 const clonedTarget = clonedDoc.getElementById('activities-org-wrapper');
                 clonedTarget.style.position = 'relative';
+                
+                const flexContainer = clonedTarget.querySelector('div');
+                if (flexContainer) {
+                    flexContainer.style.justifyContent = 'center';
+                }
 
                 // Remove unselected departments
                 clonedTarget.querySelectorAll('.act-dept-card').forEach(card => {
