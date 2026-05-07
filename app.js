@@ -1175,31 +1175,30 @@ async function renderDepartments(wrapper) {
                         <div style="font-weight:600;font-size:12px;color:var(--gray-800);">${u.name}</div>
                         <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${color};letter-spacing:0.4px;">${roleText}</div>
                     </div>
-                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','${u.id}')" style="margin-left:auto;background:none;border:1px dashed ${color}55;color:${color};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;">+ Actividad</button>` : ''}
                 </div>`;
             }).join('');
 
             const actsHTML = deptActs.length > 0
-                ? deptActs.map(a => {
-                    const owner = topUsers.find(u => String(u.id) === String(a.user_id));
-                    return `
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;background:#f8fafc;padding:9px 12px;border-radius:7px;font-size:12px;border-left:3px solid ${color};">
-                        <div>
-                            <div style="color:var(--gray-700);line-height:1.5;">${a.activity_text}</div>
-                            ${owner ? `<div style="font-size:10px;color:${color};font-weight:600;margin-top:3px;">— ${owner.name}</div>` : ''}
-                        </div>
-                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0 0 0 10px;font-size:16px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
-                    </div>`;
-                }).join('')
-                : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:12px;font-style:italic;">Sin actividades registradas</div>`;
+                ? `<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;">
+                    ${deptActs.map(a => `
+                    <li style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                        <span style="color:${color};font-size:14px;flex-shrink:0;margin-top:1px;">&#8226;</span>
+                        <span style="flex:1;color:var(--gray-700);font-size:12px;line-height:1.5;">${a.activity_text}</span>
+                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
+                    </li>`).join('')}
+                  </ul>`
+                : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:10px 0;font-style:italic;">Sin actividades registradas</div>`;
 
             html += `
             <div style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:15px;box-shadow:var(--shadow-md);min-width:300px;max-width:300px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
-                <h4 style="color:${color};margin:0 0 12px 0;font-size:14px;text-align:center;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <h4 style="color:${color};margin:0;font-size:14px;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
+                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','')" style="background:none;border:1px dashed ${color}88;color:${color};border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">+ Añadir</button>` : ''}
+                </div>
                 <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${membersHTML}</div>
                 <div style="border-top:1px dashed #d1d5db;padding-top:12px;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray-500);letter-spacing:0.6px;margin-bottom:8px;">📋 Actividades del Departamento</div>
-                    <div style="display:flex;flex-direction:column;gap:6px;">${actsHTML}</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray-500);letter-spacing:0.6px;margin-bottom:10px;text-align:center;">&#128203; Actividades</div>
+                    ${actsHTML}
                 </div>
             </div>`;
         });
