@@ -1186,17 +1186,17 @@ async function renderDepartments(wrapper) {
 
             const actsHTML = deptActs.length > 0
                 ? deptActs.map(a => `
-                    <div style="background:#fff;border:1px solid ${color}55;border-left:5px solid ${color};border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;box-shadow:0 1px 4px ${color}15;">
-                        <span style="flex:1;color:var(--gray-900);font-size:14px;font-weight:700;line-height:1.6;">${a.activity_text}</span>
-                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:18px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
+                    <div style="background:#fff;border:1px solid ${color}55;border-left:5px solid ${color};border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 1px 4px ${color}15;">
+                        <span style="flex:1;color:var(--gray-900);font-size:14px;font-weight:700;line-height:1.6;text-align:center;">${a.activity_text}</span>
+                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" class="no-print" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:18px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
                     </div>`).join('')
                 : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:12px 0;font-style:italic;">Sin actividades registradas</div>`;
 
             html += `
-            <div style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:16px;box-shadow:var(--shadow-md);min-width:320px;max-width:320px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
+            <div class="act-dept-card" data-dept="${deptId}" style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:16px;box-shadow:var(--shadow-md);min-width:320px;max-width:320px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-                    <h4 style="color:${color};margin:0;font-size:15px;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
-                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','')" style="background:none;border:1px dashed ${color}88;color:${color};border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Añadir</button>` : ''}
+                    <h4 style="color:${color};margin:0;font-size:15px;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;text-align:center;flex:1;">${deptName}</h4>
+                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','')" class="no-print" style="background:none;border:1px dashed ${color}88;color:${color};border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;margin-left:8px;">+ Añadir</button>` : ''}
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">${membersHTML}</div>
                 <div style="border-top:2px dashed ${color}33;padding-top:14px;">
@@ -1230,7 +1230,7 @@ async function renderDepartments(wrapper) {
                     <h3 style="margin:0;color:var(--primary-800);font-size:17px;">📋 Organigrama de Actividades por Departamento</h3>
                     <p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);">Actividades de cada departamento por Superintendentes y Auxiliares.</p>
                 </div>
-                <button onclick="exportActivitiesImg()" style="padding:8px 18px;background:var(--primary-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como imagen PNG">🖼️ Descargar PNG</button>
+                <button onclick="openExportActivitiesModal()" style="padding:8px 18px;background:var(--primary-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como imagen PNG">🖼️ Descargar PNG</button>
             </div>
             ${renderActivitiesSection()}
         </div>
@@ -1261,18 +1261,138 @@ async function renderDepartments(wrapper) {
       document.getElementById('dept-tab-act').style.color = tab === 'actividades' ? '#fff' : 'var(--gray-500)';
     };
 
-    window.exportActivitiesImg = function() {
-      const el = document.getElementById('activities-org-wrapper');
-      if (!el) { toast('No hay contenido para exportar', 'error'); return; }
-      if (typeof html2canvas === 'undefined') { toast('html2canvas no disponible', 'error'); return; }
-      toast('Generando imagen...');
-      html2canvas(el, { backgroundColor: '#f8fafc', scale: 2, useCORS: true }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'organigrama_actividades.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        toast('Imagen descargada');
-      }).catch(() => toast('Error al generar imagen', 'error'));
+    window.openExportActivitiesModal = function() {
+        const availableDepts = Array.from(document.querySelectorAll('.act-dept-card')).map(el => {
+            const id = el.getAttribute('data-dept');
+            const name = el.querySelector('h4').innerText;
+            return { id, name };
+        });
+
+        if (availableDepts.length === 0) {
+            toast('No hay departamentos para exportar', 'error');
+            return;
+        }
+
+        const checkboxes = availableDepts.map(d => `
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;cursor:pointer;">
+                <input type="checkbox" name="export_dept" value="${d.id}" checked>
+                <span style="font-size:14px;font-weight:600;color:var(--gray-800);">${d.name}</span>
+            </label>
+        `).join('');
+
+        showModal(`
+            <div class="modal-header"><h2>Exportar Organigrama de Actividades</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+            <div class="modal-body" style="max-height:400px;overflow-y:auto;">
+                <p style="margin-top:0;font-size:14px;color:var(--gray-600);">Selecciona los departamentos que deseas incluir en la imagen:</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${checkboxes}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="executeExportActivities()">Generar Imagen</button>
+            </div>
+        `);
+    };
+
+    window.executeExportActivities = async function() {
+        const selectedIds = Array.from(document.querySelectorAll('input[name="export_dept"]:checked')).map(cb => cb.value);
+        if (selectedIds.length === 0) {
+            toast('Debes seleccionar al menos un departamento', 'warning');
+            return;
+        }
+        closeModal();
+
+        const el = document.getElementById('activities-org-wrapper');
+        if (!el) return;
+        if (typeof html2canvas === 'undefined') { toast('html2canvas no disponible', 'error'); return; }
+
+        toast('Generando imagen...');
+
+        // Fetch logo as base64
+        let logoDataUrl = '';
+        try {
+            let logoUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'logo.png';
+            const allNames = Array.from(document.querySelectorAll('.org-member .name'));
+            const officeSupportNode = allNames.find(n => n.innerText.toLowerCase().includes('office support'));
+            if (officeSupportNode) {
+                const memberCard = officeSupportNode.closest('.org-member');
+                if (memberCard) {
+                    const imgEl = memberCard.querySelector('img');
+                    if (imgEl && imgEl.src && !imgEl.src.includes('default')) {
+                        logoUrl = imgEl.src;
+                    }
+                }
+            }
+            const response = await fetch(logoUrl);
+            if (response.ok) {
+                const blob = await response.blob();
+                logoDataUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                });
+            }
+        } catch (e) { console.error('Logo load failed', e); }
+
+        html2canvas(el, {
+            backgroundColor: '#ffffff',
+            scale: 2,
+            useCORS: true,
+            onclone: (clonedDoc) => {
+                const clonedTarget = clonedDoc.getElementById('activities-org-wrapper');
+                clonedTarget.style.position = 'relative';
+
+                // Remove unselected departments
+                clonedTarget.querySelectorAll('.act-dept-card').forEach(card => {
+                    if (!selectedIds.includes(card.getAttribute('data-dept'))) {
+                        card.style.display = 'none';
+                    } else {
+                        // Clean up design for export
+                        card.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)';
+                        card.style.border = '2px solid #e2e8f0';
+                    }
+                });
+
+                // Remove interactive buttons
+                clonedTarget.querySelectorAll('.no-print').forEach(btn => btn.style.display = 'none');
+
+                // Adjust padding for header/footer
+                clonedTarget.style.paddingTop = '180px';
+                clonedTarget.style.paddingBottom = '100px';
+                clonedTarget.style.paddingLeft = '60px';
+                clonedTarget.style.paddingRight = '60px';
+
+                // Add header
+                const header = clonedDoc.createElement('div');
+                const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+                header.style.cssText = `position:absolute; top:40px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
+                
+                const logoHtml = logoDataUrl ? `<div style="position:absolute; left:60px; top:0; width:100px; height:100px;"><img src="${logoDataUrl}" style="width:100%; height:100%; object-fit:contain;"></div>` : '';
+                
+                header.innerHTML = `
+                    ${logoHtml}
+                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">Organigrama de Actividades</h1>
+                    <p style="font-size:18px; color:#000000; margin-top:12px; font-weight:700;">Fecha de actualización: ${dateStr}</p>
+                `;
+                clonedTarget.appendChild(header);
+
+                // Add footer
+                const footer = clonedDoc.createElement('div');
+                footer.style.cssText = `position:absolute; bottom:30px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
+                footer.innerHTML = `<p style="font-size:14px; color:#64748b; margin:0; font-weight:600;">Documento generado automáticamente por el Sistema ICCP</p>`;
+                clonedTarget.appendChild(footer);
+            }
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'organigrama_actividades.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            toast('Imagen descargada exitosamente');
+        }).catch(err => {
+            console.error(err);
+            toast('Error al generar imagen', 'error');
+        });
     };
 
     window.openAddActivity = function (deptId, userId) {
