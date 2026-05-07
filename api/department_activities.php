@@ -17,7 +17,7 @@ try {
             CREATE TABLE IF NOT EXISTS department_activities (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 department_id VARCHAR(50) NOT NULL,
-                user_id VARCHAR(50) NOT NULL,
+                user_id VARCHAR(50) DEFAULT NULL,
                 activity_text TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB;
@@ -26,6 +26,11 @@ try {
         // Ignorar
     }
 }
+
+// Auto-migrate: allow NULL on user_id (activities are per-dept, not per-person)
+try {
+    $pdo->exec("ALTER TABLE department_activities MODIFY COLUMN user_id VARCHAR(50) DEFAULT NULL");
+} catch (Exception $e) { /* Already nullable or table doesn't exist yet */ }
 
 switch ($action) {
     case 'list':
@@ -54,11 +59,11 @@ function createActivity($auth) {
     
     $data = getJsonBody();
     $dept_id = $data['department_id'] ?? '';
-    $user_id = $data['user_id'] ?? '';
+    $user_id = !empty($data['user_id']) ? $data['user_id'] : null;
     $text = trim($data['activity_text'] ?? '');
 
-    if (!$dept_id || !$user_id || !$text) {
-        jsonResponse(['error' => 'Todos los campos son obligatorios.'], 400);
+    if (!$dept_id || !$text) {
+        jsonResponse(['error' => 'El departamento y la actividad son obligatorios.'], 400);
     }
 
     $stmt = $pdo->prepare("INSERT INTO department_activities (department_id, user_id, activity_text) VALUES (?, ?, ?)");
