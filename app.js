@@ -3041,7 +3041,7 @@ window.filterOrg = (term) => {
     });
 };
 
-window.exportOrgChart = async (conf) => {
+window.exportOrgChart = async (conf, format = 'png') => {
     const target = document.getElementById('org-tree-view');
     if (!target) return;
     
@@ -3223,13 +3223,25 @@ window.exportOrgChart = async (conf) => {
             }
         });
         
-        const link = document.createElement('a');
-        link.download = `Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        toast('Organigrama exportado exitosamente');
+        if (format === 'pdf') {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF({
+                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            pdf.save(`Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast('Organigrama exportado como PDF');
+        } else {
+            const link = document.createElement('a');
+            link.download = `Organigrama_ICCP_${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            toast('Organigrama exportado exitosamente');
+        }
     } catch (err) {
-        toast('Error al exportar la imagen', 'error');
+        toast('Error al exportar', 'error');
         console.error(err);
     } finally {
         target.style.width = '';
@@ -3280,22 +3292,30 @@ window.openExportOptionsModal = () => {
                         </label>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">🖼️ Documentar y Descargar PNG</button>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" onclick="window._submitExport('png')" class="btn btn-primary" style="flex:1; justify-content:center; background:var(--primary-600);">🖼️ Descargar PNG</button>
+                        <button type="button" onclick="window._submitExport('pdf')" class="btn btn-primary" style="flex:1; justify-content:center; background:var(--danger-600); border-color:var(--danger-600);">📄 Descargar PDF</button>
+                    </div>
                 </form>
             </div>
         </div>
     `;
     document.body.appendChild(overlay);
 
-    document.getElementById('export-options-form').addEventListener('submit', (e) => {
-        e.preventDefault();
+    window._submitExport = (format) => {
+        const form = document.getElementById('export-options-form');
         const conf = {
-            contacts: e.target.show_contacts.checked,
-            avatars: e.target.show_avatars.checked,
-            volunteers: e.target.show_volunteers.checked
+            contacts: form.show_contacts.checked,
+            avatars: form.show_avatars.checked,
+            volunteers: form.show_volunteers.checked
         };
         overlay.remove();
-        exportOrgChart(conf);
+        exportOrgChart(conf, format);
+    };
+
+    document.getElementById('export-options-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        window._submitExport('png');
     });
 };
 
