@@ -834,8 +834,9 @@ const DEPT_COLORS = ['#2d3561', '#38b2ac', '#e53e3e', '#ecc94b', '#4299e1', '#9f
 
 async function renderDepartments(wrapper) {
   try {
-    const [dRes, uRes, orgRes, extRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list'), api('users.php?action=org_chart'), api('external_members.php?action=list')]);
+    const [dRes, uRes, orgRes, extRes, actRes] = await Promise.all([api('departments.php?action=list'), api('users.php?action=list'), api('users.php?action=org_chart'), api('external_members.php?action=list'), api('department_activities.php?action=list').catch(() => ({ activities: [] }))]);
     const depts = dRes.departments;
+    const activitiesData = actRes?.activities || [];
     const users = uRes.users;
     const orgUsers = [...orgRes.users, ...(extRes?.members || [])];
     window.currentOrgUsers = orgUsers;
@@ -1123,10 +1124,97 @@ async function renderDepartments(wrapper) {
       </div>
     `;
 
+    const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte de Oficina', superintendencia: 'Superintendencia', todos: 'Todos los Departamentos' };
+
+    const renderActivitiesOrgNode = (deptId, u, acts) => {
+        let hMap = {};
+        try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+        let roleText = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+        const avatarContent = u.avatar_base64 ? `<img src="${u.avatar_base64}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : (u.avatar ? `<img src="api/uploads/${u.avatar}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : `<div style="width:30px;height:30px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#475569;">${initials(u.name)}</div>`);
+        
+        return `
+        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:10px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                ${avatarContent}
+                <div>
+                    <div style="font-weight:600; font-size:13px; color:var(--gray-800)">${u.name}</div>
+                    <div style="font-size:10px; color:var(--gray-500); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">${roleText.replace('_', ' ')}</div>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                ${acts.map(a => `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; background:#f8fafc; padding:8px 10px; border-radius:6px; font-size:12px; border-left:3px solid var(--primary-400);">
+                        <span style="color:var(--gray-700); line-height:1.4;">${a.activity_text}</span>
+                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-500);cursor:pointer;padding:0 0 0 10px;font-size:16px;line-height:1;" title="Eliminar">&times;</button>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+            ${isAdmin ? `<button onclick="openAddActivity('${deptId}', '${u.id}')" style="margin-top:10px; width:100%; padding:8px; font-size:12px; font-weight:600; background:#f1f5f9; color:var(--primary-600); border:1px dashed var(--primary-300); border-radius:6px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary-50)'" onmouseout="this.style.background='#f1f5f9'">+ Añadir actividad</button>` : ''}
+        </div>
+        `;
+    };
+
+    const renderActivitiesTree = () => {
+        let html = '';
+        const deptOrder = ['superintendencia', 'soporte_oficina', 'actividades', 'emergencias', 'otros_eventos'];
+        const allDeptIds = [...deptOrder, ...depts.filter(d => !deptOrder.includes(d.id)).map(d => d.id)];
+        
+        allDeptIds.forEach(deptId => {
+            const grpUsers = groups[deptId] || [];
+            const topUsers = grpUsers.filter(u => {
+                let hMap = {};
+                try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+                const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+                return h === 'superintendente' || h === 'auxiliar';
+            });
+
+            topUsers.sort((a, b) => {
+                const getH = (u) => {
+                    let hMap = {};
+                    try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+                    const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
+                    return h === 'superintendente' ? 1 : 2;
+                };
+                return getH(a) - getH(b);
+            });
+
+            if (topUsers.length > 0) {
+                const deptName = (depts.find(d => d.id == deptId) || {}).name || (groupLabels[deptId] || deptId.replace(/_/g, ' ').toUpperCase());
+                const color = BASE_COLORS[deptId] || (depts.find(d => d.id == deptId) || {}).color || '#64748b';
+                
+                html += `
+                <div style="border-top: 4px solid ${color}; background:var(--gray-50); border-radius:12px; padding:15px; box-shadow:var(--shadow-md); min-width:300px; max-width:300px; flex: 0 0 auto;">
+                    <h4 style="color:${color}; margin-top:0; margin-bottom:15px; font-size:15px; text-align:center; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">${deptName}</h4>
+                    ${topUsers.map(u => {
+                        const acts = activitiesData.filter(a => a.department_id === deptId && a.user_id == u.id);
+                        return renderActivitiesOrgNode(deptId, u, acts);
+                    }).join('')}
+                </div>
+                `;
+            }
+        });
+
+        return html ? `
+            <div class="card" style="margin-bottom: 30px; background:var(--gray-100);">
+                <div class="card-header" style="background:#fff; padding:18px 24px; border-bottom:1px solid #e2e8f0;">
+                    <h3 style="margin:0; color:var(--primary-800); font-size:18px;">📋 Organigrama de Actividades por Departamento</h3>
+                    <p style="margin:5px 0 0 0; font-size:13px; color:var(--gray-500);">Actividades específicas asignadas a Superintendentes y Auxiliares de cada departamento.</p>
+                </div>
+                <div style="padding:24px; overflow-x:auto;">
+                    <div style="display:flex; gap:24px; align-items:flex-start; padding-bottom:10px;">
+                        ${html}
+                    </div>
+                </div>
+            </div>
+        ` : '';
+    };
+
     wrapper.innerHTML = `
       <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary"onclick="openCreateDept()">＋ Nuevo Dpto. Organizacional</button></div>' : ''}</div>
       
       ${orgChartHTML}
+
+      ${renderActivitiesTree()}
     `;
 
     document.getElementById('page-content').innerHTML = '';
@@ -1136,6 +1224,50 @@ async function renderDepartments(wrapper) {
     if(window.applyViewFilters) window.applyViewFilters();
 
     window._allUsers = users;
+
+    window.openAddActivity = function (deptId, userId) {
+      showModal(`
+        <div class="modal-header"><h2>Añadir Actividad</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
+        <form id="add-activity-form">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Descripción de la actividad *</label>
+              <textarea class="form-input" id="aa-text" required placeholder="Escribe la actividad..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </form>
+      `);
+
+      document.getElementById('add-activity-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          await api('department_activities.php?action=create', {
+            method: 'POST',
+            body: JSON.stringify({
+              department_id: deptId,
+              user_id: userId,
+              activity_text: document.getElementById('aa-text').value
+            })
+          });
+          toast('Actividad añadida');
+          closeModal();
+          renderDepartments(document.getElementById('org-wrapper') || document.createElement('div')).then(() => { navigate('departments'); });
+        } catch (err) { toast(err.message, 'error'); }
+      });
+    };
+
+    window.deleteActivity = async function (id) {
+      if (!confirm('¿Seguro que deseas eliminar esta actividad?')) return;
+      try {
+        await api(`department_activities.php?action=delete&id=${id}`, { method: 'DELETE' });
+        toast('Actividad eliminada');
+        renderDepartments(document.getElementById('org-wrapper') || document.createElement('div')).then(() => { navigate('departments'); });
+      } catch (err) { toast(err.message, 'error'); }
+    };
 
     window.openCreateDept = function () {
       let selectedColor = '#2d3561';
