@@ -1126,39 +1126,11 @@ async function renderDepartments(wrapper) {
 
     const groupLabels = { emergencias: 'Emergencias', actividades: 'Actividades', otros_eventos: 'Otros Eventos', soporte_oficina: 'Soporte de Oficina', superintendencia: 'Superintendencia', todos: 'Todos los Departamentos' };
 
-    const renderActivitiesOrgNode = (deptId, u, acts) => {
-        let hMap = {};
-        try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
-        let roleText = hMap[deptId] || u.hierarchy_level || 'auxiliar';
-        const avatarContent = u.avatar_base64 ? `<img src="${u.avatar_base64}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : (u.avatar ? `<img src="api/uploads/${u.avatar}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">` : `<div style="width:30px;height:30px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#475569;">${initials(u.name)}</div>`);
-        
-        return `
-        <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:10px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
-                ${avatarContent}
-                <div>
-                    <div style="font-weight:600; font-size:13px; color:var(--gray-800)">${u.name}</div>
-                    <div style="font-size:10px; color:var(--gray-500); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">${roleText.replace('_', ' ')}</div>
-                </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                ${acts.map(a => `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; background:#f8fafc; padding:8px 10px; border-radius:6px; font-size:12px; border-left:3px solid var(--primary-400);">
-                        <span style="color:var(--gray-700); line-height:1.4;">${a.activity_text}</span>
-                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-500);cursor:pointer;padding:0 0 0 10px;font-size:16px;line-height:1;" title="Eliminar">&times;</button>` : ''}
-                    </div>
-                `).join('')}
-            </div>
-            ${isAdmin ? `<button onclick="openAddActivity('${deptId}', '${u.id}')" style="margin-top:10px; width:100%; padding:8px; font-size:12px; font-weight:600; background:#f1f5f9; color:var(--primary-600); border:1px dashed var(--primary-300); border-radius:6px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='var(--primary-50)'" onmouseout="this.style.background='#f1f5f9'">+ Añadir actividad</button>` : ''}
-        </div>
-        `;
-    };
-
-    const renderActivitiesTree = () => {
+    const renderActivitiesSection = () => {
         let html = '';
         const deptOrder = ['superintendencia', 'soporte_oficina', 'actividades', 'emergencias', 'otros_eventos'];
-        const allDeptIds = [...deptOrder, ...depts.filter(d => !deptOrder.includes(d.id)).map(d => d.id)];
-        
+        const allDeptIds = [...deptOrder, ...depts.filter(d => !deptOrder.includes(String(d.id))).map(d => String(d.id))];
+
         allDeptIds.forEach(deptId => {
             const grpUsers = groups[deptId] || [];
             const topUsers = grpUsers.filter(u => {
@@ -1169,7 +1141,7 @@ async function renderDepartments(wrapper) {
             });
 
             topUsers.sort((a, b) => {
-                const getH = (u) => {
+                const getH = u => {
                     let hMap = {};
                     try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
                     const h = hMap[deptId] || u.hierarchy_level || 'auxiliar';
@@ -1178,52 +1150,128 @@ async function renderDepartments(wrapper) {
                 return getH(a) - getH(b);
             });
 
-            if (topUsers.length > 0) {
-                const deptName = (depts.find(d => d.id == deptId) || {}).name || (groupLabels[deptId] || deptId.replace(/_/g, ' ').toUpperCase());
-                const color = BASE_COLORS[deptId] || (depts.find(d => d.id == deptId) || {}).color || '#64748b';
-                
-                html += `
-                <div style="border-top: 4px solid ${color}; background:var(--gray-50); border-radius:12px; padding:15px; box-shadow:var(--shadow-md); min-width:300px; max-width:300px; flex: 0 0 auto;">
-                    <h4 style="color:${color}; margin-top:0; margin-bottom:15px; font-size:15px; text-align:center; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">${deptName}</h4>
-                    ${topUsers.map(u => {
-                        const acts = activitiesData.filter(a => a.department_id === deptId && a.user_id == u.id);
-                        return renderActivitiesOrgNode(deptId, u, acts);
-                    }).join('')}
+            if (topUsers.length === 0) return;
+
+            const deptName = (depts.find(d => String(d.id) == deptId) || {}).name || (groupLabels[deptId] || deptId.replace(/_/g, ' ').toUpperCase());
+            const color = BASE_COLORS[deptId] || (depts.find(d => String(d.id) == deptId) || {}).color || '#64748b';
+
+            // All activities for this dept (from any user in this dept)
+            const deptActs = activitiesData.filter(a => String(a.department_id) === String(deptId));
+
+            const membersHTML = topUsers.map(u => {
+                let hMap = {};
+                try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
+                const roleText = (hMap[deptId] || u.hierarchy_level || 'auxiliar').replace(/_/g, ' ');
+                const avatarContent = u.avatar_base64
+                    ? `<img src="${u.avatar_base64}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`
+                    : (u.avatar
+                        ? `<img src="api/uploads/${u.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`
+                        : `<div style="width:28px;height:28px;border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:${color};">${initials(u.name)}</div>`);
+
+                return `
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">
+                    ${avatarContent}
+                    <div>
+                        <div style="font-weight:600;font-size:12px;color:var(--gray-800);">${u.name}</div>
+                        <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${color};letter-spacing:0.4px;">${roleText}</div>
+                    </div>
+                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','${u.id}')" style="margin-left:auto;background:none;border:1px dashed ${color}55;color:${color};border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;">+ Actividad</button>` : ''}
+                </div>`;
+            }).join('');
+
+            const actsHTML = deptActs.length > 0
+                ? deptActs.map(a => {
+                    const owner = topUsers.find(u => String(u.id) === String(a.user_id));
+                    return `
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;background:#f8fafc;padding:9px 12px;border-radius:7px;font-size:12px;border-left:3px solid ${color};">
+                        <div>
+                            <div style="color:var(--gray-700);line-height:1.5;">${a.activity_text}</div>
+                            ${owner ? `<div style="font-size:10px;color:${color};font-weight:600;margin-top:3px;">— ${owner.name}</div>` : ''}
+                        </div>
+                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0 0 0 10px;font-size:16px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
+                    </div>`;
+                }).join('')
+                : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:12px;font-style:italic;">Sin actividades registradas</div>`;
+
+            html += `
+            <div style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:15px;box-shadow:var(--shadow-md);min-width:300px;max-width:300px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
+                <h4 style="color:${color};margin:0 0 12px 0;font-size:14px;text-align:center;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
+                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${membersHTML}</div>
+                <div style="border-top:1px dashed #d1d5db;padding-top:12px;">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray-500);letter-spacing:0.6px;margin-bottom:8px;">📋 Actividades del Departamento</div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">${actsHTML}</div>
                 </div>
-                `;
-            }
+            </div>`;
         });
 
-        return html ? `
-            <div class="card" style="margin-bottom: 30px; background:var(--gray-100);">
-                <div class="card-header" style="background:#fff; padding:18px 24px; border-bottom:1px solid #e2e8f0;">
-                    <h3 style="margin:0; color:var(--primary-800); font-size:18px;">📋 Organigrama de Actividades por Departamento</h3>
-                    <p style="margin:5px 0 0 0; font-size:13px; color:var(--gray-500);">Actividades específicas asignadas a Superintendentes y Auxiliares de cada departamento.</p>
-                </div>
-                <div style="padding:24px; overflow-x:auto;">
-                    <div style="display:flex; gap:24px; align-items:flex-start; padding-bottom:10px;">
-                        ${html}
-                    </div>
-                </div>
+        return `
+        <div id="activities-org-wrapper" style="padding:24px;overflow-x:auto;">
+            <div style="display:flex;gap:20px;align-items:flex-start;padding-bottom:10px;">
+                ${html || '<div style="color:var(--gray-400);font-size:14px;padding:20px;">No hay Superintendentes o Auxiliares asignados aún.</div>'}
             </div>
-        ` : '';
+        </div>`;
     };
 
-    wrapper.innerHTML = `
-      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary"onclick="openCreateDept()">＋ Nuevo Dpto. Organizacional</button></div>' : ''}</div>
-      
-      ${orgChartHTML}
+    state._deptTab = state._deptTab || 'organigrama';
 
-      ${renderActivitiesTree()}
+    const tabBarHTML = `
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:0;">
+        <button id="dept-tab-org" onclick="switchDeptTab('organigrama')" style="padding:12px 24px;font-size:14px;font-weight:600;border:none;background:${state._deptTab==='organigrama'?'var(--primary-600)':'transparent'};color:${state._deptTab==='organigrama'?'#fff':'var(--gray-500)'};cursor:pointer;border-radius:8px 8px 0 0;transition:all 0.2s;">🌳 Organigrama de Personal</button>
+        <button id="dept-tab-act" onclick="switchDeptTab('actividades')" style="padding:12px 24px;font-size:14px;font-weight:600;border:none;background:${state._deptTab==='actividades'?'var(--primary-600)':'transparent'};color:${state._deptTab==='actividades'?'#fff':'var(--gray-500)'};cursor:pointer;border-radius:8px 8px 0 0;transition:all 0.2s;">📋 Organigrama de Actividades</button>
+    </div>`;
+
+    const activitiesTabHTML = `
+    <div id="dept-panel-actividades" style="display:${state._deptTab==='actividades'?'block':'none'}">
+        <div class="card" style="margin-bottom:30px;background:var(--gray-50);border-radius:0 12px 12px 12px;">
+            <div class="card-header" style="background:#fff;display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid #e2e8f0;border-radius:0 12px 0 0;">
+                <div>
+                    <h3 style="margin:0;color:var(--primary-800);font-size:17px;">📋 Organigrama de Actividades por Departamento</h3>
+                    <p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);">Actividades de cada departamento por Superintendentes y Auxiliares.</p>
+                </div>
+                <button onclick="exportActivitiesImg()" style="padding:8px 18px;background:var(--primary-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como imagen PNG">🖼️ Descargar PNG</button>
+            </div>
+            ${renderActivitiesSection()}
+        </div>
+    </div>`;
+
+    wrapper.innerHTML = `
+      <div class="page-header"><h2>Departamentos y Organigrama</h2>${isAdmin ? '<div><button class="btn btn-primary" onclick="openCreateDept()">＋ Nuevo Dpto. Organizacional</button></div>' : ''}</div>
+      ${tabBarHTML}
+      <div id="dept-panel-organigrama" style="display:${state._deptTab==='organigrama'?'block':'none'}">${orgChartHTML}</div>
+      ${activitiesTabHTML}
     `;
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
-    
+
     // Default structure applies the active filters back when page rerenders
     if(window.applyViewFilters) window.applyViewFilters();
 
     window._allUsers = users;
+
+    window.switchDeptTab = function(tab) {
+      state._deptTab = tab;
+      document.getElementById('dept-panel-organigrama').style.display = tab === 'organigrama' ? 'block' : 'none';
+      document.getElementById('dept-panel-actividades').style.display = tab === 'actividades' ? 'block' : 'none';
+      document.getElementById('dept-tab-org').style.background = tab === 'organigrama' ? 'var(--primary-600)' : 'transparent';
+      document.getElementById('dept-tab-org').style.color = tab === 'organigrama' ? '#fff' : 'var(--gray-500)';
+      document.getElementById('dept-tab-act').style.background = tab === 'actividades' ? 'var(--primary-600)' : 'transparent';
+      document.getElementById('dept-tab-act').style.color = tab === 'actividades' ? '#fff' : 'var(--gray-500)';
+    };
+
+    window.exportActivitiesImg = function() {
+      const el = document.getElementById('activities-org-wrapper');
+      if (!el) { toast('No hay contenido para exportar', 'error'); return; }
+      if (typeof html2canvas === 'undefined') { toast('html2canvas no disponible', 'error'); return; }
+      toast('Generando imagen...');
+      html2canvas(el, { backgroundColor: '#f8fafc', scale: 2, useCORS: true }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'organigrama_actividades.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        toast('Imagen descargada');
+      }).catch(() => toast('Error al generar imagen', 'error'));
+    };
 
     window.openAddActivity = function (deptId, userId) {
       showModal(`
