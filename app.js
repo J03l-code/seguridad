@@ -1162,43 +1162,46 @@ async function renderDepartments(wrapper) {
                 let hMap = {};
                 try { hMap = u.hierarchy_map ? JSON.parse(u.hierarchy_map) : {}; } catch (e) { }
                 const roleText = (hMap[deptId] || u.hierarchy_level || 'auxiliar').replace(/_/g, ' ');
+                const isJefe = (hMap[deptId] || u.hierarchy_level) === 'superintendente';
+                const avatarSize = isJefe ? '44px' : '36px';
                 const avatarContent = u.avatar_base64
-                    ? `<img src="${u.avatar_base64}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`
+                    ? `<img src="${u.avatar_base64}" style="width:${avatarSize};height:${avatarSize};border-radius:50%;object-fit:cover;">`
                     : (u.avatar
-                        ? `<img src="api/uploads/${u.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">`
-                        : `<div style="width:28px;height:28px;border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;color:${color};">${initials(u.name)}</div>`);
+                        ? `<img src="api/uploads/${u.avatar}" style="width:${avatarSize};height:${avatarSize};border-radius:50%;object-fit:cover;">`
+                        : `<div style="width:${avatarSize};height:${avatarSize};border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:${isJefe?'15':'12'}px;font-weight:bold;color:${color};">${initials(u.name)}</div>`);
 
                 return `
-                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #e2e8f0;">
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;border:1px solid ${isJefe ? color+'55' : '#e2e8f0'};${isJefe ? 'box-shadow:0 2px 8px '+color+'22;' : ''}">
                     ${avatarContent}
-                    <div>
-                        <div style="font-weight:600;font-size:12px;color:var(--gray-800);">${u.name}</div>
-                        <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${color};letter-spacing:0.4px;">${roleText}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:${isJefe?'800':'700'};font-size:${isJefe?'14':'12'}px;color:var(--gray-900);">${u.name}</div>
+                        <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${color};letter-spacing:0.5px;margin-bottom:4px;">${roleText}</div>
+                        ${u.job_title ? `<div style="font-size:11px;color:var(--gray-500);margin-bottom:2px;">🏷️ ${u.job_title}</div>` : ''}
+                        ${u.phone ? `<div style="font-size:11px;color:var(--gray-600);">&#128222; ${u.phone}</div>` : ''}
+                        ${u.jwpub_email ? `<div style="font-size:11px;color:var(--primary-600);word-break:break-all;">&#128218; ${u.jwpub_email}</div>` : ''}
+                        ${u.meeting_day ? u.meeting_day.split(' | ').map(m => `<div style="font-size:11px;color:var(--warning-700);font-weight:600;">&#128197; ${m}</div>`).join('') : ''}
                     </div>
                 </div>`;
             }).join('');
 
             const actsHTML = deptActs.length > 0
-                ? `<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;">
-                    ${deptActs.map(a => `
-                    <li style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-                        <span style="color:${color};font-size:14px;flex-shrink:0;margin-top:1px;">&#8226;</span>
-                        <span style="flex:1;color:var(--gray-700);font-size:12px;line-height:1.5;">${a.activity_text}</span>
-                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
-                    </li>`).join('')}
-                  </ul>`
-                : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:10px 0;font-style:italic;">Sin actividades registradas</div>`;
+                ? deptActs.map(a => `
+                    <div style="background:#fff;border:1px solid ${color}55;border-left:5px solid ${color};border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;box-shadow:0 1px 4px ${color}15;">
+                        <span style="flex:1;color:var(--gray-900);font-size:14px;font-weight:700;line-height:1.6;">${a.activity_text}</span>
+                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:18px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
+                    </div>`).join('')
+                : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:12px 0;font-style:italic;">Sin actividades registradas</div>`;
 
             html += `
-            <div style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:15px;box-shadow:var(--shadow-md);min-width:300px;max-width:300px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <h4 style="color:${color};margin:0;font-size:14px;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
-                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','')" style="background:none;border:1px dashed ${color}88;color:${color};border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">+ Añadir</button>` : ''}
+            <div style="border-top:4px solid ${color};background:var(--gray-50);border-radius:12px;padding:16px;box-shadow:var(--shadow-md);min-width:320px;max-width:320px;flex:0 0 auto;display:flex;flex-direction:column;gap:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <h4 style="color:${color};margin:0;font-size:15px;text-transform:uppercase;font-weight:800;letter-spacing:0.5px;">${deptName}</h4>
+                    ${isAdmin ? `<button onclick="openAddActivity('${deptId}','')" style="background:none;border:1px dashed ${color}88;color:${color};border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Añadir</button>` : ''}
                 </div>
-                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">${membersHTML}</div>
-                <div style="border-top:1px dashed #d1d5db;padding-top:12px;">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray-500);letter-spacing:0.6px;margin-bottom:10px;text-align:center;">&#128203; Actividades</div>
-                    ${actsHTML}
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">${membersHTML}</div>
+                <div style="border-top:2px dashed ${color}33;padding-top:14px;">
+                    <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:${color};letter-spacing:0.7px;margin-bottom:10px;text-align:center;">&#128203; Actividades del Departamento</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">${actsHTML}</div>
                 </div>
             </div>`;
         });
