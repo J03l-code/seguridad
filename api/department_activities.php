@@ -39,6 +39,9 @@ switch ($action) {
     case 'create':
         createActivity($auth);
         break;
+    case 'update':
+        updateActivity($auth);
+        break;
     case 'delete':
         deleteActivity($auth);
         break;
@@ -70,6 +73,24 @@ function createActivity($auth) {
     $stmt->execute([$dept_id, $user_id, $text]);
 
     jsonResponse(['message' => 'Actividad añadida exitosamente.', 'id' => $pdo->lastInsertId()]);
+}
+
+function updateActivity($auth) {
+    global $pdo;
+    if (getMethod() !== 'POST') jsonResponse(['error' => 'Método no permitido.'], 405);
+    
+    $data = getJsonBody();
+    $id = $data['id'] ?? '';
+    $text = trim($data['activity_text'] ?? '');
+
+    if (!$id || !$text) {
+        jsonResponse(['error' => 'ID y texto son obligatorios.'], 400);
+    }
+
+    $stmt = $pdo->prepare("UPDATE department_activities SET activity_text = ? WHERE id = ?");
+    $stmt->execute([$text, $id]);
+
+    jsonResponse(['message' => 'Actividad actualizada.']);
 }
 
 function deleteActivity($auth) {

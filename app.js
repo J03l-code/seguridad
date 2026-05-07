@@ -1170,16 +1170,18 @@ async function renderDepartments(wrapper) {
                         ? `<img src="api/uploads/${u.avatar}" style="width:${avatarSize};height:${avatarSize};border-radius:50%;object-fit:cover;">`
                         : `<div style="width:${avatarSize};height:${avatarSize};border-radius:50%;background:${color}22;display:flex;align-items:center;justify-content:center;font-size:${isJefe?'15':'12'}px;font-weight:bold;color:${color};">${initials(u.name)}</div>`);
 
+                const showDetails = !state._compactActMode;
+
                 return `
                 <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;border:1px solid ${isJefe ? color+'55' : '#e2e8f0'};${isJefe ? 'box-shadow:0 2px 8px '+color+'22;' : ''}">
                     ${avatarContent}
                     <div style="flex:1;min-width:0;">
                         <div style="font-weight:${isJefe?'800':'700'};font-size:${isJefe?'14':'12'}px;color:var(--gray-900);">${u.name}</div>
                         <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${color};letter-spacing:0.5px;margin-bottom:4px;">${roleText}</div>
-                        ${u.job_title ? `<div style="font-size:11px;color:var(--gray-500);margin-bottom:2px;">🏷️ ${u.job_title}</div>` : ''}
-                        ${u.phone ? `<div style="font-size:11px;color:var(--gray-600);">&#128222; ${u.phone}</div>` : ''}
-                        ${u.jwpub_email ? `<div style="font-size:11px;color:var(--primary-600);word-break:break-all;">&#128218; ${u.jwpub_email}</div>` : ''}
-                        ${u.meeting_day ? u.meeting_day.split(' | ').map(m => `<div style="font-size:11px;color:var(--warning-700);font-weight:600;">&#128197; ${m}</div>`).join('') : ''}
+                        ${showDetails && u.job_title ? `<div style="font-size:11px;color:var(--gray-500);margin-bottom:2px;">🏷️ ${u.job_title}</div>` : ''}
+                        ${showDetails && u.phone ? `<div style="font-size:11px;color:var(--gray-600);">&#128222; ${u.phone}</div>` : ''}
+                        ${showDetails && u.jwpub_email ? `<div style="font-size:11px;color:var(--primary-600);word-break:break-all;">&#128218; ${u.jwpub_email}</div>` : ''}
+                        ${showDetails && u.meeting_day ? u.meeting_day.split(' | ').map(m => `<div style="font-size:11px;color:var(--warning-700);font-weight:600;">&#128197; ${m}</div>`).join('') : ''}
                     </div>
                 </div>`;
             }).join('');
@@ -1188,7 +1190,11 @@ async function renderDepartments(wrapper) {
                 ? deptActs.map(a => `
                     <div style="background:#fff;border:1px solid ${color}55;border-left:5px solid ${color};border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 1px 4px ${color}15;">
                         <span style="flex:1;color:var(--gray-900);font-size:14px;font-weight:700;line-height:1.6;text-align:center;">${a.activity_text}</span>
-                        ${isAdmin ? `<button onclick="deleteActivity(${a.id})" class="no-print" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:18px;line-height:1;flex-shrink:0;" title="Eliminar">&times;</button>` : ''}
+                        ${isAdmin ? `
+                        <div class="no-print" style="display:flex;gap:5px;">
+                            <button onclick="openEditActivity(${a.id}, '${a.activity_text.replace(/'/g, "\\'")}')" style="background:none;border:none;color:var(--primary-500);cursor:pointer;padding:0;font-size:16px;line-height:1;" title="Editar">✏️</button>
+                            <button onclick="deleteActivity(${a.id})" style="background:none;border:none;color:var(--danger-400);cursor:pointer;padding:0;font-size:18px;line-height:1;" title="Eliminar">&times;</button>
+                        </div>` : ''}
                     </div>`).join('')
                 : `<div style="font-size:12px;color:var(--gray-400);text-align:center;padding:12px 0;font-style:italic;">Sin actividades registradas</div>`;
 
@@ -1230,7 +1236,11 @@ async function renderDepartments(wrapper) {
                     <h3 style="margin:0;color:var(--primary-800);font-size:17px;">📋 Organigrama de Actividades por Departamento</h3>
                     <p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);">Actividades de cada departamento por Superintendentes y Auxiliares.</p>
                 </div>
-                <button onclick="openExportActivitiesModal()" style="padding:8px 18px;background:var(--primary-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como imagen PNG">🖼️ Descargar PNG</button>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <button onclick="toggleCompactActMode()" style="padding:8px 12px;background:${state._compactActMode?'var(--warning-100)':'var(--gray-100)'};color:${state._compactActMode?'var(--warning-700)':'var(--gray-700)'};border:1px solid ${state._compactActMode?'var(--warning-200)':'var(--gray-200)'};border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">${state._compactActMode?'🔓 Expandir':'🔒 Compacto'}</button>
+                    <button onclick="openExportActivitiesModal('png')" style="padding:8px 18px;background:var(--primary-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como imagen PNG">🖼️ PNG</button>
+                    <button onclick="openExportActivitiesModal('pdf')" style="padding:8px 18px;background:var(--danger-600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;" title="Descargar como documento PDF">📄 PDF</button>
+                </div>
             </div>
             ${renderActivitiesSection()}
         </div>
@@ -1251,6 +1261,11 @@ async function renderDepartments(wrapper) {
 
     window._allUsers = users;
 
+    window.toggleCompactActMode = function() {
+        state._compactActMode = !state._compactActMode;
+        renderDepartments(document.getElementById('org-wrapper') || document.createElement('div')).then(() => { navigate('departments'); });
+    };
+
     window.switchDeptTab = function(tab) {
       state._deptTab = tab;
       document.getElementById('dept-panel-organigrama').style.display = tab === 'organigrama' ? 'block' : 'none';
@@ -1261,7 +1276,7 @@ async function renderDepartments(wrapper) {
       document.getElementById('dept-tab-act').style.color = tab === 'actividades' ? '#fff' : 'var(--gray-500)';
     };
 
-    window.openExportActivitiesModal = function() {
+    window.openExportActivitiesModal = function(format = 'png') {
         const availableDepts = Array.from(document.querySelectorAll('.act-dept-card')).map(el => {
             const id = el.getAttribute('data-dept');
             const name = el.querySelector('h4').innerText;
@@ -1290,12 +1305,12 @@ async function renderDepartments(wrapper) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="executeExportActivities()">Generar Imagen</button>
+                <button type="button" class="btn btn-primary" onclick="executeExportActivities('${format}')">Generar ${format.toUpperCase()}</button>
             </div>
         `);
     };
 
-    window.executeExportActivities = async function() {
+    window.executeExportActivities = async function(format = 'png') {
         const selectedIds = Array.from(document.querySelectorAll('input[name="export_dept"]:checked')).map(cb => cb.value);
         if (selectedIds.length === 0) {
             toast('Debes seleccionar al menos un departamento', 'warning');
@@ -1389,14 +1404,60 @@ async function renderDepartments(wrapper) {
                 clonedTarget.appendChild(footer);
             }
         }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'organigrama_actividades.png';
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            toast('Imagen descargada exitosamente');
+            if (format === 'pdf') {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jspdf.jsPDF({
+                    orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save('organigrama_actividades.pdf');
+                toast('Documento PDF descargado exitosamente');
+            } else {
+                const link = document.createElement('a');
+                link.download = 'organigrama_actividades.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                toast('Imagen descargada exitosamente');
+            }
         }).catch(err => {
             console.error(err);
-            toast('Error al generar imagen', 'error');
+            toast('Error al generar archivo', 'error');
+        });
+    };
+
+    window.openEditActivity = function(id, currentText) {
+        showModal(`
+            <div class="modal-header"><h2>Editar Actividad</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
+            <form id="edit-activity-form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Descripción de la actividad *</label>
+                        <textarea class="form-input" id="ea-text" required>${currentText}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Actualizar</button>
+                </div>
+            </form>
+        `);
+
+        document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await api('department_activities.php?action=update', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        id: id,
+                        activity_text: document.getElementById('ea-text').value
+                    })
+                });
+                toast('Actividad actualizada');
+                closeModal();
+                renderDepartments(document.getElementById('org-wrapper') || document.createElement('div')).then(() => { navigate('departments'); });
+            } catch (err) { toast(err.message, 'error'); }
         });
     };
 
