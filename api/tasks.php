@@ -266,7 +266,7 @@ function updateTask($id, $auth)
     $uGroupStr = $uStmt->fetchColumn() ?? '';
     $uGroups = array_map('trim', explode(',', $uGroupStr));
     $isSuper = in_array('superintendencia', $uGroups);
-    $canManageTasks = ($auth['role'] === 'admin');
+    $canManageTasks = ($auth['role'] === 'admin' || $isSuper || $old['created_by'] == $auth['id']);
 
     $isInDept = false;
     foreach ($uGroups as $g) {

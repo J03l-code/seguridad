@@ -718,7 +718,7 @@ async function renderTasks(wrapper) {
             </div>
           </div>
           <div class="modal-footer">
-            ${state.user?.role === 'admin' ? `<button class="btn btn-sm btn-outline"onclick="openEditTask(${t.id})">✏️ Editar</button>` : ''}
+            <button class="btn btn-sm btn-outline"onclick="openEditTask(${t.id})">✏️ Editar</button>
             <button class="btn btn-sm btn-outline"onclick="syncCalendar(${t.id})">📅 Sincronizar</button>
             <button class="btn btn-sm btn-danger"onclick="deleteTask(${t.id})">🗑 Eliminar</button>
             <button class="btn btn-outline"onclick="closeModal()">Cerrar</button>
