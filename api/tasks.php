@@ -53,9 +53,11 @@ function listTasks()
 {
     global $pdo;
     $sql = "SELECT t.*, u1.name as creator_name, u1.user_group as creator_group,
+                   u2.name as assigned_name,
                 (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count
             FROM tasks t
             LEFT JOIN users u1 ON t.created_by = u1.id
+            LEFT JOIN users u2 ON t.assigned_to = u2.id
             WHERE 1=1";
     $params = [];
 
@@ -90,8 +92,11 @@ function getTask($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name
-        FROM tasks t LEFT JOIN users u1 ON t.created_by = u1.id WHERE t.id = ?");
+    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, u2.name as assigned_name
+        FROM tasks t 
+        LEFT JOIN users u1 ON t.created_by = u1.id 
+        LEFT JOIN users u2 ON t.assigned_to = u2.id 
+        WHERE t.id = ?");
     $stmt->execute([$id]);
     $task = $stmt->fetch();
     if (!$task)
@@ -126,14 +131,15 @@ function createTask($auth)
         jsonResponse(['error' => 'Título y departamento son obligatorios.'], 400);
 
 
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, created_by, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, created_by, due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,
         $data['status'] ?? 'todo',
         $data['priority'] ?? 'medium',
         $targetGroup,
+        !empty($data['assigned_to']) ? $data['assigned_to'] : null,
         $auth['id'],
         $data['due_date'] ?: null
     ]);
@@ -304,7 +310,7 @@ function updateTask($id, $auth)
 
     $pdo->prepare("UPDATE tasks SET title = COALESCE(?, title), description = COALESCE(?, description),
         status = COALESCE(?, status), priority = COALESCE(?, priority),
-        due_date = COALESCE(?, due_date), target_group = COALESCE(?, target_group) WHERE id = ?")
+        due_date = COALESCE(?, due_date), target_group = COALESCE(?, target_group), assigned_to = COALESCE(?, assigned_to) WHERE id = ?")
         ->execute([
             $data['title'] ?? null,
             $data['description'] ?? null,
@@ -312,6 +318,7 @@ function updateTask($id, $auth)
             $data['priority'] ?? null,
             $data['due_date'] ?? null,
             $data['target_group'] ?? null,
+            isset($data['assigned_to']) ? ($data['assigned_to'] === '' ? null : $data['assigned_to']) : null,
             $id
         ]);
 

@@ -572,6 +572,7 @@ async function renderTasks(wrapper) {
                       ${t.due_date ? `<span class="${isOverdue(t.due_date) && t.status !== 'done' ? 'task-due-overdue' : ''}">📅 ${formatDate(t.due_date)}</span>` : ''}
                       ${t.attachment_count > 0 ? `<span>📎 ${t.attachment_count}</span>` : ''}
                       ${t.target_group ? `<span class="dept-tag"style="background:#2d3561">${groupLabels[t.target_group] || t.target_group}</span>` : ''}
+                      ${t.assigned_name ? `<span class="dept-tag"style="background:var(--primary-600)">👤 ${t.assigned_name.split(' ')[0]}</span>` : ''}
                     </div>
                   </div>
                   ${(() => {
@@ -682,7 +683,7 @@ async function renderTasks(wrapper) {
             ${t.description ? `<div style="margin-bottom:20px"><label class="form-label">Descripción</label><p style="font-size:14px;color:var(--gray-700);line-height:1.6">${t.description}</p></div>` : ''}
             <div class="grid-2"style="margin-bottom:20px">
               <div><label class="form-label">Departamento</label><p style="font-size:14px">${t.target_group ? (groupLabels[t.target_group] || t.target_group) : '—'}</p></div>
-              <div><label class="form-label">Sector</label><p style="font-size:14px">Tarea de Equipo</p></div>
+              <div><label class="form-label">Asignado a</label><p style="font-size:14px">${t.assigned_name || 'Nadie'}</p></div>
               <div><label class="form-label">Creado por</label><p style="font-size:14px">${t.creator_name}</p></div>
               <div><label class="form-label">Fecha límite</label><p style="font-size:14px;${isOverdue(t.due_date) && t.status !== 'done' ? 'color:var(--danger-500)' : ''}">${formatDate(t.due_date)}</p></div>
             </div>
@@ -733,6 +734,9 @@ async function renderTasks(wrapper) {
         const t = data.task;
         if (!t) return;
 
+        const supportUsers = window._users.filter(u => u.user_group && u.user_group.includes('soporte_oficina'));
+        const supportOptions = supportUsers.map(u => `<option value="${u.id}" ${t.assigned_to == u.id ? 'selected' : ''}>${u.name}</option>`).join('');
+
         showModal(`
           <div class="modal-header"><h2>Editar Tarea</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
           <form id="edit-task-form">
@@ -762,7 +766,12 @@ async function renderTasks(wrapper) {
               </div>
               <div class="grid-2">
                 <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input"id="et-due"type="datetime-local"value="${t.due_date ? t.due_date.replace(' ', 'T') : ''}"></div>
-                <div></div>
+                <div class="form-group"><label class="form-label">Asignar a (Soporte)</label>
+                  <select class="form-select" id="et-assigned_to">
+                    <option value="">Nadie / No aplica</option>
+                    ${supportOptions}
+                  </select>
+                </div>
               </div>
             </div>
             <div class="modal-footer">
@@ -780,7 +789,8 @@ async function renderTasks(wrapper) {
               description: document.getElementById('et-desc').value,
               target_group: document.getElementById('et-target_group').value,
               priority: document.getElementById('et-pri').value,
-              due_date: document.getElementById('et-due').value ? document.getElementById('et-due').value.replace('T', ' ') : null
+              due_date: document.getElementById('et-due').value ? document.getElementById('et-due').value.replace('T', ' ') : null,
+              assigned_to: document.getElementById('et-assigned_to').value || null
             };
 
             await api(`tasks.php?action=update&id=${id}`, {
@@ -841,6 +851,9 @@ async function renderTasks(wrapper) {
     };
 
     window.openCreateTask = function () {
+      const supportUsers = window._users.filter(u => u.user_group && u.user_group.includes('soporte_oficina'));
+      const supportOptions = supportUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+
       showModal(`
         <div class="modal-header"><h2>Nueva Tarea</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
         <form id="create-task-form">
@@ -853,7 +866,12 @@ async function renderTasks(wrapper) {
             </div>
             <div class="grid-2">
               <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input"id="ct-due"type="datetime-local"></div>
-              <div></div>
+              <div class="form-group"><label class="form-label">Asignar a (Soporte)</label>
+                <select class="form-select" id="ct-assigned_to">
+                  <option value="">Nadie / No aplica</option>
+                  ${supportOptions}
+                </select>
+              </div>
             </div>
             <div class="form-group"><label class="form-label">Archivos</label>
               <div class="dropzone"onclick="document.getElementById('ct-files').click()"><div class="dropzone-icon">📂</div><div class="dropzone-text">Haz clic para seleccionar</div><div class="dropzone-hint">PDF, Word, Excel, imágenes (máx. 10MB)</div></div>
@@ -879,6 +897,7 @@ async function renderTasks(wrapper) {
           fd.append('target_group', document.getElementById('ct-target_group').value);
           fd.append('priority', document.getElementById('ct-pri').value);
           fd.append('due_date', document.getElementById('ct-due').value);
+          fd.append('assigned_to', document.getElementById('ct-assigned_to').value);
           const files = document.getElementById('ct-files').files;
           for (let i = 0; i < files.length; i++) fd.append('files[]', files[i]);
 
