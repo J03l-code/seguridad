@@ -304,13 +304,14 @@ function updateTask($id, $auth)
 
     $pdo->prepare("UPDATE tasks SET title = COALESCE(?, title), description = COALESCE(?, description),
         status = COALESCE(?, status), priority = COALESCE(?, priority),
-        due_date = COALESCE(?, due_date) WHERE id = ?")
+        due_date = COALESCE(?, due_date), target_group = COALESCE(?, target_group) WHERE id = ?")
         ->execute([
             $data['title'] ?? null,
             $data['description'] ?? null,
             $data['status'] ?? null,
             $data['priority'] ?? null,
             $data['due_date'] ?? null,
+            $data['target_group'] ?? null,
             $id
         ]);
 

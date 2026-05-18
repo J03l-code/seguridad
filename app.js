@@ -718,11 +718,81 @@ async function renderTasks(wrapper) {
             </div>
           </div>
           <div class="modal-footer">
+            ${state.user?.role === 'admin' ? `<button class="btn btn-sm btn-outline"onclick="openEditTask(${t.id})">✏️ Editar</button>` : ''}
             <button class="btn btn-sm btn-outline"onclick="syncCalendar(${t.id})">📅 Sincronizar</button>
             <button class="btn btn-sm btn-danger"onclick="deleteTask(${t.id})">🗑 Eliminar</button>
             <button class="btn btn-outline"onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
+      } catch (err) { toast(err.message, 'error'); }
+    };
+
+    window.openEditTask = async function (id) {
+      try {
+        const data = await api(`tasks.php?action=get&id=${id}`);
+        const t = data.task;
+        if (!t) return;
+
+        showModal(`
+          <div class="modal-header"><h2>Editar Tarea</h2><button class="modal-close"onclick="closeModal()">✕</button></div>
+          <form id="edit-task-form">
+            <div class="modal-body">
+              <div class="form-group"><label class="form-label">Título *</label><input class="form-input"id="et-title"value="${t.title.replace(/"/g, '&quot;')}"placeholder="Nombre de la tarea"required></div>
+              <div class="form-group"><label class="form-label">Descripción</label><textarea class="form-input"id="et-desc"placeholder="Describe la tarea...">${t.description || ''}</textarea></div>
+              <div class="grid-2">
+                <div class="form-group"><label class="form-label">Departamento *</label>
+                  <select class="form-select"id="et-target_group"required>
+                    <option value="">Seleccionar...</option>
+                    <option value="emergencias"${t.target_group === 'emergencias' ? 'selected' : ''}>Emergencias</option>
+                    <option value="actividades"${t.target_group === 'actividades' ? 'selected' : ''}>Actividades</option>
+                    <option value="otros_eventos"${t.target_group === 'otros_eventos' ? 'selected' : ''}>Otros Eventos</option>
+                    <option value="soporte_oficina"${t.target_group === 'soporte_oficina' ? 'selected' : ''}>Soporte de Oficina</option>
+                    <option value="superintendencia"${t.target_group === 'superintendencia' ? 'selected' : ''}>Superintendencia</option>
+                    <option value="todos"${t.target_group === 'todos' ? 'selected' : ''}>🌐 Todos los Departamentos</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Prioridad</label>
+                  <select class="form-select"id="et-pri">
+                    <option value="low"${t.priority === 'low' ? 'selected' : ''}>Baja</option>
+                    <option value="medium"${t.priority === 'medium' ? 'selected' : ''}>Media</option>
+                    <option value="high"${t.priority === 'high' ? 'selected' : ''}>Alta</option>
+                    <option value="urgent"${t.priority === 'urgent' ? 'selected' : ''}>Urgente</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group"><label class="form-label">Fecha límite</label><input class="form-input"id="et-due"type="datetime-local"value="${t.due_date ? t.due_date.replace(' ', 'T') : ''}"></div>
+                <div></div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button"class="btn btn-outline"onclick="openTaskDetail(${t.id})">Cancelar</button>
+              <button type="submit"class="btn btn-primary">Guardar Cambios</button>
+            </div>
+          </form>
+        `, 'modal-lg');
+
+        document.getElementById('edit-task-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          try {
+            const body = {
+              title: document.getElementById('et-title').value,
+              description: document.getElementById('et-desc').value,
+              target_group: document.getElementById('et-target_group').value,
+              priority: document.getElementById('et-pri').value,
+              due_date: document.getElementById('et-due').value ? document.getElementById('et-due').value.replace('T', ' ') : null
+            };
+
+            await api(`tasks.php?action=update&id=${id}`, {
+              method: 'PUT',
+              body: JSON.stringify(body)
+            });
+            toast('Tarea actualizada');
+            closeModal();
+            // Refresh tasks page/board
+            renderTasks(document.createElement('div')).then(() => { });
+          } catch (err) { toast(err.message, 'error'); }
+        });
       } catch (err) { toast(err.message, 'error'); }
     };
 
