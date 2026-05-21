@@ -2669,10 +2669,7 @@ async function renderSettings(wrapper, params) {
           <span id="push-status-dot" class="status-dot gray"></span>
           <span id="push-status-text" style="font-size:14px;font-weight:500">Verificando compatibilidad...</span>
         </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <button id="push-btn" class="btn btn-primary" onclick="togglePushSubscription()" style="display:none"></button>
-          <a href="api/debug_push.php?token=${encodeURIComponent(localStorage.getItem('iccp_token'))}" target="_blank" class="btn btn-outline" style="font-size:13px;padding:8px 12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">🛠️ Panel de Diagnóstico Push</a>
-        </div>
+        <button id="push-btn" class="btn btn-primary" onclick="togglePushSubscription()" style="display:none"></button>
       </div></div>
       <div class="settings-card card"><div class="card-header"><h3>ℹ️ Acerca de</h3></div><div class="card-body">
         ${[['Sistema', 'ICCP - Gestión de Tareas'], ['Versión', '1.0.0'], ['Frontend', 'HTML + CSS + JavaScript'], ['Backend', 'PHP + MySQL']].map(([l, v]) => `<div class="info-row"><span class="info-label">${l}</span><span class="info-value">${v}</span></div>`).join('')}
