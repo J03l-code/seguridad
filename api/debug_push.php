@@ -8,11 +8,30 @@ require_once __DIR__ . '/push_helper.php';
 setCorsHeaders();
 
 // Solo permitir acceso si el usuario está autenticado
-try {
-    $auth = authenticate();
-} catch (Exception $e) {
+// Obtener token desde la cabecera o desde el parámetro de la URL
+$token = $_GET['token'] ?? '';
+$auth = null;
+
+if (!empty($token)) {
+    $auth = verifyJWT($token, $JWT_SECRET);
+}
+
+if (!$auth) {
+    $headers = getallheaders();
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    if (preg_match('/^Bearer\s+(.+)$/', $authHeader, $matches)) {
+        $auth = verifyJWT($matches[1], $JWT_SECRET);
+    }
+}
+
+if (!$auth) {
     http_response_code(401);
-    echo "<h1>Error: No autenticado</h1><p>Por favor, inicia sesión en la aplicación antes de abrir esta página.</p>";
+    header('Content-Type: text/html; charset=utf-8');
+    echo "<div style='font-family:sans-serif;padding:40px;max-width:600px;margin:50px auto;border:1px solid #fca5a5;background:#fef2f2;border-radius:8px;'>
+            <h1 style='color:#dc2626;margin-top:0;'>🔒 Acceso de Diagnóstico Denegado</h1>
+            <p>Para abrir esta página técnica de forma segura, debes hacer clic en el botón <strong>'Ver Panel de Diagnóstico Push'</strong> que se encuentra dentro de la sección **Configuración** de tu aplicación.</p>
+            <p style='color:#4b5563;font-size:14px;'><em>(El botón transferirá tu sesión activa de manera automática y segura).</em></p>
+          </div>";
     exit;
 }
 
