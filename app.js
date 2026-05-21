@@ -3652,3 +3652,19 @@ window.togglePushSubscription = async function() {
     window.updatePushSettingsUI();
   }
 };
+
+// Escuchar mensajes del Service Worker para redirigir al hacer clic en notificaciones (Solución premium para iOS Safari)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'navigate' && event.data.url) {
+      const url = event.data.url;
+      const hashIndex = url.indexOf('#');
+      if (hashIndex !== -1) {
+        const hash = url.slice(hashIndex);
+        window.location.hash = hash;
+      } else {
+        window.location.hash = '#dashboard';
+      }
+    }
+  });
+}

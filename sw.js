@@ -73,9 +73,17 @@ self.addEventListener('notificationclick', (event) => {
                 const targetUrlObj = new URL(targetUrl);
                 if (clientUrlObj.hostname === targetUrlObj.hostname && 'focus' in client) {
                     client.focus();
-                    if ('navigate' in client && client.url !== targetUrl) {
-                        return client.navigate(targetUrl);
+                    
+                    // Enviar mensaje al frontend para cambiar de sección (crucial para iOS Safari)
+                    if (client.postMessage) {
+                        client.postMessage({ action: 'navigate', url: targetUrl });
                     }
+                    
+                    try {
+                        if ('navigate' in client && client.url !== targetUrl) {
+                            return client.navigate(targetUrl);
+                        }
+                    } catch (e) {}
                     return;
                 }
             }
