@@ -13,6 +13,10 @@ $DB_PASS = getenv('DB_PASS') ?: 'Seguridad@2026';
 $JWT_SECRET = getenv('JWT_SECRET') ?: 'iccp_secret_key_change_in_production';
 $JWT_EXPIRES = 60 * 60 * 24 * 7; // 7 days
 
+// VAPID keys for PWA Push Notifications
+$VAPID_PUBLIC_KEY = getenv('VAPID_PUBLIC_KEY') ?: 'BOtQRdckeB1se-dYcBVB62VEbrLdERGcB-Qm-860kZbt0oM2s-FheJSq3x8NLBBfU1HX7NFDpasRgsIkyER5uh0';
+$VAPID_PRIVATE_KEY = getenv('VAPID_PRIVATE_KEY') ?: 'dujOREJA3ICo0VfWqHoQhNa1p6acIwUwVYX-tw7iEWM';
+
 // Google OAuth — credentials loaded from .env.local (not committed to git)
 $envFile = __DIR__ . '/.env.local';
 if (file_exists($envFile)) {

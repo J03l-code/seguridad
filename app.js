@@ -2663,6 +2663,14 @@ async function renderSettings(wrapper, params) {
         <div class="google-cal-status ${connected ? 'connected' : 'disconnected'}"><span class="status-dot ${connected ? 'green' : 'gray'}"></span><span style="font-size:14px;font-weight:500">${connected ? 'Conectado' : 'No conectado'}</span></div>
         ${connected ? '<button class="btn btn-outline"onclick="disconnectCal()">Desconectar</button>' : '<button class="btn btn-primary"onclick="connectCal()">🔗 Conectar Google Calendar</button>'}
       </div></div>
+      <div class="settings-card card"><div class="card-header"><h3>🔔 Notificaciones Push en Móvil / iPad</h3></div><div class="card-body">
+        <p style="font-size:14px;color:var(--gray-600);margin-bottom:16px">Recibe alertas en tiempo real en tu teléfono o tablet cuando se te asigne una tarea o se realicen cambios importantes.</p>
+        <div id="push-status-container" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+          <span id="push-status-dot" class="status-dot gray"></span>
+          <span id="push-status-text" style="font-size:14px;font-weight:500">Verificando compatibilidad...</span>
+        </div>
+        <button id="push-btn" class="btn btn-primary" onclick="togglePushSubscription()" style="display:none"></button>
+      </div></div>
       <div class="settings-card card"><div class="card-header"><h3>ℹ️ Acerca de</h3></div><div class="card-body">
         ${[['Sistema', 'ICCP - Gestión de Tareas'], ['Versión', '1.0.0'], ['Frontend', 'HTML + CSS + JavaScript'], ['Backend', 'PHP + MySQL']].map(([l, v]) => `<div class="info-row"><span class="info-label">${l}</span><span class="info-value">${v}</span></div>`).join('')}
       </div></div>
@@ -2670,6 +2678,11 @@ async function renderSettings(wrapper, params) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+
+    // Actualizar UI del estado de notificaciones push
+    if (window.updatePushSettingsUI) {
+      window.updatePushSettingsUI();
+    }
 
     window.connectCal = async function () {
       try { const d = await api('google_auth.php?action=link'); if (d.url) window.location.href = d.url; } catch (err) { toast(err.message, 'error'); }
@@ -3498,3 +3511,144 @@ window.openPhotoLightbox = function (src, name) {
 // ==========================================
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', router);
+
+// ==========================================
+// PWA Service Worker & Push Notifications
+// ==========================================
+let isPushSupported = false;
+let swRegistration = null;
+
+// Convert base64 VAPID public key to Uint8Array
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Register service worker
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        console.log('Service Worker de PWA registrado:', reg);
+        swRegistration = reg;
+        isPushSupported = true;
+        if (window.updatePushSettingsUI) window.updatePushSettingsUI();
+      })
+      .catch(err => {
+        console.error('Error al registrar Service Worker:', err);
+      });
+  });
+}
+
+window.updatePushSettingsUI = async function() {
+  const dot = document.getElementById('push-status-dot');
+  const text = document.getElementById('push-status-text');
+  const btn = document.getElementById('push-btn');
+
+  if (!dot || !text || !btn) return;
+
+  if (!isPushSupported) {
+    dot.className = 'status-dot gray';
+    text.textContent = 'Tu navegador o dispositivo no soporta Notificaciones Push.';
+    btn.style.display = 'none';
+    return;
+  }
+
+  // Si está en iOS pero no está instalado en la pantalla de inicio
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    dot.className = 'status-dot gray';
+    text.textContent = 'En iOS/iPad, debes "Agregar a la pantalla de inicio" para activar notificaciones.';
+    btn.style.display = 'none';
+    return;
+  }
+
+  try {
+    const subscription = swRegistration ? await swRegistration.pushManager.getSubscription() : null;
+    const isSubscribed = !(subscription === null);
+
+    if (Notification.permission === 'denied') {
+      dot.className = 'status-dot red';
+      text.textContent = 'Permiso denegado. Habilita las notificaciones en la configuración de tu navegador.';
+      btn.style.display = 'none';
+      return;
+    }
+
+    if (isSubscribed) {
+      dot.className = 'status-dot green';
+      text.textContent = 'Notificaciones activadas en este dispositivo.';
+      btn.className = 'btn btn-outline';
+      btn.textContent = '🔕 Desactivar Notificaciones';
+      btn.style.display = 'inline-block';
+    } else {
+      dot.className = 'status-dot gray';
+      text.textContent = 'Notificaciones desactivadas.';
+      btn.className = 'btn btn-primary';
+      btn.textContent = '🔔 Activar Notificaciones';
+      btn.style.display = 'inline-block';
+    }
+  } catch (err) {
+    console.error('Error al obtener suscripción push:', err);
+  }
+};
+
+window.togglePushSubscription = async function() {
+  const btn = document.getElementById('push-btn');
+  if (!btn || !swRegistration) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Procesando...';
+
+  try {
+    const subscription = await swRegistration.pushManager.getSubscription();
+    
+    if (subscription) {
+      // Desactivar: desuscribirse en el navegador
+      await subscription.unsubscribe();
+      toast('Notificaciones desactivadas en este dispositivo');
+    } else {
+      // Activar: solicitar permiso
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        // Obtener la clave pública VAPID del servidor
+        const res = await api('notifications.php?action=vapid_key');
+        const vapidPublicKey = res.publicKey;
+        
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        const newSubscription = await swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey
+        });
+
+        // Enviar la suscripción al servidor PHP
+        const rawSub = JSON.parse(JSON.stringify(newSubscription));
+        await api('notifications.php?action=subscribe', {
+          method: 'POST',
+          body: JSON.stringify(rawSub)
+        });
+
+        toast('¡Notificaciones activadas con éxito!');
+      } else {
+        toast('Permiso de notificaciones denegado', 'error');
+      }
+    }
+  } catch (err) {
+    console.error('Error al cambiar suscripción push:', err);
+    toast('Error al configurar notificaciones: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    window.updatePushSettingsUI();
+  }
+};

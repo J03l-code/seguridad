@@ -13,6 +13,12 @@ switch ($action) {
     case 'mark_read':
         markRead($auth);
         break;
+    case 'subscribe':
+        subscribePush($auth);
+        break;
+    case 'vapid_key':
+        getVapidKey($auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -44,4 +50,35 @@ function markRead($auth)
     $stmt->execute([$auth['id']]);
 
     jsonResponse(['message' => 'Notificaciones marcadas como leídas.']);
+}
+
+function subscribePush($auth)
+{
+    global $pdo;
+    if (getMethod() !== 'POST') {
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+    }
+
+    $data = getJsonBody();
+    $endpoint = $data['endpoint'] ?? null;
+    $p256dh = $data['keys']['p256dh'] ?? null;
+    $authKey = $data['keys']['auth'] ?? null;
+
+    if (!$endpoint || !$p256dh || !$authKey) {
+        jsonResponse(['error' => 'Faltan parámetros de suscripción.'], 400);
+    }
+
+    // Guardar o actualizar la suscripción en la base de datos
+    $stmt = $pdo->prepare('INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) 
+        VALUES (?, ?, ?, ?) 
+        ON DUPLICATE KEY UPDATE user_id = ?, p256dh = ?, auth = ?');
+    $stmt->execute([$auth['id'], $endpoint, $p256dh, $authKey, $auth['id'], $p256dh, $authKey]);
+
+    jsonResponse(['message' => 'Suscripción Web Push guardada con éxito.']);
+}
+
+function getVapidKey($auth)
+{
+    global $VAPID_PUBLIC_KEY;
+    jsonResponse(['publicKey' => $VAPID_PUBLIC_KEY]);
 }

@@ -1924,6 +1924,10 @@ textarea.form-input {
     background: var(--success-500)
 }
 
+.status-dot.red {
+    background: var(--danger-500)
+}
+
 .status-dot.gray {
     background: var(--gray-400)
 }
