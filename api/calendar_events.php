@@ -12,6 +12,7 @@ register_shutdown_function(function () {
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/google_calendar_helper.php';
+require_once __DIR__ . '/push_helper.php';
 setCorsHeaders();
 
 $auth = authenticate();
@@ -121,6 +122,30 @@ function createEvent($auth)
         $notifStmt->execute([$msg, $auth['id']]);
 
         $pdo->commit();
+
+        // Enviar notificación Push PWA de Calendario
+        try {
+            // Enviar a los grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
+            sendPushToRolesAndGroups(
+                ['superintendente', 'auxiliar'],
+                ['soporte_oficina'],
+                "Evento Agendado - ICCP",
+                "{$creatorName} agendó: \"{$title}\" para el {$eventDate}",
+                "#calendar"
+            );
+
+            // Enviar al asignado específico si existe
+            if (!empty($assignedTo)) {
+                sendPushNotifications(
+                    $assignedTo,
+                    "Evento Asignado - ICCP",
+                    "Se te ha asignado el evento: \"{$title}\" para el {$eventDate}",
+                    "#calendar"
+                );
+            }
+        } catch (Exception $e) {
+            // Silenciar para no interrumpir el flujo principal
+        }
 
         try {
             require_once 'google_calendar_helper.php';

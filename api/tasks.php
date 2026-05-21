@@ -2,6 +2,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/google_calendar_helper.php';
+require_once __DIR__ . '/push_helper.php';
 setCorsHeaders();
 $auth = authenticate();
 $action = getParam('action', 'list');
@@ -206,6 +207,39 @@ function createTask($auth)
 
     $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
         ->execute([$taskId, $auth['id'], 'task_created', "Tarea \"$title\" creada"]);
+
+    // Enviar notificación Push PWA a Superintendentes, Auxiliares de todos los depts y Soporte de Oficina, además del asignado
+    try {
+        $groupLabels = [
+            'emergencias' => 'Emergencias',
+            'actividades' => 'Actividades',
+            'otros_eventos' => 'Otros Eventos',
+            'soporte_oficina' => 'Soporte de Oficina',
+            'superintendencia' => 'Superintendencia'
+        ];
+        $label = $groupLabels[$targetGroup] ?? $targetGroup;
+        
+        // Enviar a grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
+        sendPushToRolesAndGroups(
+            ['superintendente', 'auxiliar'],
+            ['soporte_oficina'],
+            "Nueva Tarea - ICCP",
+            "{$auth['name']} creó la tarea: \"$title\" para el depto de $label",
+            "#tasks"
+        );
+
+        // Enviar al usuario específicamente asignado si existe
+        if (!empty($data['assigned_to'])) {
+            sendPushNotifications(
+                $data['assigned_to'],
+                "Tarea Asignada - ICCP",
+                "Se te ha asignado la tarea: \"$title\"",
+                "#mytasks"
+            );
+        }
+    } catch (Exception $e) {
+        // Silenciar errores para no interrumpir el flujo principal de creación
+    }
 
     // Feature 1: Google Calendar Sync (Tasks -> Calendar)
     if (!empty($data['due_date'])) {
