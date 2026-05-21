@@ -38,6 +38,7 @@ Options -Indexes
 <Files "sw.js">
     <IfModule mod_headers.c>
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set X-LiteSpeed-Cache-Control "no-cache"
         Header set Pragma "no-cache"
         Header set Expires "0"
     </IfModule>
