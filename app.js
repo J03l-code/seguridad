@@ -5,6 +5,26 @@
 
 const API = 'api'; // relative path to PHP API
 
+// Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
+const CURRENT_VERSION = '145';
+if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      if (registrations.length > 0) {
+        for (let reg of registrations) {
+          reg.unregister();
+        }
+        localStorage.setItem('iccp_sw_version', CURRENT_VERSION);
+        window.location.reload();
+      } else {
+        localStorage.setItem('iccp_sw_version', CURRENT_VERSION);
+      }
+    });
+  } else {
+    localStorage.setItem('iccp_sw_version', CURRENT_VERSION);
+  }
+}
+
 // ==========================================
 // State
 // ==========================================
