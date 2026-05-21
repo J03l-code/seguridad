@@ -50,19 +50,33 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
     // Determinar a qué URL redirigir al usuario al hacer clic en la notificación
-    const targetUrl = event.notification.data && event.notification.data.url 
+    let targetUrl = event.notification.data && event.notification.data.url 
         ? event.notification.data.url 
         : '/';
 
+    // Convertir URL relativa a absoluta del origen de la PWA
+    if (!targetUrl.startsWith('http')) {
+        if (targetUrl.startsWith('#')) {
+            targetUrl = self.location.origin + '/index.html' + targetUrl;
+        } else if (targetUrl.startsWith('/')) {
+            targetUrl = self.location.origin + targetUrl;
+        } else {
+            targetUrl = self.location.origin + '/' + targetUrl;
+        }
+    }
+
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // Si la aplicación ya está abierta en el navegador/pantalla de inicio, enfocarla
+            // Si la aplicación ya está abierta, enfocarla y navegar a la sección
             for (const client of clientList) {
-                // Compara si coincide el path principal
                 const clientUrlObj = new URL(client.url);
-                const targetUrlObj = new URL(targetUrl, client.url);
-                if (clientUrlObj.pathname === targetUrlObj.pathname && 'focus' in client) {
-                    return client.focus();
+                const targetUrlObj = new URL(targetUrl);
+                if (clientUrlObj.hostname === targetUrlObj.hostname && 'focus' in client) {
+                    client.focus();
+                    if ('navigate' in client && client.url !== targetUrl) {
+                        return client.navigate(targetUrl);
+                    }
+                    return;
                 }
             }
             // Si no estaba abierta, abrir una nueva ventana con la URL correspondiente
