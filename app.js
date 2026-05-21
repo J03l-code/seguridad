@@ -3557,19 +3557,19 @@ window.updatePushSettingsUI = async function() {
 
   if (!dot || !text || !btn) return;
 
-  if (!isPushSupported) {
-    dot.className = 'status-dot gray';
-    text.textContent = 'Tu navegador o dispositivo no soporta Notificaciones Push.';
-    btn.style.display = 'none';
-    return;
-  }
-
   // Si está en iOS pero no está instalado en la pantalla de inicio
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   if (isIOS && !isStandalone) {
     dot.className = 'status-dot gray';
-    text.textContent = 'En iOS/iPad, debes "Agregar a la pantalla de inicio" para activar notificaciones.';
+    text.textContent = 'En iOS/iPad, debes "Agregar a la pantalla de inicio" usando el botón Compartir de Safari para activar las notificaciones.';
+    btn.style.display = 'none';
+    return;
+  }
+
+  if (!isPushSupported) {
+    dot.className = 'status-dot gray';
+    text.textContent = 'Tu navegador o dispositivo no soporta Notificaciones Push.';
     btn.style.display = 'none';
     return;
   }
