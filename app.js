@@ -3542,6 +3542,8 @@ if ('serviceWorker' in navigator && 'PushManager' in window) {
         console.log('Service Worker de PWA registrado:', reg);
         swRegistration = reg;
         isPushSupported = true;
+        // Forzar actualización inmediata del Service Worker en iOS Safari
+        reg.update();
         if (window.updatePushSettingsUI) window.updatePushSettingsUI();
       })
       .catch(err => {
