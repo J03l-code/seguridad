@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '147';
+const CURRENT_VERSION = '148';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -630,9 +630,16 @@ async function renderTasks(wrapper) {
 
     wrapper.innerHTML = `
       <div class="page-header"><h2>Gestión de Tareas</h2><div><button class="btn btn-primary"onclick="openCreateTask()">＋ Nueva Tarea</button></div></div>
-      <div class="filters-bar">
+      <div class="filters-bar" style="display:flex; gap:8px; flex-wrap:wrap;">
         <select class="form-select"id="filter-dept"onchange="filterTasks()"><option value="">Todos los departamentos</option><option value="emergencias">Emergencias</option><option value="actividades">Actividades</option><option value="otros_eventos">Otros Eventos</option><option value="soporte_oficina">Soporte de Oficina</option><option value="superintendencia">Superintendencia</option><option value="todos">🌐 Todos los Departamentos</option></select>
         <select class="form-select"id="filter-priority"onchange="filterTasks()"><option value="">Todas las prioridades</option><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select>
+        <select class="form-select"id="filter-status"onchange="filterTasks()">
+          <option value="">Todos los estados</option>
+          <option value="todo">📋 Por Hacer</option>
+          <option value="in_progress">▶️ En Progreso</option>
+          <option value="review">🔍 En Revisión</option>
+          <option value="done">✅ Completadas</option>
+        </select>
       </div>
       <div id="kanban-container">${buildBoard(tasks)}</div>
     `;
@@ -655,9 +662,11 @@ async function renderTasks(wrapper) {
     window.filterTasks = function () {
       const dept = document.getElementById('filter-dept').value;
       const pri = document.getElementById('filter-priority').value;
+      const status = document.getElementById('filter-status').value;
       let filtered = window._tasks;
       if (dept) filtered = filtered.filter(t => t.target_group === dept);
       if (pri) filtered = filtered.filter(t => t.priority === pri);
+      if (status) filtered = filtered.filter(t => t.status === status);
       document.getElementById('kanban-container').innerHTML = buildBoard(filtered);
     };
 
