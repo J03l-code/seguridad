@@ -131,6 +131,11 @@ function createTask($auth)
     if (!$title || !$targetGroup)
         jsonResponse(['error' => 'Título y departamento son obligatorios.'], 400);
 
+    // Obtener nombre real del autor (no guardado en payload JWT)
+    $authNameStmt = $pdo->prepare("SELECT name FROM users WHERE id = ?");
+    $authNameStmt->execute([$auth['id']]);
+    $authName = $authNameStmt->fetchColumn() ?: 'Alguien';
+
 
     $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, created_by, due_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -172,7 +177,7 @@ function createTask($auth)
 
         foreach ($usersInDept as $u) {
             if ($u['id'] != $auth['id']) {
-                $notifStmt->execute([$u['id'], "{$auth['name']} asignó una nueva tarea al departamento de '$label'"]);
+                $notifStmt->execute([$u['id'], "{$authName} asignó una nueva tarea al departamento de '$label'"]);
 
                 // Feature 5: Urgent Email Notifications
                 if ($priority === 'urgent' && !empty($u['email'])) {
@@ -226,7 +231,7 @@ function createTask($auth)
             ['superintendente', 'auxiliar'],
             ['soporte_oficina'],
             "✅ Nueva Tarea - ICCP",
-            "{$auth['name']} creó: \"$title\" para $label",
+            "{$authName} creó: \"$title\" para $label",
             $deepLinkTask
         );
 
@@ -302,6 +307,11 @@ function updateTask($id, $auth)
         jsonResponse(['error' => 'Tarea no encontrada.'], 404);
 
     $data = getJsonBody();
+
+    // Obtener nombre real de quien realiza el cambio
+    $authNameStmt = $pdo->prepare("SELECT name FROM users WHERE id = ?");
+    $authNameStmt->execute([$auth['id']]);
+    $authName = $authNameStmt->fetchColumn() ?: 'Alguien';
 
     $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
     $uStmt->execute([$auth['id']]);
@@ -420,7 +430,7 @@ function updateTask($id, $auth)
 
             if (!empty($notifyIds)) {
                 // Notificación interna en el sistema
-                $notifMsg = "{$auth['name']} cambió el estado de \"$taskTitle\" a $newStatusLabel";
+                $notifMsg = "{$authName} cambió el estado de \"$taskTitle\" a $newStatusLabel";
                 if (!empty($data['comment'])) {
                     $cleanComment = strip_tags(trim($data['comment']));
                     if (strlen($cleanComment) > 50) {
@@ -439,7 +449,7 @@ function updateTask($id, $auth)
                 }
 
                 // Cuerpo premium de la notificación Web Push
-                $pushBody = "{$auth['name']} cambió \"$taskTitle\" ($groupLabel) a: $newStatusLabel";
+                $pushBody = "{$authName} cambió \"$taskTitle\" ($groupLabel) a: $newStatusLabel";
                 if (!empty($data['comment'])) {
                     $cleanComment = strip_tags(trim($data['comment']));
                     if (strlen($cleanComment) > 80) {
