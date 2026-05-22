@@ -218,23 +218,25 @@ function createTask($auth)
             'superintendencia' => 'Superintendencia'
         ];
         $label = $groupLabels[$targetGroup] ?? $targetGroup;
-        
+        $deepLinkTask    = "#tasks?open={$taskId}";
+        $deepLinkMytasks = "#mytasks?open={$taskId}";
+
         // Enviar a grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
         sendPushToRolesAndGroups(
             ['superintendente', 'auxiliar'],
             ['soporte_oficina'],
-            "Nueva Tarea - ICCP",
-            "{$auth['name']} creó la tarea: \"$title\" para el depto de $label",
-            "#tasks"
+            "✅ Nueva Tarea - ICCP",
+            "{$auth['name']} creó: \"$title\" para $label",
+            $deepLinkTask
         );
 
         // Enviar al usuario específicamente asignado si existe
         if (!empty($data['assigned_to'])) {
             sendPushNotifications(
                 $data['assigned_to'],
-                "Tarea Asignada - ICCP",
+                "✅ Tarea Asignada - ICCP",
                 "Se te ha asignado la tarea: \"$title\"",
-                "#mytasks"
+                $deepLinkMytasks
             );
         }
     } catch (Exception $e) {
@@ -363,6 +365,73 @@ function updateTask($id, $auth)
         if (!empty($data['comment'])) {
             $pdo->prepare('INSERT INTO activity_log (task_id, user_id, action, details) VALUES (?, ?, ?, ?)')
                 ->execute([$id, $auth['id'], 'commented', $data['comment']]);
+        }
+
+        // === Notificaciones Push al cambiar estado ===
+        try {
+            $statusLabels = [
+                'todo'        => '📋 Por Hacer',
+                'in_progress' => '▶️ En Progreso',
+                'review'      => '🔍 En Revisión',
+                'done'        => '✅ Completada',
+            ];
+            $newStatusLabel = $statusLabels[$data['status']] ?? $data['status'];
+            $taskTitle = $old['title'];
+            $taskGroup = $old['target_group'];
+
+            $groupLabels = [
+                'emergencias'     => 'Emergencias',
+                'actividades'     => 'Actividades',
+                'otros_eventos'   => 'Otros Eventos',
+                'soporte_oficina' => 'Soporte de Oficina',
+                'superintendencia'=> 'Superintendencia',
+                'todos'           => 'Todos',
+            ];
+            $groupLabel = $groupLabels[$taskGroup] ?? $taskGroup;
+
+            // URL de deep-link: abre el modal de la tarea directamente
+            $deepLinkUrl = "#tasks?open={$id}";
+
+            // Notificar al departamento de la tarea (superintendentes + auxiliares del grupo) y todos los de soporte_oficina
+            $allUsersStmt = $pdo->prepare("SELECT id, user_group, hierarchy_level FROM users");
+            $allUsersStmt->execute();
+            $allUsers = $allUsersStmt->fetchAll();
+
+            $notifyIds = [];
+            foreach ($allUsers as $u) {
+                if ($u['id'] == $auth['id']) continue; // No notificar al que cambió el estado
+                $userGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
+                $hierarchyLevel = $u['hierarchy_level'] ?? '';
+
+                $isInDept = in_array($taskGroup, $userGroups) || $taskGroup === 'todos';
+                $isSuperOrAux = in_array($hierarchyLevel, ['superintendente', 'auxiliar']);
+                $isSoporte = in_array('soporte_oficina', $userGroups);
+
+                // Incluir si: está en el departamento de la tarea (y es super/auxiliar), o es de soporte de oficina
+                if (($isInDept && $isSuperOrAux) || $isSoporte) {
+                    $notifyIds[] = $u['id'];
+                }
+            }
+
+            $notifyIds = array_unique($notifyIds);
+
+            if (!empty($notifyIds)) {
+                // Notificación interna en el sistema
+                $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+                foreach ($notifyIds as $uid) {
+                    $notifStmt->execute([$uid, "{$auth['name']} cambió el estado de \"$taskTitle\" a $newStatusLabel"]);
+                }
+
+                // Notificación Push al móvil
+                sendPushNotifications(
+                    $notifyIds,
+                    "Estado Actualizado - ICCP",
+                    "{$auth['name']} cambió \"$taskTitle\" ($groupLabel) a: $newStatusLabel",
+                    $deepLinkUrl
+                );
+            }
+        } catch (Exception $e) {
+            // Silenciar para no interrumpir flujo principal
         }
     }
 

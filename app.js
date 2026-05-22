@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '145';
+const CURRENT_VERSION = '146';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -226,6 +226,9 @@ function router() {
 
   const wrapper = document.createElement('div');
   wrapper.className = 'page-transition';
+
+  // Guardar deep-link pendiente si el hash contiene ?open=ID (desde notificación push)
+  window._deepLinkOpen = params.open ? { page, id: params.open } : null;
 
   switch (page) {
     case 'dashboard': renderDashboard(wrapper); break;
@@ -636,6 +639,13 @@ async function renderTasks(wrapper) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+
+    // Deep-link: abrir modal de tarea automáticamente si viene desde notificación
+    if (window._deepLinkOpen && (window._deepLinkOpen.page === 'tasks') && window._deepLinkOpen.id) {
+      const deepId = window._deepLinkOpen.id;
+      window._deepLinkOpen = null;
+      setTimeout(() => { if (window.openTaskDetail) window.openTaskDetail(deepId); }, 350);
+    }
 
     // Global functions for tasks
     window._tasks = tasks;
@@ -2200,6 +2210,13 @@ async function renderMyTasks(wrapper) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+
+    // Deep-link: abrir modal de tarea automáticamente si viene desde notificación (página Mis Tareas)
+    if (window._deepLinkOpen && (window._deepLinkOpen.page === 'mytasks') && window._deepLinkOpen.id) {
+      const deepId = window._deepLinkOpen.id;
+      window._deepLinkOpen = null;
+      setTimeout(() => { if (window.openTaskDetail) window.openTaskDetail(deepId); }, 350);
+    }
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
     document.getElementById('page-content').innerHTML = '';
@@ -2412,6 +2429,13 @@ async function renderCalendar(wrapper) {
 
     document.getElementById('page-content').innerHTML = '';
     document.getElementById('page-content').appendChild(wrapper);
+
+    // Deep-link: abrir detalle de evento automáticamente si viene desde notificación
+    if (window._deepLinkOpen && window._deepLinkOpen.page === 'calendar' && window._deepLinkOpen.id) {
+      const deepId = window._deepLinkOpen.id;
+      window._deepLinkOpen = null;
+      setTimeout(() => { if (window.showEventDetails) window.showEventDetails(deepId); }, 350);
+    }
 
     window.calPrevMonth = () => { window.calDate.setMonth(window.calDate.getMonth() - 1); renderCalendar(wrapper); };
     window.calNextMonth = () => { window.calDate.setMonth(window.calDate.getMonth() + 1); renderCalendar(wrapper); };
@@ -3682,8 +3706,20 @@ if ('serviceWorker' in navigator) {
       const url = event.data.url;
       const hashIndex = url.indexOf('#');
       if (hashIndex !== -1) {
-        const hash = url.slice(hashIndex);
-        window.location.hash = hash;
+        const hash = url.slice(hashIndex + 1); // e.g. "tasks?open=42"
+        const [page, queryStr] = hash.split('?');
+        const params = {};
+        if (queryStr) {
+          queryStr.split('&').forEach(p => {
+            const [k, v] = p.split('=');
+            params[k] = decodeURIComponent(v || '');
+          });
+        }
+        // Pre-cargar el deep-link antes de cambiar el hash (así el router lo recoge)
+        if (params.open) {
+          window._deepLinkOpen = { page, id: params.open };
+        }
+        window.location.hash = '#' + hash;
       } else {
         window.location.hash = '#dashboard';
       }

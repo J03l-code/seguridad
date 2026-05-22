@@ -123,24 +123,26 @@ function createEvent($auth)
 
         $pdo->commit();
 
-        // Enviar notificación Push PWA de Calendario
+        // Enviar notificación Push PWA de Calendario (con deep-link al evento)
         try {
+            $deepLinkEvent = "#calendar?open={$eventId}";
+
             // Enviar a los grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
             sendPushToRolesAndGroups(
                 ['superintendente', 'auxiliar'],
                 ['soporte_oficina'],
-                "Evento Agendado - ICCP",
-                "{$creatorName} agendó: \"{$title}\" para el {$eventDate}",
-                "#calendar"
+                "📅 Evento Agendado - ICCP",
+                "{$creatorName} agendó: \"{$title}\"",
+                $deepLinkEvent
             );
 
             // Enviar al asignado específico si existe
             if (!empty($assignedTo)) {
                 sendPushNotifications(
                     $assignedTo,
-                    "Evento Asignado - ICCP",
-                    "Se te ha asignado el evento: \"{$title}\" para el {$eventDate}",
-                    "#calendar"
+                    "📅 Evento Asignado - ICCP",
+                    "Se te ha asignado el evento: \"{$title}\"",
+                    $deepLinkEvent
                 );
             }
         } catch (Exception $e) {
