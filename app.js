@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '146';
+const CURRENT_VERSION = '147';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -3705,23 +3705,45 @@ if ('serviceWorker' in navigator) {
     if (event.data && event.data.action === 'navigate' && event.data.url) {
       const url = event.data.url;
       const hashIndex = url.indexOf('#');
-      if (hashIndex !== -1) {
-        const hash = url.slice(hashIndex + 1); // e.g. "tasks?open=42"
-        const [page, queryStr] = hash.split('?');
-        const params = {};
-        if (queryStr) {
-          queryStr.split('&').forEach(p => {
-            const [k, v] = p.split('=');
-            params[k] = decodeURIComponent(v || '');
-          });
+      if (hashIndex === -1) { window.location.hash = '#dashboard'; return; }
+
+      const hash = url.slice(hashIndex + 1); // e.g. "tasks?open=42"
+      const [targetPage, queryStr] = hash.split('?');
+      const params = {};
+      if (queryStr) {
+        queryStr.split('&').forEach(p => {
+          const [k, v] = p.split('=');
+          if (k) params[k] = decodeURIComponent(v || '');
+        });
+      }
+
+      const openId = params.open || null;
+
+      // Detectar en qué página estamos actualmente
+      const currentHash = window.location.hash.slice(1);
+      const [currentPage] = currentHash.split('?');
+      const alreadyOnPage = currentPage === targetPage;
+
+      if (openId) {
+        // CASO 1: Ya estamos en la página correcta → abrir el modal directamente
+        // sin depender del router (hashchange no dispara si el hash es idéntico)
+        if (alreadyOnPage) {
+          setTimeout(() => {
+            if ((targetPage === 'tasks' || targetPage === 'mytasks') && window.openTaskDetail) {
+              window.openTaskDetail(openId);
+            } else if (targetPage === 'calendar' && window.showEventDetails) {
+              window.showEventDetails(openId);
+            }
+          }, 200);
+        } else {
+          // CASO 2: Estamos en otra página → guardar el deep-link y navegar
+          // El router lo consumirá cuando renderice la nueva página
+          window._deepLinkOpen = { page: targetPage, id: openId };
+          window.location.hash = '#' + hash;
         }
-        // Pre-cargar el deep-link antes de cambiar el hash (así el router lo recoge)
-        if (params.open) {
-          window._deepLinkOpen = { page, id: params.open };
-        }
-        window.location.hash = '#' + hash;
       } else {
-        window.location.hash = '#dashboard';
+        // Sin ID de apertura, solo navegar
+        window.location.hash = '#' + hash;
       }
     }
   });
