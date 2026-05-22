@@ -1954,6 +1954,7 @@ async function renderUsers(wrapper) {
             <select class="form-select eu-grp-hierarchy"data-group="${g}"style="flex:1;padding:4px 8px;font-size:13px">
               <option value="auxiliar"${effectiveH === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
               <option value="voluntario_clave"${effectiveH === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
+              <option value="secretaria"${effectiveH === 'secretaria' ? 'selected' : ''}>Secretaria(o)</option>
               <option value="superintendente"${effectiveH === 'superintendente' ? 'selected' : ''}>Superintendente</option>
             </select>
           </div>`;
@@ -2008,6 +2009,7 @@ async function renderUsers(wrapper) {
           // Set global hierarchy_level to the "highest"role across groups
           const levels = Object.values(newHMap);
           if (levels.includes('superintendente')) body.hierarchy_level = 'superintendente';
+          else if (levels.includes('secretaria')) body.hierarchy_level = 'secretaria';
           else if (levels.includes('voluntario_clave')) body.hierarchy_level = 'voluntario_clave';
           else body.hierarchy_level = 'auxiliar';
           await api(`users.php?action=update&id=${id}`, { method: 'PUT', body: JSON.stringify(body) });
