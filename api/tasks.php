@@ -229,13 +229,26 @@ function createTask($auth)
         $deepLinkTask    = "#tasks?open={$taskId}";
         $deepLinkMytasks = "#mytasks?open={$taskId}";
 
+        // Opciones premium para notificaciones Push
+        $priority = $data['priority'] ?? 'medium';
+        $pushOptions = [
+            'actions' => [
+                ['action' => 'view', 'title' => '👁️ Ver Tarea'],
+                ['action' => 'comment', 'title' => '💬 Comentar']
+            ]
+        ];
+        if ($priority === 'urgent') {
+            $pushOptions['vibrate'] = [300, 100, 300, 100, 300, 100, 300]; // SOS pattern
+        }
+
         // Enviar a grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
         sendPushToRolesAndGroups(
             ['superintendente', 'auxiliar'],
             ['soporte_oficina'],
             "✅ Nueva Tarea - ICCP",
             "{$authName} creó: \"$title\" para $label",
-            $deepLinkTask
+            $deepLinkTask,
+            $pushOptions
         );
 
         // Enviar al usuario específicamente asignado si existe
@@ -244,7 +257,8 @@ function createTask($auth)
                 $data['assigned_to'],
                 "✅ Tarea Asignada - ICCP",
                 "Se te ha asignado la tarea: \"$title\"",
-                $deepLinkMytasks
+                $deepLinkMytasks,
+                $pushOptions
             );
         }
     } catch (Exception $e) {
@@ -461,12 +475,24 @@ function updateTask($id, $auth)
                     $pushBody .= "\n💬 Comentario: \"{$cleanComment}\"";
                 }
 
+                // Opciones premium para notificaciones de cambio de estado
+                $pushOptions = [
+                    'actions' => [
+                        ['action' => 'view', 'title' => '👁️ Ver Tarea'],
+                        ['action' => 'comment', 'title' => '💬 Comentar']
+                    ]
+                ];
+                if (($old['priority'] ?? 'medium') === 'urgent') {
+                    $pushOptions['vibrate'] = [300, 100, 300, 100, 300, 100, 300];
+                }
+
                 // Enviar notificación Push al móvil
                 sendPushNotifications(
                     $notifyIds,
                     "Estado Actualizado - ICCP",
                     $pushBody,
-                    $deepLinkUrl
+                    $deepLinkUrl,
+                    $pushOptions
                 );
             }
         } catch (Exception $e) {

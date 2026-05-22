@@ -34,7 +34,8 @@ self.addEventListener('push', (event) => {
         body: data.body,
         icon: 'logo.png',
         badge: 'logo.png', // Icono de la barra de estado en Android
-        vibrate: [100, 50, 100],
+        vibrate: data.vibrate || [100, 50, 100],
+        actions: data.actions || [],
         data: {
             url: data.url || '/'
         }
@@ -45,7 +46,7 @@ self.addEventListener('push', (event) => {
     );
 });
 
-// Evento cuando el usuario hace clic en la notificación
+// Evento cuando el usuario hace clic en la notificación o en sus botones de acción
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
@@ -53,6 +54,11 @@ self.addEventListener('notificationclick', (event) => {
     let targetUrl = event.notification.data && event.notification.data.url 
         ? event.notification.data.url 
         : '/';
+
+    // Manejar el botón de acción "Comentar"
+    if (event.action === 'comment') {
+        targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'focus_comment=true';
+    }
 
     // Convertir URL relativa a absoluta del origen de la PWA
     if (!targetUrl.startsWith('http')) {

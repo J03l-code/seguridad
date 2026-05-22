@@ -14,9 +14,10 @@ use Minishlink\WebPush\Subscription;
  * @param string $title Título de la notificación.
  * @param string $body Contenido/mensaje de la notificación.
  * @param string $url URL a la que se redirigirá al hacer clic.
+ * @param array $options Opciones personalizadas de vibración o acciones.
  * @return array Reporte de éxito/fallo.
  */
-function sendPushNotifications($userIds, $title, $body, $url = '/') {
+function sendPushNotifications($userIds, $title, $body, $url = '/', $options = []) {
     global $pdo, $VAPID_PUBLIC_KEY, $VAPID_PRIVATE_KEY;
 
     if (empty($userIds)) {
@@ -28,7 +29,7 @@ function sendPushNotifications($userIds, $title, $body, $url = '/') {
     }
 
     // 1. Obtener las suscripciones activas para los usuarios especificados
-    $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+    $placeholders = implode(',', array_fill(0, count($userIds), ?'));
     $stmt = $pdo->prepare("SELECT user_id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id IN ($placeholders)");
     $stmt->execute($userIds);
     $subscriptionsData = $stmt->fetchAll();
@@ -48,11 +49,14 @@ function sendPushNotifications($userIds, $title, $body, $url = '/') {
 
     try {
         $webPush = new WebPush($auth);
-        $payload = json_encode([
+        
+        $payloadData = array_merge([
             'title' => $title,
             'body' => $body,
             'url' => $url
-        ], JSON_UNESCAPED_UNICODE);
+        ], $options);
+
+        $payload = json_encode($payloadData, JSON_UNESCAPED_UNICODE);
 
         // 3. Encolar cada suscripción
         foreach ($subscriptionsData as $sub) {
@@ -116,9 +120,10 @@ function sendPushNotifications($userIds, $title, $body, $url = '/') {
  * @param string $title Título de la notificación.
  * @param string $body Contenido/mensaje de la notificación.
  * @param string $url URL opcional.
+ * @param array $options Opciones personalizadas.
  * @return array Reporte del envío.
  */
-function sendPushToRolesAndGroups($hierarchyLevels, $groups, $title, $body, $url = '/') {
+function sendPushToRolesAndGroups($hierarchyLevels, $groups, $title, $body, $url = '/', $options = []) {
     global $pdo;
     
     $query = "SELECT id FROM users WHERE 0 ";
@@ -126,7 +131,7 @@ function sendPushToRolesAndGroups($hierarchyLevels, $groups, $title, $body, $url
     
     // Nivel jerárquico
     if (!empty($hierarchyLevels)) {
-        $placeholders = implode(',', array_fill(0, count($hierarchyLevels), '?'));
+        $placeholders = implode(',', array_fill(0, count($hierarchyLevels), ?'));
         $query .= " OR hierarchy_level IN ($placeholders) ";
         $params = array_merge($params, $hierarchyLevels);
     }
@@ -143,5 +148,5 @@ function sendPushToRolesAndGroups($hierarchyLevels, $groups, $title, $body, $url
     $stmt->execute($params);
     $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    return sendPushNotifications($userIds, $title, $body, $url);
+    return sendPushNotifications($userIds, $title, $body, $url, $options);
 }

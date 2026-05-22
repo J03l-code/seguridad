@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '148';
+const CURRENT_VERSION = '149';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -228,7 +228,7 @@ function router() {
   wrapper.className = 'page-transition';
 
   // Guardar deep-link pendiente si el hash contiene ?open=ID (desde notificación push)
-  window._deepLinkOpen = params.open ? { page, id: params.open } : null;
+  window._deepLinkOpen = params.open ? { page, id: params.open, focusComment: params.focus_comment === 'true' } : null;
 
   switch (page) {
     case 'dashboard': renderDashboard(wrapper); break;
@@ -650,8 +650,23 @@ async function renderTasks(wrapper) {
     // Deep-link: abrir modal de tarea automáticamente si viene desde notificación
     if (window._deepLinkOpen && (window._deepLinkOpen.page === 'tasks') && window._deepLinkOpen.id) {
       const deepId = window._deepLinkOpen.id;
+      const focusComment = window._deepLinkOpen.focusComment;
       window._deepLinkOpen = null;
-      setTimeout(() => { if (window.openTaskDetail) window.openTaskDetail(deepId); }, 350);
+      setTimeout(() => {
+        if (window.openTaskDetail) {
+          window.openTaskDetail(deepId).then(() => {
+            if (focusComment) {
+              setTimeout(() => {
+                const input = document.getElementById('task-comment-input');
+                if (input) {
+                  input.focus();
+                  input.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 400);
+            }
+          });
+        }
+      }, 350);
     }
 
     // Global functions for tasks
@@ -2260,8 +2275,23 @@ async function renderMyTasks(wrapper) {
     // Deep-link: abrir modal de tarea automáticamente si viene desde notificación (página Mis Tareas)
     if (window._deepLinkOpen && (window._deepLinkOpen.page === 'mytasks') && window._deepLinkOpen.id) {
       const deepId = window._deepLinkOpen.id;
+      const focusComment = window._deepLinkOpen.focusComment;
       window._deepLinkOpen = null;
-      setTimeout(() => { if (window.openTaskDetail) window.openTaskDetail(deepId); }, 350);
+      setTimeout(() => {
+        if (window.openTaskDetail) {
+          window.openTaskDetail(deepId).then(() => {
+            if (focusComment) {
+              setTimeout(() => {
+                const input = document.getElementById('task-comment-input');
+                if (input) {
+                  input.focus();
+                  input.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 400);
+            }
+          });
+        }
+      }, 350);
     }
   } catch (err) {
     wrapper.innerHTML = `<div class="error-box">${err.message}</div>`;
@@ -3764,6 +3794,7 @@ if ('serviceWorker' in navigator) {
       }
 
       const openId = params.open || null;
+      const focusComment = params.focus_comment === 'true';
 
       // Detectar en qué página estamos actualmente
       const currentHash = window.location.hash.slice(1);
@@ -3776,7 +3807,17 @@ if ('serviceWorker' in navigator) {
         if (alreadyOnPage) {
           setTimeout(() => {
             if ((targetPage === 'tasks' || targetPage === 'mytasks') && window.openTaskDetail) {
-              window.openTaskDetail(openId);
+              window.openTaskDetail(openId).then(() => {
+                if (focusComment) {
+                  setTimeout(() => {
+                    const input = document.getElementById('task-comment-input');
+                    if (input) {
+                      input.focus();
+                      input.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }, 400);
+                }
+              });
             } else if (targetPage === 'calendar' && window.showEventDetails) {
               window.showEventDetails(openId);
             }
@@ -3784,7 +3825,7 @@ if ('serviceWorker' in navigator) {
         } else {
           // CASO 2: Estamos en otra página → guardar el deep-link y navegar
           // El router lo consumirá cuando renderice la nueva página
-          window._deepLinkOpen = { page: targetPage, id: openId };
+          window._deepLinkOpen = { page: targetPage, id: openId, focusComment: focusComment };
           window.location.hash = '#' + hash;
         }
       } else {
