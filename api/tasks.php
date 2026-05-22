@@ -241,15 +241,37 @@ function createTask($auth)
             $pushOptions['vibrate'] = [300, 100, 300, 100, 300, 100, 300]; // SOS pattern
         }
 
-        // Enviar a grupos generales (Superintendentes, Auxiliares de todos los depts y Soporte de Oficina)
-        sendPushToRolesAndGroups(
-            ['superintendente', 'auxiliar'],
-            ['soporte_oficina'],
-            "✅ Nueva Tarea - ICCP",
-            "{$authName} creó: \"$title\" para $label",
-            $deepLinkTask,
-            $pushOptions
-        );
+        // Filtrar notificaciones para enviar solo a superintendentes y auxiliares de:
+        // 1. El departamento destino
+        // 2. Soporte de Oficina
+        // 3. Superintendencia
+        $usersStmt = $pdo->query("SELECT id, user_group, hierarchy_level FROM users");
+        $allUsers = $usersStmt->fetchAll();
+        $generalNotifyIds = [];
+        
+        foreach ($allUsers as $u) {
+            $uGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
+            $level = $u['hierarchy_level'] ?? '';
+            
+            if ($level === 'superintendente' || $level === 'auxiliar') {
+                if (in_array($targetGroup, $uGroups) || 
+                    in_array('soporte_oficina', $uGroups) || 
+                    in_array('superintendencia', $uGroups) ||
+                    $targetGroup === 'todos') {
+                    $generalNotifyIds[] = (int) $u['id'];
+                }
+            }
+        }
+        
+        if (!empty($generalNotifyIds)) {
+            sendPushNotifications(
+                array_unique($generalNotifyIds),
+                "✅ Nueva Tarea - ICCP",
+                "{$authName} creó: \"$title\" para $label",
+                $deepLinkTask,
+                $pushOptions
+            );
+        }
 
         // Enviar al usuario específicamente asignado si existe
         if (!empty($data['assigned_to'])) {
@@ -430,16 +452,14 @@ function updateTask($id, $auth)
                 $userGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
                 $hierarchyLevel = $u['hierarchy_level'] ?? '';
 
-                $isInDept = in_array($taskGroup, $userGroups) || $taskGroup === 'todos';
-                $isSuper = ($hierarchyLevel === 'superintendente' || in_array('superintendencia', $userGroups));
-                $isSoporte = in_array('soporte_oficina', $userGroups);
-
-                // Criterio amplio y correcto:
-                // 1. Pertenece al departamento de la tarea
-                // 2. O pertenece a la superintendencia (rol o grupo)
-                // 3. O es de soporte de oficina
-                if ($isInDept || $isSuper || $isSoporte) {
-                    $notifyIds[] = $u['id'];
+                // Solo notificar a Superintendentes y Auxiliares de los departamentos implicados
+                if ($hierarchyLevel === 'superintendente' || $hierarchyLevel === 'auxiliar') {
+                    if (in_array($taskGroup, $userGroups) || 
+                        in_array('soporte_oficina', $userGroups) || 
+                        in_array('superintendencia', $userGroups) ||
+                        $taskGroup === 'todos') {
+                        $notifyIds[] = (int) $u['id'];
+                    }
                 }
             }
 

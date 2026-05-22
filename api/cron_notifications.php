@@ -146,11 +146,14 @@ if ($action === 'all' || $action === 'sla') {
                 $userGroups     = array_map('trim', explode(',', $u['user_group'] ?? ''));
                 $hierarchyLevel = $u['hierarchy_level'] ?? '';
 
-                $isInDept = in_array($taskGroup, $userGroups) || $taskGroup === 'todos';
-                $isSuper  = ($hierarchyLevel === 'superintendente' || in_array('superintendencia', $userGroups));
-                $isSoporte = in_array('soporte_oficina', $userGroups);
-
-                if ($isInDept || $isSuper || $isSoporte) $notifyIds[] = (int) $u['id'];
+                if ($hierarchyLevel === 'superintendente' || $hierarchyLevel === 'auxiliar') {
+                    if (in_array($taskGroup, $userGroups) || 
+                        in_array('soporte_oficina', $userGroups) || 
+                        in_array('superintendencia', $userGroups) ||
+                        $taskGroup === 'todos') {
+                        $notifyIds[] = (int) $u['id'];
+                    }
+                }
             }
             $notifyIds = array_unique($notifyIds);
 
