@@ -2,8 +2,37 @@
 // api/cron_notifications.php - Script automatizado para Morning Briefings y alertas de SLA.
 // Puede ejecutarse desde consola (CLI) o vía HTTP GET.
 
+// Mostrar TODOS los errores para diagnosticar problemas
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+echo "[CRON] Iniciando cron_notifications.php...\n";
+echo "[CRON] PHP Version: " . PHP_VERSION . "\n";
+echo "[CRON] Hora del servidor: " . date('Y-m-d H:i:s') . "\n";
+echo "[CRON] __DIR__: " . __DIR__ . "\n";
+
+// Verificar que config.php existe
+if (!file_exists(__DIR__ . '/config.php')) {
+    die("[CRON] ERROR: No se encontró config.php en " . __DIR__ . "\n");
+}
 require_once __DIR__ . '/config.php';
+echo "[CRON] config.php cargado OK.\n";
+
+// Verificar que push_helper.php existe
+if (!file_exists(__DIR__ . '/push_helper.php')) {
+    die("[CRON] ERROR: No se encontró push_helper.php en " . __DIR__ . "\n");
+}
 require_once __DIR__ . '/push_helper.php';
+echo "[CRON] push_helper.php cargado OK.\n";
+
+// Verificar conexión a la base de datos
+try {
+    $testStmt = $pdo->query("SELECT COUNT(*) FROM users");
+    $userCount = $testStmt->fetchColumn();
+    echo "[CRON] BD conectada OK. Total usuarios: $userCount\n";
+} catch (Exception $e) {
+    die("[CRON] ERROR de BD: " . $e->getMessage() . "\n");
+}
 
 // Asegurar que no exceda el tiempo de ejecución
 set_time_limit(300);
@@ -13,161 +42,128 @@ $action = 'all';
 if (php_sapi_name() !== 'cli') {
     $action = $_GET['action'] ?? 'all';
 }
+echo "[CRON] Acción: $action\n";
 
 $statusLabels = [
-    'todo'        => '📋 Por Hacer',
-    'in_progress' => '▶️ En Progreso',
-    'review'      => '🔍 En Revisión'
+    'todo'        => 'Por Hacer',
+    'in_progress' => 'En Progreso',
+    'review'      => 'En Revision'
 ];
 
 $groupLabels = [
-    'emergencias'     => 'Emergencias',
-    'actividades'     => 'Actividades',
-    'otros_eventos'   => 'Otros Eventos',
-    'soporte_oficina' => 'Soporte de Oficina',
-    'superintendencia'=> 'Superintendencia',
-    'todos'           => 'Todos'
+    'emergencias'      => 'Emergencias',
+    'actividades'      => 'Actividades',
+    'otros_eventos'    => 'Otros Eventos',
+    'soporte_oficina'  => 'Soporte de Oficina',
+    'superintendencia' => 'Superintendencia',
+    'todos'            => 'Todos'
 ];
 
 if ($action === 'all' || $action === 'briefing') {
     // =========================================================================
     // FEATURE 3: MORNING BRIEFING (RESUMEN DIARIO PERSONALIZADO)
     // =========================================================================
+    echo "[CRON] --- Procesando Morning Briefing ---\n";
     try {
-        // Obtener todos los usuarios que tienen suscripción activa
         $usersStmt = $pdo->query("SELECT DISTINCT u.id, u.name, u.user_group FROM users u JOIN push_subscriptions ps ON u.id = ps.user_id");
         $activeUsers = $usersStmt->fetchAll();
+        echo "[CRON] Usuarios con suscripción activa: " . count($activeUsers) . "\n";
 
+        $sent = 0;
         foreach ($activeUsers as $user) {
-            $userId = $user['id'];
+            $userId     = $user['id'];
             $userGroups = array_map('trim', explode(',', $user['user_group'] ?? ''));
 
-            // 1. Tareas pendientes asignadas a este usuario
             $taskStmt = $pdo->prepare("SELECT COUNT(*) FROM tasks WHERE assigned_to = ? AND status IN ('todo', 'in_progress', 'review')");
             $taskStmt->execute([$userId]);
             $pendingTasks = (int) $taskStmt->fetchColumn();
 
-            // 2. Eventos de calendario para hoy correspondientes a sus grupos o 'todos'
-            $today = date('Y-m-d');
-            
-            // Construir consulta para eventos correspondientes al usuario
-            $eventQuery = "SELECT COUNT(*) FROM calendar_events WHERE DATE(event_date) = ? AND (target_group = 'todos'";
+            $today       = date('Y-m-d');
+            $eventQuery  = "SELECT COUNT(*) FROM calendar_events WHERE DATE(event_date) = ? AND (target_group = 'todos'";
             $queryParams = [$today];
             foreach ($userGroups as $g) {
                 if (!empty($g)) {
-                    $eventQuery .= " OR target_group = ?";
+                    $eventQuery  .= " OR target_group = ?";
                     $queryParams[] = $g;
                 }
             }
             $eventQuery .= ")";
-            
+
             $eventStmt = $pdo->prepare($eventQuery);
             $eventStmt->execute($queryParams);
             $todayEvents = (int) $eventStmt->fetchColumn();
 
-            // Solo notificar si tiene algo pendiente o programado para hoy
             if ($pendingTasks > 0 || $todayEvents > 0) {
-                $body = "¡Buen día {$user['name']}! Hoy tienes ";
+                $body  = "Buen dia {$user['name']}! Hoy tienes ";
                 $parts = [];
-                if ($pendingTasks > 0) {
-                    $parts[] = "{$pendingTasks} " . ($pendingTasks === 1 ? "tarea pendiente" : "tareas pendientes");
-                }
-                if ($todayEvents > 0) {
-                    $parts[] = "{$todayEvents} " . ($todayEvents === 1 ? "evento programado" : "eventos programados");
-                }
+                if ($pendingTasks > 0) $parts[] = "$pendingTasks " . ($pendingTasks === 1 ? "tarea pendiente" : "tareas pendientes");
+                if ($todayEvents  > 0) $parts[] = "$todayEvents " . ($todayEvents  === 1 ? "evento programado" : "eventos programados");
                 $body .= implode(' y ', $parts) . " en tu agenda.";
 
-                sendPushNotifications(
-                    $userId,
-                    "☀️ Tu Resumen del Día - ICCP",
-                    $body,
-                    "#mytasks",
-                    [
-                        'actions' => [
-                            ['action' => 'view', 'title' => '👁️ Ver Mis Tareas']
-                        ]
-                    ]
-                );
+                $result = sendPushNotifications($userId, "Tu Resumen del Dia - ICCP", $body, "#mytasks");
+                echo "[CRON] Briefing enviado a {$user['name']} (ID $userId): success={$result['success']}\n";
+                $sent++;
+            } else {
+                echo "[CRON] Sin pendientes para {$user['name']} (ID $userId), no se envia briefing.\n";
             }
         }
-        echo "Morning Briefing procesado con éxito.\n";
+        echo "[CRON] Morning Briefing completado. Enviados: $sent\n";
     } catch (Exception $e) {
-        echo "Error en Morning Briefing: " . $e->getMessage() . "\n";
+        echo "[CRON] ERROR en Morning Briefing: " . $e->getMessage() . "\n";
     }
 }
 
 if ($action === 'all' || $action === 'sla') {
     // =========================================================================
-    // FEATURE 1: ALERTAS AUTOMÁTICAS DE TAREAS PRÓXIMAS A VENCER (SLA)
+    // FEATURE 1: ALERTAS AUTOMATICAS DE TAREAS PROXIMAS A VENCER (SLA)
     // =========================================================================
+    echo "[CRON] --- Procesando Alertas SLA ---\n";
     try {
-        // Obtener tareas que vencen mañana (entre 24 y 48 horas) y que no están listas (done)
         $tomorrowStart = date('Y-m-d 00:00:00', strtotime('+1 day'));
         $tomorrowEnd   = date('Y-m-d 23:59:59', strtotime('+1 day'));
+        echo "[CRON] Buscando tareas que vencen entre $tomorrowStart y $tomorrowEnd\n";
 
         $taskStmt = $pdo->prepare("SELECT * FROM tasks WHERE due_date >= ? AND due_date <= ? AND status IN ('todo', 'in_progress', 'review')");
         $taskStmt->execute([$tomorrowStart, $tomorrowEnd]);
         $upcomingTasks = $taskStmt->fetchAll();
+        echo "[CRON] Tareas proximas a vencer: " . count($upcomingTasks) . "\n";
 
-        // Obtener todos los usuarios de la base de datos para mapear receptores
         $allUsersStmt = $pdo->query("SELECT id, user_group, hierarchy_level FROM users");
         $allUsers = $allUsersStmt->fetchAll();
 
         foreach ($upcomingTasks as $task) {
-            $taskId = $task['id'];
-            $taskTitle = $task['title'];
-            $taskGroup = $task['target_group'];
+            $taskId      = $task['id'];
+            $taskTitle   = $task['title'];
+            $taskGroup   = $task['target_group'];
             $statusLabel = $statusLabels[$task['status']] ?? $task['status'];
-            $groupLabel = $groupLabels[$taskGroup] ?? $taskGroup;
+            $groupLabel  = $groupLabels[$taskGroup] ?? $taskGroup;
             $deepLinkUrl = "#tasks?open={$taskId}";
 
-            // Destinatarios:
-            // 1. El usuario específicamente asignado
-            // 2. Todos los de ese departamento
-            // 3. Toda la superintendencia
-            // 4. Todo el soporte de oficina
             $notifyIds = [];
-            if (!empty($task['assigned_to'])) {
-                $notifyIds[] = (int) $task['assigned_to'];
-            }
+            if (!empty($task['assigned_to'])) $notifyIds[] = (int) $task['assigned_to'];
 
             foreach ($allUsers as $u) {
-                $userGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
+                $userGroups     = array_map('trim', explode(',', $u['user_group'] ?? ''));
                 $hierarchyLevel = $u['hierarchy_level'] ?? '';
 
                 $isInDept = in_array($taskGroup, $userGroups) || $taskGroup === 'todos';
-                $isSuper = ($hierarchyLevel === 'superintendente' || in_array('superintendencia', $userGroups));
+                $isSuper  = ($hierarchyLevel === 'superintendente' || in_array('superintendencia', $userGroups));
                 $isSoporte = in_array('soporte_oficina', $userGroups);
 
-                if ($isInDept || $isSuper || $isSoporte) {
-                    $notifyIds[] = (int) $u['id'];
-                }
+                if ($isInDept || $isSuper || $isSoporte) $notifyIds[] = (int) $u['id'];
             }
-
             $notifyIds = array_unique($notifyIds);
 
             if (!empty($notifyIds)) {
-                $body = "⚠️ La tarea \"{$taskTitle}\" ({$groupLabel}) vence mañana. Estado: {$statusLabel}.";
-                
-                $options = [
-                    'vibrate' => [200, 100, 200, 100, 400],
-                    'actions' => [
-                        ['action' => 'view', 'title' => '👁️ Abrir Tarea'],
-                        ['action' => 'comment', 'title' => '💬 Comentar']
-                    ]
-                ];
-
-                sendPushNotifications(
-                    $notifyIds,
-                    "⏰ Tarea Próxima a Vencer - ICCP",
-                    $body,
-                    $deepLinkUrl,
-                    $options
-                );
+                $body = "Atencion: La tarea \"{$taskTitle}\" ({$groupLabel}) vence manana. Estado: {$statusLabel}.";
+                $result = sendPushNotifications($notifyIds, "Tarea Proxima a Vencer - ICCP", $body, $deepLinkUrl);
+                echo "[CRON] Alerta SLA para tarea #$taskId \"{$taskTitle}\": success={$result['success']}, failed={$result['failed']}\n";
             }
         }
-        echo "Alertas de SLA procesadas con éxito.\n";
+        echo "[CRON] Alertas SLA completadas.\n";
     } catch (Exception $e) {
-        echo "Error en Alertas de SLA: " . $e->getMessage() . "\n";
+        echo "[CRON] ERROR en Alertas SLA: " . $e->getMessage() . "\n";
     }
 }
+
+echo "[CRON] Script finalizado correctamente.\n";
