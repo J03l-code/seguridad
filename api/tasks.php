@@ -392,23 +392,26 @@ function updateTask($id, $auth)
             // URL de deep-link: abre el modal de la tarea directamente
             $deepLinkUrl = "#tasks?open={$id}";
 
-            // Notificar al departamento de la tarea (superintendentes + auxiliares del grupo) y todos los de soporte_oficina
+            // Obtener todos los usuarios del sistema
             $allUsersStmt = $pdo->prepare("SELECT id, user_group, hierarchy_level FROM users");
             $allUsersStmt->execute();
             $allUsers = $allUsersStmt->fetchAll();
 
             $notifyIds = [];
             foreach ($allUsers as $u) {
-                if ($u['id'] == $auth['id']) continue; // No notificar al que cambió el estado
+                // NOTA: No excluimos a $auth['id'] para permitir que Joel reciba la notificación de prueba en sus dispositivos si tiene la sesión abierta.
                 $userGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
                 $hierarchyLevel = $u['hierarchy_level'] ?? '';
 
                 $isInDept = in_array($taskGroup, $userGroups) || $taskGroup === 'todos';
-                $isSuperOrAux = in_array($hierarchyLevel, ['superintendente', 'auxiliar']);
+                $isSuper = ($hierarchyLevel === 'superintendente' || in_array('superintendencia', $userGroups));
                 $isSoporte = in_array('soporte_oficina', $userGroups);
 
-                // Incluir si: está en el departamento de la tarea (y es super/auxiliar), o es de soporte de oficina
-                if (($isInDept && $isSuperOrAux) || $isSoporte) {
+                // Criterio amplio y correcto:
+                // 1. Pertenece al departamento de la tarea
+                // 2. O pertenece a la superintendencia (rol o grupo)
+                // 3. O es de soporte de oficina
+                if ($isInDept || $isSuper || $isSoporte) {
                     $notifyIds[] = $u['id'];
                 }
             }
@@ -417,16 +420,39 @@ function updateTask($id, $auth)
 
             if (!empty($notifyIds)) {
                 // Notificación interna en el sistema
-                $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
-                foreach ($notifyIds as $uid) {
-                    $notifStmt->execute([$uid, "{$auth['name']} cambió el estado de \"$taskTitle\" a $newStatusLabel"]);
+                $notifMsg = "{$auth['name']} cambió el estado de \"$taskTitle\" a $newStatusLabel";
+                if (!empty($data['comment'])) {
+                    $cleanComment = strip_tags(trim($data['comment']));
+                    if (strlen($cleanComment) > 50) {
+                        $cleanComment = mb_substr($cleanComment, 0, 50) . '...';
+                    }
+                    $notifMsg .= " | Comentario: \"{$cleanComment}\"";
                 }
 
-                // Notificación Push al móvil
+                $notifStmt = $pdo->prepare("INSERT INTO notifications (user_id, message) VALUES (?, ?)");
+                foreach ($notifyIds as $uid) {
+                    // No guardar notificación interna para el que hizo el cambio en base de datos para no ensuciar su panel, 
+                    // pero SÍ le mandamos la notificación Push en el paso de abajo.
+                    if ($uid != $auth['id']) {
+                        $notifStmt->execute([$uid, $notifMsg]);
+                    }
+                }
+
+                // Cuerpo premium de la notificación Web Push
+                $pushBody = "{$auth['name']} cambió \"$taskTitle\" ($groupLabel) a: $newStatusLabel";
+                if (!empty($data['comment'])) {
+                    $cleanComment = strip_tags(trim($data['comment']));
+                    if (strlen($cleanComment) > 80) {
+                        $cleanComment = mb_substr($cleanComment, 0, 80) . '...';
+                    }
+                    $pushBody .= "\n💬 Comentario: \"{$cleanComment}\"";
+                }
+
+                // Enviar notificación Push al móvil
                 sendPushNotifications(
                     $notifyIds,
                     "Estado Actualizado - ICCP",
-                    "{$auth['name']} cambió \"$taskTitle\" ($groupLabel) a: $newStatusLabel",
+                    $pushBody,
                     $deepLinkUrl
                 );
             }
