@@ -46,6 +46,9 @@ switch ($action) {
     case 'comment':
         addComment($auth);
         break;
+    case 'delete_comment':
+        deleteComment($auth);
+        break;
     default:
         jsonResponse(['error' => 'Acción no válida.'], 400);
 }
@@ -513,6 +516,50 @@ function addComment($auth)
         ->execute([$id, $auth['id'], 'commented', $comment]);
 
     jsonResponse(['message' => 'Comentario añadido.']);
+}
+
+function deleteComment($auth)
+{
+    global $pdo;
+    if (getMethod() !== 'DELETE')
+        jsonResponse(['error' => 'Método no permitido.'], 405);
+
+    $commentId = (int) getParam('id', 0);
+    if (!$commentId)
+        jsonResponse(['error' => 'ID de comentario requerido.'], 400);
+
+    // Fetch the comment
+    $stmt = $pdo->prepare('SELECT * FROM activity_log WHERE id = ?');
+    $stmt->execute([$commentId]);
+    $comment = $stmt->fetch();
+
+    if (!$comment)
+        jsonResponse(['error' => 'Comentario no encontrado.'], 404);
+
+    if ($comment['action'] !== 'commented')
+        jsonResponse(['error' => 'Solo se pueden eliminar comentarios.'], 400);
+
+    // Check permissions:
+    // 1. Author of the comment
+    // 2. Administrator role
+    // 3. User belonging to superintendencia
+    $uStmt = $pdo->prepare('SELECT user_group FROM users WHERE id = ?');
+    $uStmt->execute([$auth['id']]);
+    $uGroupStr = $uStmt->fetchColumn() ?? '';
+    $uGroups = array_map('trim', explode(',', $uGroupStr));
+    $isSuper = in_array('superintendencia', $uGroups);
+
+    $canDelete = ($comment['user_id'] == $auth['id'] || $auth['role'] === 'admin' || $isSuper);
+
+    if (!$canDelete) {
+        jsonResponse(['error' => 'No tienes permisos para eliminar este comentario.'], 403);
+    }
+
+    // Delete comment
+    $del = $pdo->prepare('DELETE FROM activity_log WHERE id = ?');
+    $del->execute([$commentId]);
+
+    jsonResponse(['message' => 'Comentario eliminado con éxito.']);
 }
 
 function uploadFiles($taskId, $auth)

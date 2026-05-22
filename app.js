@@ -738,7 +738,33 @@ async function renderTasks(wrapper) {
               }).join('')}
             </div></div>` : `<div style="margin-bottom:20px;font-size:13px;color:var(--gray-500)">No tienes permisos departamentales para cambiar estatus.</div>`}
             ${att.length > 0 ? `<div style="margin-bottom:20px"><label class="form-label">Archivos (${att.length})</label><div class="file-list">${att.map(a => `<div class="file-item"><div class="file-info"><span>📄</span><a href="api/uploads/${a.filename}"target="_blank"style="color:var(--primary-600);font-weight:500">${a.original_name}</a></div><span class="file-size">${(a.file_size / 1024).toFixed(1)} KB</span></div>`).join('')}</div></div>` : ''}
-            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => `<div class="activity-item"><div class="activity-avatar"style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div><div style="flex:1"><div class="activity-text"style="font-size:13px"><strong>${a.user_name}</strong> ${a.action === 'commented' ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800);white-space:pre-wrap;word-break:break-all">${a.details.replace(new RegExp('(https?://\\S+)', 'ig'), '<a href="$1" target="_blank" style="color:var(--primary-600);text-decoration:underline">$1</a>')}</div>` : a.details}</div><div class="activity-time">${formatDate(a.created_at)}</div></div></div>`).join('')}</div></div>` : ''}
+            ${act.length > 0 ? `<div><label class="form-label">Historial y Comentarios</label><div class="activity-list">${act.map(a => {
+              const myUserGroup = state.user?.user_group || '';
+              const isUserSuper = myUserGroup.split(',').map(g => g.trim()).includes('superintendencia');
+              const canDeleteComment = (a.user_id == state.user?.id || state.user?.role === 'admin' || isUserSuper);
+              const deleteBtn = (a.action === 'commented' && canDeleteComment)
+                ? `<button class="btn-text-danger" style="margin-left: 8px; font-size: 11px; padding: 0 4px; background: none; border: none; cursor: pointer; color: var(--danger-500); text-decoration: underline;" onclick="deleteCommentUI(${a.id}, ${t.id})">Eliminar</button>`
+                : '';
+
+              return `
+                <div class="activity-item">
+                  <div class="activity-avatar" style="width:28px;height:28px;font-size:10px">${initials(a.user_name)}</div>
+                  <div style="flex:1">
+                    <div class="activity-text" style="font-size:13px">
+                      <strong>${a.user_name}</strong>
+                      ${a.action === 'commented'
+                        ? `<div style="margin-top:4px;padding:8px;background:var(--gray-50);border-radius:6px;border:1px solid var(--gray-200);color:var(--gray-800);white-space:pre-wrap;word-break:break-all">${a.details.replace(new RegExp('(https?://\\S+)', 'ig'), '<a href="$1" target="_blank" style="color:var(--primary-600);text-decoration:underline">$1</a>')}</div>`
+                        : a.details
+                      }
+                    </div>
+                    <div class="activity-time" style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                      <span>${formatDate(a.created_at)}</span>
+                      ${deleteBtn}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}</div></div>` : ''}
             
             <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-200)">
               <label class="form-label">Añadir Comentario</label>
@@ -755,6 +781,17 @@ async function renderTasks(wrapper) {
             <button class="btn btn-outline"onclick="closeModal()">Cerrar</button>
           </div>
         `, 'modal-lg');
+
+        window.deleteCommentUI = async function (commentId, taskId) {
+          if (!confirm('¿Deseas eliminar este comentario permanentemente?')) return;
+          try {
+            await api(`tasks.php?action=delete_comment&id=${commentId}`, { method: 'DELETE' });
+            toast('Comentario eliminado con éxito');
+            window.openTaskDetail(taskId);
+          } catch (err) {
+            toast(err.message, 'error');
+          }
+        };
       } catch (err) { toast(err.message, 'error'); }
     };
 
