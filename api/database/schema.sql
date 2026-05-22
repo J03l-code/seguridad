@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS users (
     hierarchy_level ENUM(
         'superintendente',
         'voluntario_clave',
-        'auxiliar'
+        'auxiliar',
+        'secretaria',
+        'admin'
     ) DEFAULT 'auxiliar',
     job_title VARCHAR(100) DEFAULT NULL,
     user_group VARCHAR(255) DEFAULT 'otros_eventos',

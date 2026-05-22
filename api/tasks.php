@@ -253,13 +253,27 @@ function createTask($auth)
             $uGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
             $level = $u['hierarchy_level'] ?? '';
             
-            if ($level === 'superintendente' || $level === 'auxiliar') {
-                if (in_array($targetGroup, $uGroups) || 
-                    in_array('soporte_oficina', $uGroups) || 
-                    in_array('superintendencia', $uGroups) ||
-                    $targetGroup === 'todos') {
-                    $generalNotifyIds[] = (int) $u['id'];
+            $notify = false;
+
+            // 1. Soporte de Oficina: TODOS los miembros reciben
+            if (in_array('soporte_oficina', $uGroups)) {
+                $notify = true;
+            }
+            
+            // 2. Superintendencia: Solo superintendentes y auxiliares
+            if (in_array('superintendencia', $uGroups) && ($level === 'superintendente' || $level === 'auxiliar')) {
+                $notify = true;
+            }
+            
+            // 3. Departamento destino (o todos): Superintendentes, Auxiliares, y Secretarias
+            if (in_array($targetGroup, $uGroups) || $targetGroup === 'todos') {
+                if ($level === 'superintendente' || $level === 'auxiliar' || $level === 'secretaria') {
+                    $notify = true;
                 }
+            }
+            
+            if ($notify) {
+                $generalNotifyIds[] = (int) $u['id'];
             }
         }
         
@@ -452,14 +466,27 @@ function updateTask($id, $auth)
                 $userGroups = array_map('trim', explode(',', $u['user_group'] ?? ''));
                 $hierarchyLevel = $u['hierarchy_level'] ?? '';
 
-                // Solo notificar a Superintendentes y Auxiliares de los departamentos implicados
-                if ($hierarchyLevel === 'superintendente' || $hierarchyLevel === 'auxiliar') {
-                    if (in_array($taskGroup, $userGroups) || 
-                        in_array('soporte_oficina', $userGroups) || 
-                        in_array('superintendencia', $userGroups) ||
-                        $taskGroup === 'todos') {
-                        $notifyIds[] = (int) $u['id'];
+                $notify = false;
+
+                // 1. Soporte de Oficina: TODOS los miembros reciben
+                if (in_array('soporte_oficina', $userGroups)) {
+                    $notify = true;
+                }
+                
+                // 2. Superintendencia: Solo superintendentes y auxiliares
+                if (in_array('superintendencia', $userGroups) && ($hierarchyLevel === 'superintendente' || $hierarchyLevel === 'auxiliar')) {
+                    $notify = true;
+                }
+                
+                // 3. Departamento destino (o todos): Superintendentes, Auxiliares, y Secretarias
+                if (in_array($taskGroup, $userGroups) || $taskGroup === 'todos') {
+                    if ($hierarchyLevel === 'superintendente' || $hierarchyLevel === 'auxiliar' || $hierarchyLevel === 'secretaria') {
+                        $notify = true;
                     }
+                }
+                
+                if ($notify) {
+                    $notifyIds[] = (int) $u['id'];
                 }
             }
 

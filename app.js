@@ -2971,6 +2971,7 @@ window.openCreateExtMember = (prefillDept = '') => {
                         <select name="hierarchy_level" class="form-select" required>
                             <option value="voluntario_clave">Voluntario Clave</option>
                             <option value="auxiliar">Auxiliar</option>
+                            <option value="secretaria">Secretaria(o)</option>
                             <option value="superintendente">Superintendente</option>
                             <option value="admin">Administrador (Admin)</option>
                         </select>
@@ -3110,6 +3111,7 @@ window.openEditOrgUser = (id, isExternal) => {
                         <select name="hierarchy_level" class="form-select" required>
                             <option value="auxiliar" ${u.hierarchy_level === 'auxiliar' ? 'selected' : ''}>Auxiliar</option>
                             <option value="voluntario_clave" ${u.hierarchy_level === 'voluntario_clave' ? 'selected' : ''}>Voluntario Clave</option>
+                            <option value="secretaria" ${u.hierarchy_level === 'secretaria' ? 'selected' : ''}>Secretaria(o)</option>
                             <option value="superintendente" ${u.hierarchy_level === 'superintendente' ? 'selected' : ''}>Superintendente</option>
                             <option value="admin" ${u.hierarchy_level === 'admin' ? 'selected' : ''}>Admin</option>
                         </select>
