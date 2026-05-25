@@ -191,6 +191,11 @@ function router() {
     return;
   }
 
+  // Verificar si hay redirecciones de notificaciones pendientes (especial para iOS)
+  if (state.token && typeof window.checkPendingNotificationRedirect === 'function') {
+    window.checkPendingNotificationRedirect();
+  }
+
   const app = document.getElementById('app');
 
   if (page === 'login') {
@@ -3778,6 +3783,88 @@ window.togglePushSubscription = async function() {
     window.updatePushSettingsUI();
   }
 };
+
+// Función para procesar redirecciones de notificaciones pendientes almacenadas en Cache API (crucial para iOS Safari/PWA)
+window.checkPendingNotificationRedirect = function() {
+  if (!state.token) return;
+  if ('caches' in window) {
+    caches.open('pending-notifications').then((cache) => {
+      cache.match('/pending-redirect').then((response) => {
+        if (response) {
+          response.text().then((url) => {
+            // Eliminar inmediatamente del caché para evitar bucles de navegación
+            cache.delete('/pending-redirect');
+            console.log('Redirección de notificación pendiente encontrada en Cache API:', url);
+            
+            const hashIndex = url.indexOf('#');
+            if (hashIndex === -1) {
+              window.location.hash = '#dashboard';
+              return;
+            }
+
+            const hash = url.slice(hashIndex + 1);
+            const [targetPage, queryStr] = hash.split('?');
+            const params = {};
+            if (queryStr) {
+              queryStr.split('&').forEach(p => {
+                const [k, v] = p.split('=');
+                if (k) params[k] = decodeURIComponent(v || '');
+              });
+            }
+
+            const openId = params.open || null;
+            const focusComment = params.focus_comment === 'true';
+
+            const currentHash = window.location.hash.slice(1);
+            const [currentPage] = currentHash.split('?');
+            const alreadyOnPage = currentPage === targetPage;
+
+            if (openId) {
+              if (alreadyOnPage) {
+                setTimeout(() => {
+                  if ((targetPage === 'tasks' || targetPage === 'mytasks') && window.openTaskDetail) {
+                    window.openTaskDetail(openId).then(() => {
+                      if (focusComment) {
+                        setTimeout(() => {
+                          const input = document.getElementById('task-comment-input');
+                          if (input) {
+                            input.focus();
+                            input.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }, 400);
+                      }
+                    });
+                  } else if (targetPage === 'calendar' && window.showEventDetails) {
+                    window.showEventDetails(openId);
+                  }
+                }, 200);
+              } else {
+                window._deepLinkOpen = { page: targetPage, id: openId, focusComment: focusComment };
+                window.location.hash = '#' + hash;
+              }
+            } else {
+              window.location.hash = '#' + hash;
+            }
+          });
+        }
+      });
+    });
+  }
+};
+
+// Escuchar cambios de visibilidad y enfoque para capturar clics de notificación en segundo plano
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if (typeof window.checkPendingNotificationRedirect === 'function') {
+      window.checkPendingNotificationRedirect();
+    }
+  }
+});
+window.addEventListener('focus', () => {
+  if (typeof window.checkPendingNotificationRedirect === 'function') {
+    window.checkPendingNotificationRedirect();
+  }
+});
 
 // Escuchar mensajes del Service Worker para redirigir al hacer clic en notificaciones (Solución premium para iOS Safari)
 if ('serviceWorker' in navigator) {

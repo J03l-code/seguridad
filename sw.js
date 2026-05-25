@@ -71,26 +71,36 @@ self.addEventListener('notificationclick', (event) => {
         }
     }
 
+    const savePendingRedirect = caches.open('pending-notifications').then((cache) => {
+        return cache.put('/pending-redirect', new Response(targetUrl));
+    });
+
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            // Si la aplicación ya está abierta, enfocarla y navegar a la sección
+        savePendingRedirect.then(() => {
+            return clients.matchAll({ type: 'window', includeUncontrolled: true });
+        }).then((clientList) => {
+            // Si la aplicación ya está abierta, enfocarla y enviar mensaje para cambiar de sección (crucial para iOS)
             for (const client of clientList) {
-                const clientUrlObj = new URL(client.url);
-                const targetUrlObj = new URL(targetUrl);
-                if (clientUrlObj.hostname === targetUrlObj.hostname && 'focus' in client) {
-                    client.focus();
-                    
-                    // Enviar mensaje al frontend para cambiar de sección (crucial para iOS Safari)
-                    if (client.postMessage) {
-                        client.postMessage({ action: 'navigate', url: targetUrl });
-                    }
-                    
-                    try {
-                        if ('navigate' in client && client.url !== targetUrl) {
-                            return client.navigate(targetUrl);
+                try {
+                    const clientUrlObj = new URL(client.url);
+                    const targetUrlObj = new URL(targetUrl);
+                    if (clientUrlObj.hostname === targetUrlObj.hostname && 'focus' in client) {
+                        // Enviar mensaje al frontend para cambiar de sección (evita recargas y fallos de navegación)
+                        if (client.postMessage) {
+                            client.postMessage({ action: 'navigate', url: targetUrl });
                         }
-                    } catch (e) {}
-                    return;
+                        
+                        // Eliminar inmediatamente del caché ya que la ventana ya está abierta y enfocada
+                        caches.open('pending-notifications').then((cache) => {
+                            cache.delete('/pending-redirect');
+                        });
+
+                        return client.focus().catch((err) => {
+                            console.error('Error al enfocar el cliente:', err);
+                        });
+                    }
+                } catch (err) {
+                    console.error('Error al procesar cliente para navegación:', err);
                 }
             }
             // Si no estaba abierta, abrir una nueva ventana con la URL correspondiente
