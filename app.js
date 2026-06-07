@@ -1417,9 +1417,20 @@ async function renderDepartments(wrapper) {
     <div id="dept-panel-actividades" style="display:${state._deptTab==='actividades'?'block':'none'}">
         <div class="card" style="margin-bottom:30px;background:var(--gray-50);border-radius:0 12px 12px 12px;">
             <div class="card-header" style="background:#fff;display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-bottom:1px solid #e2e8f0;border-radius:0 12px 0 0;">
-                <div>
-                    <h3 style="margin:0;color:var(--primary-800);font-size:17px;">📋 Organigrama de Actividades por Departamento</h3>
-                    <p style="margin:4px 0 0;font-size:13px;color:var(--gray-500);">Actividades de cada departamento por Superintendentes y Auxiliares.</p>
+                <div style="flex:1;">
+                    <h3 id="act-export-title" contenteditable="true" spellcheck="false"
+                        title="Haz clic para editar el título"
+                        style="margin:0;color:var(--primary-800);font-size:17px;outline:none;border-radius:6px;padding:3px 6px;cursor:text;transition:background 0.2s;"
+                        onmouseover="this.style.background='#eef2ff'" onmouseout="if(document.activeElement!==this)this.style.background='transparent'"
+                        onfocus="this.style.background='#eef2ff';this.style.boxShadow='0 0 0 2px #818cf8'"
+                        onblur="this.style.background='transparent';this.style.boxShadow='none'">📋 Organigrama de Actividades por Departamento</h3>
+                    <p id="act-export-subtitle" contenteditable="true" spellcheck="false"
+                        title="Haz clic para editar el subtítulo"
+                        style="margin:4px 0 0;font-size:13px;color:var(--gray-500);outline:none;border-radius:6px;padding:2px 6px;cursor:text;transition:background 0.2s;"
+                        onmouseover="this.style.background='#f0f9ff'" onmouseout="if(document.activeElement!==this)this.style.background='transparent'"
+                        onfocus="this.style.background='#f0f9ff';this.style.boxShadow='0 0 0 2px #7dd3fc'"
+                        onblur="this.style.background='transparent';this.style.boxShadow='none'">Actividades de cada departamento por Superintendentes y Auxiliares.</p>
+                    <span style="font-size:10px;color:var(--gray-400);margin-left:6px;">✏️ Clic para editar</span>
                 </div>
                 <div style="display:flex;gap:10px;align-items:center;">
                     <button onclick="toggleCompactActMode()" style="padding:8px 12px;background:${state._compactActMode?'var(--warning-100)':'var(--gray-100)'};color:${state._compactActMode?'var(--warning-700)':'var(--gray-700)'};border:1px solid ${state._compactActMode?'var(--warning-200)':'var(--gray-200)'};border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">${state._compactActMode?'🔓 Expandir':'🔒 Compacto'}</button>
@@ -1480,59 +1491,24 @@ async function renderDepartments(wrapper) {
             </label>
         `).join('');
 
-        const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-        const labelStyle = 'font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;display:block;';
-        const inputStyle = 'width:100%;padding:9px 12px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:14px;color:var(--gray-800);font-family:inherit;outline:none;box-sizing:border-box;background:#fff;';
-
         showModal(`
             <div class="modal-header">
-                <h2>✏️ Exportar Organigrama de Actividades</h2>
+                <h2>${format === 'pdf' ? '📄' : '🖼️'} Exportar como ${format.toUpperCase()}</h2>
                 <button class="modal-close" onclick="closeModal()">✕</button>
             </div>
-            <div class="modal-body" style="max-height:75vh;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;">
-
-                <!-- EDITOR DE TEXTO -->
-                <div style="background:linear-gradient(135deg,#eef2ff,#f0f9ff);border:1.5px solid #c7d2fe;border-radius:12px;padding:18px;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-                        <span style="font-size:18px;">✏️</span>
-                        <span style="font-size:14px;font-weight:800;color:var(--primary-700);">Personalizar texto del documento</span>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:12px;">
-                        <div>
-                            <label style="${labelStyle}">Título principal</label>
-                            <input id="exp-title" type="text" value="Organigrama de Actividades"
-                                style="${inputStyle}" placeholder="Título del documento">
-                        </div>
-                        <div>
-                            <label style="${labelStyle}">Subtítulo / Fecha</label>
-                            <input id="exp-subtitle" type="text" value="Fecha de actualización: ${dateStr}"
-                                style="${inputStyle}" placeholder="Subtítulo o fecha">
-                        </div>
-                        <div>
-                            <label style="${labelStyle}">Pie de página</label>
-                            <input id="exp-footer" type="text" value="Documento generado automáticamente por el Sistema ICCP"
-                                style="${inputStyle}" placeholder="Texto del pie de página">
-                        </div>
-                    </div>
+            <div class="modal-body" style="padding:20px 24px;">
+                <p style="margin:0 0 12px;font-size:14px;color:var(--gray-600);">Selecciona los departamentos que deseas incluir:</p>
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px;">
+                    <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=true})" style="font-size:11px;padding:3px 10px;background:var(--primary-100);color:var(--primary-700);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Todos</button>
+                    <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=false})" style="font-size:11px;padding:3px 10px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Ninguno</button>
                 </div>
-
-                <!-- SELECTOR DE DEPARTAMENTOS -->
-                <div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                        <span style="font-size:13px;font-weight:700;color:var(--gray-700);">📋 Departamentos a incluir</span>
-                        <div style="display:flex;gap:8px;">
-                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=true})" style="font-size:11px;padding:3px 10px;background:var(--primary-100);color:var(--primary-700);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Todos</button>
-                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=false})" style="font-size:11px;padding:3px 10px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Ninguno</button>
-                        </div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        ${checkboxes}
-                    </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    ${checkboxes}
                 </div>
             </div>
             <div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:14px 24px;display:flex;justify-content:flex-end;gap:10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="executeExportActivities('${format}')" style="background:${format==='pdf'?'var(--danger-600)':'var(--primary-600)'};gap:6px;display:flex;align-items:center;">
+                <button type="button" class="btn btn-primary" onclick="executeExportActivities('${format}')" style="background:${format==='pdf'?'var(--danger-600)':'var(--primary-600)'};">
                     ${format === 'pdf' ? '📄' : '🖼️'} Generar ${format.toUpperCase()}
                 </button>
             </div>
@@ -1547,10 +1523,12 @@ async function renderDepartments(wrapper) {
             return;
         }
 
-        // Capture custom text BEFORE closing the modal
-        const customTitle    = (document.getElementById('exp-title')    || {}).value || 'Organigrama de Actividades';
-        const customSubtitle = (document.getElementById('exp-subtitle') || {}).value || '';
-        const customFooter   = (document.getElementById('exp-footer')   || {}).value || 'Documento generado automáticamente por el Sistema ICCP';
+        // Read title/subtitle from the inline-editable elements on the page
+        const titleEl    = document.getElementById('act-export-title');
+        const subtitleEl = document.getElementById('act-export-subtitle');
+        const customTitle    = titleEl    ? titleEl.innerText.trim()    : 'Organigrama de Actividades por Departamento';
+        const customSubtitle = subtitleEl ? subtitleEl.innerText.trim() : '';
+        const customFooter   = 'Documento generado automáticamente por el Sistema ICCP';
 
         closeModal();
 
