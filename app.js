@@ -1474,23 +1474,70 @@ async function renderDepartments(wrapper) {
         }
 
         const checkboxes = availableDepts.map(d => `
-            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;cursor:pointer;">
-                <input type="checkbox" name="export_dept" value="${d.id}" checked>
+            <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8fafc'">
+                <input type="checkbox" name="export_dept" value="${d.id}" checked style="width:16px;height:16px;accent-color:var(--primary-600);">
                 <span style="font-size:14px;font-weight:600;color:var(--gray-800);">${d.name}</span>
             </label>
         `).join('');
 
+        const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+        const labelStyle = 'font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;display:block;';
+        const inputStyle = 'width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--gray-800);font-family:inherit;outline:none;transition:border 0.2s;box-sizing:border-box;';
+
         showModal(`
-            <div class="modal-header"><h2>Exportar Organigrama de Actividades</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
-            <div class="modal-body" style="max-height:400px;overflow-y:auto;">
-                <p style="margin-top:0;font-size:14px;color:var(--gray-600);">Selecciona los departamentos que deseas incluir en la imagen:</p>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${checkboxes}
+            <div class="modal-header">
+                <h2>✏️ Exportar Organigrama de Actividades</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" style="max-height:75vh;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;">
+
+                <!-- EDITOR DE TEXTO -->
+                <div style="background:linear-gradient(135deg,#eef2ff,#f0f9ff);border:1.5px solid #c7d2fe;border-radius:12px;padding:18px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                        <span style="font-size:18px;">✏️</span>
+                        <span style="font-size:14px;font-weight:800;color:var(--primary-700);">Personalizar texto del documento</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div>
+                            <label style="${labelStyle}">Título principal</label>
+                            <input id="exp-title" type="text" value="Organigrama de Actividades"
+                                style="${inputStyle}" placeholder="Título del documento"
+                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+                        <div>
+                            <label style="${labelStyle}">Subtítulo / Fecha</label>
+                            <input id="exp-subtitle" type="text" value="Fecha de actualización: ${dateStr}"
+                                style="${inputStyle}" placeholder="Subtítulo o fecha"
+                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+                        <div>
+                            <label style="${labelStyle}">Pie de página</label>
+                            <input id="exp-footer" type="text" value="Documento generado automáticamente por el Sistema ICCP"
+                                style="${inputStyle}" placeholder="Texto del pie de página"
+                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SELECTOR DE DEPARTAMENTOS -->
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <span style="font-size:13px;font-weight:700;color:var(--gray-700);">📋 Departamentos a incluir</span>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(c=>c.checked=true)" style="font-size:11px;padding:3px 10px;background:var(--primary-100);color:var(--primary-700);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Todos</button>
+                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(c=>c.checked=false)" style="font-size:11px;padding:3px 10px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Ninguno</button>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        ${checkboxes}
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:14px 24px;display:flex;justify-content:flex-end;gap:10px;">
                 <button type="button" class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="executeExportActivities('${format}')">Generar ${format.toUpperCase()}</button>
+                <button type="button" class="btn btn-primary" onclick="executeExportActivities('${format}')" style="background:${format==='pdf'?'var(--danger-600)':'var(--primary-600)'};gap:6px;display:flex;align-items:center;">
+                    ${format === 'pdf' ? '📄' : '🖼️'} Generar ${format.toUpperCase()}
+                </button>
             </div>
         `);
     };
@@ -1501,6 +1548,12 @@ async function renderDepartments(wrapper) {
             toast('Debes seleccionar al menos un departamento', 'warning');
             return;
         }
+
+        // Capture custom text BEFORE closing the modal
+        const customTitle    = (document.getElementById('exp-title')    || {}).value || 'Organigrama de Actividades';
+        const customSubtitle = (document.getElementById('exp-subtitle') || {}).value || '';
+        const customFooter   = (document.getElementById('exp-footer')   || {}).value || 'Documento generado automáticamente por el Sistema ICCP';
+
         closeModal();
 
         const el = document.getElementById('activities-org-wrapper');
@@ -1568,24 +1621,23 @@ async function renderDepartments(wrapper) {
                 clonedTarget.style.paddingLeft = '60px';
                 clonedTarget.style.paddingRight = '60px';
 
-                // Add header
+                // Add header with custom text
                 const header = clonedDoc.createElement('div');
-                const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 header.style.cssText = `position:absolute; top:40px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
                 
                 const logoHtml = logoDataUrl ? `<div style="position:absolute; left:60px; top:0; width:100px; height:100px;"><img src="${logoDataUrl}" style="width:100%; height:100%; object-fit:contain;"></div>` : '';
                 
                 header.innerHTML = `
                     ${logoHtml}
-                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">Organigrama de Actividades</h1>
-                    <p style="font-size:18px; color:#000000; margin-top:12px; font-weight:700;">Fecha de actualización: ${dateStr}</p>
+                    <h1 style="font-size:36px; font-weight:800; color:#1e293b; margin:0; line-height:1.2;">${customTitle}</h1>
+                    ${customSubtitle ? `<p style="font-size:18px; color:#000000; margin-top:12px; font-weight:700;">${customSubtitle}</p>` : ''}
                 `;
                 clonedTarget.appendChild(header);
 
-                // Add footer
+                // Add footer with custom text
                 const footer = clonedDoc.createElement('div');
                 footer.style.cssText = `position:absolute; bottom:30px; left:0; width:100%; text-align:center; font-family:'Inter',sans-serif;`;
-                footer.innerHTML = `<p style="font-size:14px; color:#64748b; margin:0; font-weight:600;">Documento generado automáticamente por el Sistema ICCP</p>`;
+                footer.innerHTML = `<p style="font-size:14px; color:#64748b; margin:0; font-weight:600;">${customFooter}</p>`;
                 clonedTarget.appendChild(footer);
             }
         }).then(canvas => {
