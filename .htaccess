@@ -46,3 +46,15 @@ Options -Indexes
         ExpiresActive Off
     </IfModule>
 </Files>
+
+# Never cache app.js or index.html so updates are always picked up immediately
+<FilesMatch "^(app\.js|index\.html)$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </IfModule>
+    <IfModule mod_expires.c>
+        ExpiresActive Off
+    </IfModule>
+</FilesMatch>
