@@ -1482,7 +1482,7 @@ async function renderDepartments(wrapper) {
 
         const dateStr = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
         const labelStyle = 'font-size:12px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;display:block;';
-        const inputStyle = 'width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:var(--gray-800);font-family:inherit;outline:none;transition:border 0.2s;box-sizing:border-box;';
+        const inputStyle = 'width:100%;padding:9px 12px;border:1.5px solid #c7d2fe;border-radius:8px;font-size:14px;color:var(--gray-800);font-family:inherit;outline:none;box-sizing:border-box;background:#fff;';
 
         showModal(`
             <div class="modal-header">
@@ -1501,20 +1501,17 @@ async function renderDepartments(wrapper) {
                         <div>
                             <label style="${labelStyle}">Título principal</label>
                             <input id="exp-title" type="text" value="Organigrama de Actividades"
-                                style="${inputStyle}" placeholder="Título del documento"
-                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                                style="${inputStyle}" placeholder="Título del documento">
                         </div>
                         <div>
                             <label style="${labelStyle}">Subtítulo / Fecha</label>
                             <input id="exp-subtitle" type="text" value="Fecha de actualización: ${dateStr}"
-                                style="${inputStyle}" placeholder="Subtítulo o fecha"
-                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                                style="${inputStyle}" placeholder="Subtítulo o fecha">
                         </div>
                         <div>
                             <label style="${labelStyle}">Pie de página</label>
                             <input id="exp-footer" type="text" value="Documento generado automáticamente por el Sistema ICCP"
-                                style="${inputStyle}" placeholder="Texto del pie de página"
-                                onfocus="this.style.borderColor='var(--primary-500)'" onblur="this.style.borderColor='#e2e8f0'">
+                                style="${inputStyle}" placeholder="Texto del pie de página">
                         </div>
                     </div>
                 </div>
@@ -1524,8 +1521,8 @@ async function renderDepartments(wrapper) {
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                         <span style="font-size:13px;font-weight:700;color:var(--gray-700);">📋 Departamentos a incluir</span>
                         <div style="display:flex;gap:8px;">
-                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(c=>c.checked=true)" style="font-size:11px;padding:3px 10px;background:var(--primary-100);color:var(--primary-700);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Todos</button>
-                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(c=>c.checked=false)" style="font-size:11px;padding:3px 10px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Ninguno</button>
+                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=true})" style="font-size:11px;padding:3px 10px;background:var(--primary-100);color:var(--primary-700);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Todos</button>
+                            <button type="button" onclick="document.querySelectorAll('input[name=export_dept]').forEach(function(c){c.checked=false})" style="font-size:11px;padding:3px 10px;background:var(--gray-100);color:var(--gray-600);border:none;border-radius:6px;cursor:pointer;font-weight:600;">Ninguno</button>
                         </div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:6px;">
@@ -1541,6 +1538,7 @@ async function renderDepartments(wrapper) {
             </div>
         `);
     };
+
 
     window.executeExportActivities = async function(format = 'png') {
         const selectedIds = Array.from(document.querySelectorAll('input[name="export_dept"]:checked')).map(cb => cb.value);
