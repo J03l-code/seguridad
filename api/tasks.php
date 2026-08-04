@@ -17,6 +17,16 @@ try {
         $pdo->exec("ALTER TABLE tasks ADD COLUMN patient_name VARCHAR(150) DEFAULT NULL");
         $pdo->exec("ALTER TABLE tasks ADD COLUMN received_by INT DEFAULT NULL");
         $pdo->exec("ALTER TABLE tasks ADD COLUMN teams_url VARCHAR(500) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN is_teams_call TINYINT(1) DEFAULT 0");
+    } catch (Exception $ex) {
+    }
+}
+
+try {
+    $pdo->query("SELECT is_teams_call FROM tasks LIMIT 1");
+} catch (PDOException $e) {
+    try {
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN is_teams_call TINYINT(1) DEFAULT 0");
     } catch (Exception $ex) {
     }
 }
@@ -91,6 +101,10 @@ function listTasks()
         $sql .= ' AND t.target_group = ?';
         $params[] = $target_group;
     }
+    if (getParam('is_teams_call') !== null) {
+        $sql .= ' AND t.is_teams_call = ?';
+        $params[] = (int) getParam('is_teams_call');
+    }
     if ($search = getParam('search')) {
         $sql .= ' AND (t.title LIKE ? OR t.description LIKE ? OR t.delegate_code LIKE ? OR t.patient_name LIKE ?)';
         $params[] = "%$search%";
@@ -157,8 +171,10 @@ function createTask($auth)
     $authName = $authNameStmt->fetchColumn() ?: 'Alguien';
 
 
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, received_by, delegate_code, patient_name, teams_url, created_by, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $isTeamsCall = isset($data['is_teams_call']) ? (int)$data['is_teams_call'] : 0;
+
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, received_by, delegate_code, patient_name, teams_url, is_teams_call, created_by, due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,
@@ -170,6 +186,7 @@ function createTask($auth)
         $data['delegate_code'] ?? null,
         $data['patient_name'] ?? null,
         $data['teams_url'] ?? null,
+        $isTeamsCall,
         $auth['id'],
         $data['due_date'] ?: null
     ]);

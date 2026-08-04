@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '156';
+const CURRENT_VERSION = '157';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -558,7 +558,7 @@ async function renderDashboard(wrapper) {
 async function renderTasks(wrapper) {
   try {
     const [tRes, dRes, uRes] = await Promise.all([
-      api('tasks.php?action=list'),
+      api('tasks.php?action=list&is_teams_call=0'),
       api('departments.php?action=list'),
       api('users.php?action=list')
     ]);
@@ -3823,7 +3823,7 @@ async function renderTeamsFollowup(container, params = {}) {
 
   try {
     const [tRes, uRes] = await Promise.all([
-      api('tasks.php?action=list&target_group=emergencias'),
+      api('tasks.php?action=list&target_group=emergencias&is_teams_call=1'),
       api('users.php?action=list')
     ]);
     tasks = tRes.tasks || [];
@@ -4148,7 +4148,8 @@ window.submitTeamsImportedTask = async function() {
         received_by: receiver,
         assigned_to: assigned || null,
         patient_name: patient,
-        delegate_code: code
+        delegate_code: code,
+        is_teams_call: 1
       })
     });
     toast('Emergencia registrada con éxito en ICCP');
@@ -4256,7 +4257,8 @@ window.submitManualEmergency = async function(e) {
         received_by: receiver,
         assigned_to: assigned || null,
         patient_name: patient,
-        delegate_code: code
+        delegate_code: code,
+        is_teams_call: 1
       })
     });
     toast('Llamada de emergencia guardada');
