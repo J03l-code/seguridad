@@ -8,6 +8,19 @@ $auth = authenticate();
 $action = getParam('action', 'list');
 $id = getParam('id');
 
+// Zero-downtime auto-migration for teams call follow up columns
+try {
+    $pdo->query("SELECT delegate_code FROM tasks LIMIT 1");
+} catch (PDOException $e) {
+    try {
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN delegate_code VARCHAR(100) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN patient_name VARCHAR(150) DEFAULT NULL");
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN received_by INT DEFAULT NULL");
+        $pdo->exec("ALTER TABLE tasks ADD COLUMN teams_url VARCHAR(500) DEFAULT NULL");
+    } catch (Exception $ex) {
+    }
+}
+
 // Zero-downtime auto-migration for target_group
 try {
     $pdo->query("SELECT target_group FROM tasks LIMIT 1");
@@ -57,11 +70,12 @@ function listTasks()
 {
     global $pdo;
     $sql = "SELECT t.*, u1.name as creator_name, u1.user_group as creator_group,
-                   u2.name as assigned_name,
+                   u2.name as assigned_name, u3.name as receiver_name,
                 (SELECT COUNT(*) FROM task_attachments ta WHERE ta.task_id = t.id) as attachment_count
             FROM tasks t
             LEFT JOIN users u1 ON t.created_by = u1.id
             LEFT JOIN users u2 ON t.assigned_to = u2.id
+            LEFT JOIN users u3 ON t.received_by = u3.id
             WHERE 1=1";
     $params = [];
 
@@ -78,7 +92,9 @@ function listTasks()
         $params[] = $target_group;
     }
     if ($search = getParam('search')) {
-        $sql .= ' AND (t.title LIKE ? OR t.description LIKE ?)';
+        $sql .= ' AND (t.title LIKE ? OR t.description LIKE ? OR t.delegate_code LIKE ? OR t.patient_name LIKE ?)';
+        $params[] = "%$search%";
+        $params[] = "%$search%";
         $params[] = "%$search%";
         $params[] = "%$search%";
     }
@@ -96,10 +112,11 @@ function getTask($id)
     if (!$id)
         jsonResponse(['error' => 'ID requerido.'], 400);
 
-    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, u2.name as assigned_name
+    $stmt = $pdo->prepare("SELECT t.*, u1.name as creator_name, u2.name as assigned_name, u3.name as receiver_name
         FROM tasks t 
         LEFT JOIN users u1 ON t.created_by = u1.id 
         LEFT JOIN users u2 ON t.assigned_to = u2.id 
+        LEFT JOIN users u3 ON t.received_by = u3.id 
         WHERE t.id = ?");
     $stmt->execute([$id]);
     $task = $stmt->fetch();
@@ -140,8 +157,8 @@ function createTask($auth)
     $authName = $authNameStmt->fetchColumn() ?: 'Alguien';
 
 
-    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, created_by, due_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO tasks (title, description, status, priority, target_group, assigned_to, received_by, delegate_code, patient_name, teams_url, created_by, due_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $title,
         $data['description'] ?? null,
@@ -149,6 +166,10 @@ function createTask($auth)
         $data['priority'] ?? 'medium',
         $targetGroup,
         !empty($data['assigned_to']) ? $data['assigned_to'] : null,
+        !empty($data['received_by']) ? $data['received_by'] : $auth['id'],
+        $data['delegate_code'] ?? null,
+        $data['patient_name'] ?? null,
+        $data['teams_url'] ?? null,
         $auth['id'],
         $data['due_date'] ?: null
     ]);
@@ -409,7 +430,9 @@ function updateTask($id, $auth)
 
     $pdo->prepare("UPDATE tasks SET title = COALESCE(?, title), description = COALESCE(?, description),
         status = COALESCE(?, status), priority = COALESCE(?, priority),
-        due_date = COALESCE(?, due_date), target_group = COALESCE(?, target_group), assigned_to = COALESCE(?, assigned_to) WHERE id = ?")
+        due_date = COALESCE(?, due_date), target_group = COALESCE(?, target_group), assigned_to = COALESCE(?, assigned_to),
+        received_by = COALESCE(?, received_by), delegate_code = COALESCE(?, delegate_code),
+        patient_name = COALESCE(?, patient_name), teams_url = COALESCE(?, teams_url) WHERE id = ?")
         ->execute([
             $data['title'] ?? null,
             $data['description'] ?? null,
@@ -418,6 +441,10 @@ function updateTask($id, $auth)
             $data['due_date'] ?? null,
             $data['target_group'] ?? null,
             isset($data['assigned_to']) ? ($data['assigned_to'] === '' ? null : $data['assigned_to']) : null,
+            isset($data['received_by']) ? ($data['received_by'] === '' ? null : $data['received_by']) : null,
+            $data['delegate_code'] ?? null,
+            $data['patient_name'] ?? null,
+            $data['teams_url'] ?? null,
             $id
         ]);
 

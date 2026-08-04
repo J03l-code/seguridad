@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '149';
+const CURRENT_VERSION = '155';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -220,7 +220,7 @@ function router() {
   });
 
   // Update title
-  const titles = { dashboard: 'Dashboard', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', calendar: 'Calendario', settings: 'Configuración' };
+  const titles = { dashboard: 'Dashboard', teams_followup: 'Teams Call Follow up', mytasks: 'Mis Tareas', tasks: 'Gestión de Tareas', departments: 'Departamentos', users: 'Usuarios', calendar: 'Calendario', settings: 'Configuración' };
   const titleEl = document.getElementById('page-title');
   if (titleEl) titleEl.textContent = titles[page] || 'ICCP';
 
@@ -237,6 +237,7 @@ function router() {
 
   switch (page) {
     case 'dashboard': renderDashboard(wrapper); break;
+    case 'teams_followup': renderTeamsFollowup(wrapper, params); break;
     case 'mytasks': renderMyTasks(wrapper); break;
     case 'tasks': renderTasks(wrapper, params); break;
     case 'departments': renderDepartments(wrapper); break;
@@ -255,6 +256,7 @@ function router() {
 function renderLayout(container) {
   const navItems = [
     { page: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { page: 'teams_followup', icon: '🚑', label: 'Teams Call Follow up' },
     { page: 'mytasks', icon: '📋', label: 'Mis Tareas' },
     { page: 'tasks', icon: '✅', label: 'Tareas' },
     { page: 'departments', icon: '🏢', label: 'Departamentos' },
@@ -3809,6 +3811,456 @@ window.togglePushSubscription = async function() {
   } finally {
     btn.disabled = false;
     window.updatePushSettingsUI();
+  }
+};
+
+// ==========================================
+// TEAMS CALL FOLLOW UP (Emergencias Médicas)
+// ==========================================
+async function renderTeamsFollowup(container, params = {}) {
+  let tasks = [];
+  let users = [];
+
+  try {
+    const [tRes, uRes] = await Promise.all([
+      api('tasks.php?action=list&target_group=emergencias'),
+      api('users.php?action=list')
+    ]);
+    tasks = tRes.tasks || [];
+    users = uRes.users || [];
+  } catch (err) {
+    toast('Error al cargar llamadas de emergencias', 'error');
+  }
+
+  const todoTasks = tasks.filter(t => t.status === 'todo');
+  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
+  const doneTasks = tasks.filter(t => t.status === 'done');
+
+  container.innerHTML = `
+    <div class="teams-followup-container">
+      <!-- Header Banner -->
+      <div class="card" style="background: linear-gradient(135deg, #1e1b4b, #312e81); color: white; padding: 24px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: var(--shadow-lg);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">
+              <span style="font-size: 28px;">🚑</span>
+              <h2 style="font-size: 22px; font-weight: 700; color: #fff;">Teams Call Follow up — Emergencias Médicas</h2>
+            </div>
+            <p style="color: #c7d2fe; font-size: 14px; max-width: 650px;">
+              Centro de Despacho y Trazabilidad Estricta. Registra quién atendió la llamada en Teams y asigna de inmediato el personal médico de campo.
+            </p>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button class="btn" style="background: #4f46e5; color: white; border-radius: var(--radius-md); font-weight: 600;" onclick="openTeamsQuickImportModal()">
+              📥 Importar desde Teams (Smart Paste)
+            </button>
+            <button class="btn btn-primary" onclick="openNewTeamsEmergencyModal()">
+              + Nueva Llamada Manual
+            </button>
+          </div>
+        </div>
+
+        <!-- Metrics Strip -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.15);">
+          <div style="background: rgba(255,255,255,0.08); padding: 12px 16px; border-radius: var(--radius-md);">
+            <div style="font-size: 12px; color: #a5b4fc; text-transform: uppercase; font-weight: 600;">Total Llamadas</div>
+            <div style="font-size: 24px; font-weight: 800; color: white; margin-top: 2px;">${tasks.length}</div>
+          </div>
+          <div style="background: rgba(239, 68, 68, 0.2); padding: 12px 16px; border-radius: var(--radius-md); border-left: 4px solid #ef4444;">
+            <div style="font-size: 12px; color: #fca5a5; text-transform: uppercase; font-weight: 600;">No Iniciado</div>
+            <div style="font-size: 24px; font-weight: 800; color: white; margin-top: 2px;">${todoTasks.length}</div>
+          </div>
+          <div style="background: rgba(245, 158, 11, 0.2); padding: 12px 16px; border-radius: var(--radius-md); border-left: 4px solid #f59e0b;">
+            <div style="font-size: 12px; color: #fde68a; text-transform: uppercase; font-weight: 600;">En Curso</div>
+            <div style="font-size: 24px; font-weight: 800; color: white; margin-top: 2px;">${inProgressTasks.length}</div>
+          </div>
+          <div style="background: rgba(16, 185, 129, 0.2); padding: 12px 16px; border-radius: var(--radius-md); border-left: 4px solid #10b981;">
+            <div style="font-size: 12px; color: #6ee7b7; text-transform: uppercase; font-weight: 600;">Atendidas / Completadas</div>
+            <div style="font-size: 24px; font-weight: 800; color: white; margin-top: 2px;">${doneTasks.length}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kanban Columns -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; align-items: start;">
+        <!-- Column 1: No Iniciado -->
+        <div class="kanban-col" style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #ef4444;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="width:10px; height:10px; border-radius:50%; background:#ef4444; display:inline-block;"></span>
+              <h3 style="font-size: 16px; font-weight: 700; color: var(--gray-800);">No Iniciado (${todoTasks.length})</h3>
+            </div>
+            <button class="btn btn-sm" style="background:#fee2e2; color:#b91c1c; font-size:12px; font-weight:600;" onclick="openNewTeamsEmergencyModal('todo')">+ Nueva</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap: 14px;">
+            ${todoTasks.length === 0 ? '<div style="padding: 24px; text-align:center; color:var(--gray-400); font-size:13px;">No hay llamadas sin atender</div>' : todoTasks.map(t => renderEmergencyCard(t, users)).join('')}
+          </div>
+        </div>
+
+        <!-- Column 2: En curso -->
+        <div class="kanban-col" style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f59e0b;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="width:10px; height:10px; border-radius:50%; background:#f59e0b; display:inline-block;"></span>
+              <h3 style="font-size: 16px; font-weight: 700; color: var(--gray-800);">En Curso / En Sitio (${inProgressTasks.length})</h3>
+            </div>
+            <button class="btn btn-sm" style="background:#fef3c7; color:#b45309; font-size:12px; font-weight:600;" onclick="openNewTeamsEmergencyModal('in_progress')">+ Nueva</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap: 14px;">
+            ${inProgressTasks.length === 0 ? '<div style="padding: 24px; text-align:center; color:var(--gray-400); font-size:13px;">No hay atención médica activa</div>' : inProgressTasks.map(t => renderEmergencyCard(t, users)).join('')}
+          </div>
+        </div>
+
+        <!-- Column 3: Completado -->
+        <div class="kanban-col" style="background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #10b981;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="width:10px; height:10px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+              <h3 style="font-size: 16px; font-weight: 700; color: var(--gray-800);">Completado / Atendido (${doneTasks.length})</h3>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap: 14px;">
+            ${doneTasks.length === 0 ? '<div style="padding: 24px; text-align:center; color:var(--gray-400); font-size:13px;">Sin emergencias completadas aún</div>' : doneTasks.map(t => renderEmergencyCard(t, users)).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Deep-link si viene de una notificación push de emergencia
+  if (window._deepLinkOpen && window._deepLinkOpen.page === 'teams_followup') {
+    const openId = window._deepLinkOpen.id;
+    window._deepLinkOpen = null;
+    if (window.openTaskDetail) window.openTaskDetail(openId);
+  }
+}
+
+function renderEmergencyCard(t, users) {
+  const isUrgent = t.priority === 'urgent';
+  const isHigh = t.priority === 'high';
+  const urgentBadge = isUrgent ? '<span class="badge" style="background:#fee2e2; color:#dc2626; font-size:11px; font-weight:700;">🚨 URGENTE</span>' :
+                      isHigh ? '<span class="badge" style="background:#fef3c7; color:#b45309; font-size:11px; font-weight:700;">⚠️ ALTA</span>' : '';
+
+  const receiverName = t.receiver_name || t.creator_name || 'Desconocido';
+  const assignedName = t.assigned_name || 'Sin Asignar de Campo';
+  const patientText = t.patient_name ? `👤 <strong>${t.patient_name}</strong>` : '';
+  const codeText = t.delegate_code ? `<span style="background:var(--gray-200); color:var(--gray-800); font-size:10px; padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:600;">${t.delegate_code}</span>` : '';
+  const timeText = timeAgo(t.created_at);
+
+  return `
+    <div class="card" style="padding: 16px; border-radius: var(--radius-md); background: white; border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.2s;" onclick="openTaskDetail(${t.id})">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 8px;">
+        <span style="font-size:11px; font-weight:700; color:#4338ca; background:#e0e7ff; padding:2px 8px; border-radius:12px;">SEGURIDAD / EMERGENCIAS</span>
+        ${urgentBadge}
+      </div>
+
+      <div style="font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 6px; line-height:1.4;">
+        ${t.title}
+      </div>
+
+      ${(patientText || codeText) ? `
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--gray-600); margin-bottom:10px;">
+          ${patientText} ${codeText}
+        </div>
+      ` : ''}
+
+      <div style="background: var(--gray-50); padding: 8px 10px; border-radius: var(--radius-sm); font-size: 11px; display:flex; flex-direction:column; gap:4px; margin-bottom:10px; border:1px solid var(--gray-150);">
+        <div style="display:flex; justify-content:space-between; color:var(--gray-700);">
+          <span>📞 <strong>Receptor (Teams):</strong></span>
+          <span style="color:var(--gray-900); font-weight:600;">${receiverName}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; color:var(--gray-700);">
+          <span>🚑 <strong>Encargado (Campo):</strong></span>
+          <span style="color:${t.assigned_name ? '#047857' : '#d97706'}; font-weight:600;">${assignedName}</span>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--gray-500); padding-top:6px; border-top:1px solid var(--gray-100);">
+        <span>🕒 ${timeText}</span>
+        <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+          ${t.status !== 'in_progress' && t.status !== 'done' ? `<button class="btn btn-sm" style="padding:2px 8px; font-size:10px; background:#fef3c7; color:#b45309;" onclick="quickChangeStatus(${t.id}, 'in_progress')">En Curso →</button>` : ''}
+          ${t.status !== 'done' ? `<button class="btn btn-sm" style="padding:2px 8px; font-size:10px; background:#d1fae5; color:#047857;" onclick="quickChangeStatus(${t.id}, 'done')">✓ Finalizar</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.quickChangeStatus = async function(taskId, newStatus) {
+  try {
+    await api(`tasks.php?action=update&id=${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ status: newStatus })
+    });
+    toast('Estado actualizado correctamente');
+    router();
+  } catch(err) {
+    // Handled by api helper toast
+  }
+};
+
+// Modal: Smart Paste Import de Teams Call Follow-up
+window.openTeamsQuickImportModal = async function() {
+  const usersRes = await api('users.php?action=list');
+  const users = usersRes.users || [];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'teams-import-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">📥 Importación Inteligente de Teams Call Follow up</h3>
+        <button class="modal-close" onclick="document.getElementById('teams-import-modal').remove()">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+        <p style="font-size:13px; color:var(--gray-600);">
+          Copia el texto completo o fragmento de la tarjeta de Teams (ejemplo: <code>Jiménez, María - G-4DVV-KD3R-7MX / Posible infección de dedo</code>) y pégalo abajo. El sistema extraerá los datos automáticamente.
+        </p>
+
+        <div class="form-group">
+          <label>Pegar texto de Teams aquí:</label>
+          <textarea id="teams-raw-text" class="form-control" rows="4" placeholder="Ej: Jiménez, María-G-4DVV-KD3R-7MX/Posible infeccion de dedo !"></textarea>
+        </div>
+
+        <button class="btn" style="background:#4f46e5; color:white; font-weight:600;" onclick="parseTeamsText()">⚡ Procesar y Extraer Campos</button>
+
+        <div id="parsed-results" style="display:none; background:var(--gray-50); padding:16px; border-radius:var(--radius-md); border:1px dashed var(--primary-400); flex-direction:column; gap:12px;">
+          <h4 style="font-size:13px; color:var(--primary-700); font-weight:700;">Campos detectados:</h4>
+          
+          <div class="form-group">
+            <label>Título de la Emergencia / Motivo:</label>
+            <input type="text" id="parse-title" class="form-control">
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label>Paciente / Afectado:</label>
+              <input type="text" id="parse-patient" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Código Delegado:</label>
+              <input type="text" id="parse-code" class="form-control">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label>📞 Quién recibió la llamada (Teams):</label>
+              <select id="parse-receiver" class="form-control">
+                ${users.map(u => `<option value="${u.id}" ${u.id == state.user.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>🚑 Encargado de Campo (Médico/Auxiliar):</label>
+              <select id="parse-assigned" class="form-control">
+                <option value="">-- Asignar después --</option>
+                ${users.map(u => `<option value="${u.id}">${u.name} (${u.hierarchy_level || 'Personal'})</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Prioridad:</label>
+            <select id="parse-priority" class="form-control">
+              <option value="urgent">🚨 Urgente (!)</option>
+              <option value="high">⚠️ Alta</option>
+              <option value="medium" selected>Media</option>
+              <option value="low">Baja</option>
+            </select>
+          </div>
+
+          <button class="btn btn-success" style="width:100%; justify-content:center; padding:12px;" onclick="submitTeamsImportedTask()">
+            ✓ Registrar Emergencia en ICCP
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+};
+
+window.parseTeamsText = function() {
+  const raw = document.getElementById('teams-raw-text').value.trim();
+  if (!raw) { toast('Por favor pega el texto de la llamada primero', 'error'); return; }
+
+  let patient = '';
+  let code = '';
+  let title = raw;
+  let priority = raw.includes('!') ? 'urgent' : 'medium';
+
+  // Extract delegate code pattern G-XXXX-XXXX-XXXX or similar
+  const codeMatch = raw.match(/G-[A-Z0-9]{4}-[A-Z0-9]{4}(-[A-Z0-9]{3,4})?/i);
+  if (codeMatch) {
+    code = codeMatch[0];
+  }
+
+  // If text contains slash /, usually Name / Code / Reason
+  const parts = raw.split('/');
+  if (parts.length >= 2) {
+    const leftPart = parts[0];
+    title = parts.slice(1).join('/').replace(/!/g, '').trim();
+
+    // Parse left part for name and code
+    if (code) {
+      patient = leftPart.replace(code, '').replace(/[-–—]/g, ' ').trim();
+    } else {
+      patient = leftPart.trim();
+    }
+  } else {
+    if (code) {
+      const codeIdx = raw.indexOf(code);
+      patient = raw.substring(0, codeIdx).replace(/[-–—]/g, ' ').trim();
+      title = raw.substring(codeIdx + code.length).replace(/^[-–—\s/]+/, '').replace(/!/g, '').trim() || raw;
+    }
+  }
+
+  document.getElementById('parse-title').value = title;
+  document.getElementById('parse-patient').value = patient;
+  document.getElementById('parse-code').value = code;
+  document.getElementById('parse-priority').value = priority;
+
+  document.getElementById('parsed-results').style.display = 'flex';
+};
+
+window.submitTeamsImportedTask = async function() {
+  const title = document.getElementById('parse-title').value.trim();
+  const patient = document.getElementById('parse-patient').value.trim();
+  const code = document.getElementById('parse-code').value.trim();
+  const receiver = document.getElementById('parse-receiver').value;
+  const assigned = document.getElementById('parse-assigned').value;
+  const priority = document.getElementById('parse-priority').value;
+
+  if (!title) { toast('El título o motivo es obligatorio', 'error'); return; }
+
+  try {
+    await api('tasks.php?action=create', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: patient ? `${patient} - ${title}` : title,
+        description: `Importado desde Teams Call Follow up.\nPaciente: ${patient || 'N/A'}\nCódigo: ${code || 'N/A'}`,
+        target_group: 'emergencias',
+        priority: priority,
+        status: 'todo',
+        received_by: receiver,
+        assigned_to: assigned || null,
+        patient_name: patient,
+        delegate_code: code
+      })
+    });
+    toast('Emergencia registrada con éxito en ICCP');
+    document.getElementById('teams-import-modal').remove();
+    router();
+  } catch (err) {
+    // Handled by api toast
+  }
+};
+
+window.openNewTeamsEmergencyModal = async function(initialStatus = 'todo') {
+  const usersRes = await api('users.php?action=list');
+  const users = usersRes.users || [];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay active';
+  modal.id = 'teams-manual-modal';
+  modal.innerHTML = `
+    <div class="modal" style="max-width: 550px;">
+      <div class="modal-header">
+        <h3>🚑 Nueva Llamada de Emergencia</h3>
+        <button class="modal-close" onclick="document.getElementById('teams-manual-modal').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitManualEmergency(event)">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label>Motivo / Síntoma principal *:</label>
+            <input type="text" id="man-title" class="form-control" placeholder="Ej: Atención médica por dolor de ciática" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div class="form-group">
+              <label>Paciente / Afectado:</label>
+              <input type="text" id="man-patient" class="form-control" placeholder="Ej: Ma, Leticia">
+            </div>
+            <div class="form-group">
+              <label>Código Delegado:</label>
+              <input type="text" id="man-code" class="form-control" placeholder="Ej: G-PEWD-946D">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div class="form-group">
+              <label>📞 Recibió la Llamada (Teams):</label>
+              <select id="man-receiver" class="form-control">
+                ${users.map(u => `<option value="${u.id}" ${u.id == state.user.id ? 'selected' : ''}>${u.name}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>🚑 Asignado a Campo:</label>
+              <select id="man-assigned" class="form-control">
+                <option value="">-- Asignar después --</option>
+                ${users.map(u => `<option value="${u.id}">${u.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+            <div class="form-group">
+              <label>Prioridad:</label>
+              <select id="man-priority" class="form-control">
+                <option value="urgent">🚨 Urgente</option>
+                <option value="high">⚠️ Alta</option>
+                <option value="medium" selected>Media</option>
+                <option value="low">Baja</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Estado Inicial:</label>
+              <select id="man-status" class="form-control">
+                <option value="todo" ${initialStatus === 'todo' ? 'selected' : ''}>No Iniciado</option>
+                <option value="in_progress" ${initialStatus === 'in_progress' ? 'selected' : ''}>En Curso</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;">
+            Guardar y Registrar Llamada
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+};
+
+window.submitManualEmergency = async function(e) {
+  e.preventDefault();
+  const title = document.getElementById('man-title').value.trim();
+  const patient = document.getElementById('man-patient').value.trim();
+  const code = document.getElementById('man-code').value.trim();
+  const receiver = document.getElementById('man-receiver').value;
+  const assigned = document.getElementById('man-assigned').value;
+  const priority = document.getElementById('man-priority').value;
+  const status = document.getElementById('man-status').value;
+
+  try {
+    await api('tasks.php?action=create', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: patient ? `${patient} - ${title}` : title,
+        target_group: 'emergencias',
+        priority: priority,
+        status: status,
+        received_by: receiver,
+        assigned_to: assigned || null,
+        patient_name: patient,
+        delegate_code: code
+      })
+    });
+    toast('Llamada de emergencia guardada');
+    document.getElementById('teams-manual-modal').remove();
+    router();
+  } catch (err) {
+    // Handled by api toast
   }
 };
 

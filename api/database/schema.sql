@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     department_id INT NOT NULL,
     created_by INT NOT NULL,
     assigned_to INT DEFAULT NULL,
+    received_by INT DEFAULT NULL,
+    delegate_code VARCHAR(100) DEFAULT NULL,
+    patient_name VARCHAR(150) DEFAULT NULL,
+    teams_url VARCHAR(500) DEFAULT NULL,
     due_date DATETIME DEFAULT NULL,
     google_event_id VARCHAR(255) DEFAULT NULL,
     google_event_ids TEXT DEFAULT NULL,
@@ -64,11 +68,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (department_id) REFERENCES departments(id) ON DELETE CASCADE,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE
-    SET NULL,
-        INDEX idx_status (status),
-        INDEX idx_department (department_id),
-        INDEX idx_assigned (assigned_to)
+    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (received_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_department (department_id),
+    INDEX idx_assigned (assigned_to),
+    INDEX idx_received (received_by)
 ) ENGINE = InnoDB;
 -- Task Attachments
 CREATE TABLE IF NOT EXISTS task_attachments (
