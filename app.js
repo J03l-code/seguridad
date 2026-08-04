@@ -6,7 +6,7 @@
 const API = 'api'; // relative path to PHP API
 
 // Autolimpiar Service Workers antiguos si se incrementa la versión (Solución definitiva contra caché de iOS)
-const CURRENT_VERSION = '155';
+const CURRENT_VERSION = '156';
 if (localStorage.getItem('iccp_sw_version') !== CURRENT_VERSION) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
@@ -3926,6 +3926,9 @@ async function renderTeamsFollowup(container, params = {}) {
       </div>
     </div>
   `;
+
+  document.getElementById('page-content').innerHTML = '';
+  document.getElementById('page-content').appendChild(container);
 
   // Deep-link si viene de una notificación push de emergencia
   if (window._deepLinkOpen && window._deepLinkOpen.page === 'teams_followup') {
